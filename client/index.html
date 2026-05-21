@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" />
+    <title>Linh Vực / Eternal Path</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game">
+        <div id="login-overlay">
+          <form id="login-form" class="login-box">
+            <h1>Linh Vực</h1>
+            <p id="login-copy">Nhập email để bắt đầu hành trình.</p>
+            <label id="email-label" for="email-input">Email</label>
+            <input id="email-input" type="email" autocomplete="email" required placeholder="you@example.com" />
+            <label id="name-label" for="name-input">Tên nhân vật</label>
+            <input id="name-input" maxlength="18" autocomplete="nickname" placeholder="hero" />
+            <button id="login-button" type="submit">Vào game</button>
+            <div id="login-error"></div>
+          </form>
+        </div>
+      </div>
+      <aside id="hud">
+        <div class="panel player-panel">
+          <div class="language-row">
+            <label id="language-label" for="language-select">Ngôn ngữ</label>
+            <select id="language-select">
+              <option value="vi">Tiếng Việt</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+          <div class="name" id="player-name">Đang kết nối...</div>
+          <div class="bar hp"><span id="hp-fill"></span><label id="hp-label">HP</label></div>
+          <div class="bar exp"><span id="exp-fill"></span><label id="exp-label">EXP</label></div>
+          <div class="stats" id="stats"></div>
+        </div>
+        <div class="panel equipment-panel">
+          <h2 id="equipment-title">Trang bị</h2>
+          <div id="equipment"></div>
+        </div>
+        <div class="panel inventory-panel">
+          <h2 id="inventory-title">Túi đồ</h2>
+          <div id="inventory"></div>
+        </div>
+        <div class="panel shop-panel">
+          <h2 id="shop-title">Cửa hàng</h2>
+          <div id="shop"></div>
+        </div>
+        <div class="panel log-panel">
+          <h2 id="world-title">Thế giới</h2>
+          <div id="log"></div>
+        </div>
+        <div class="panel chat-panel">
+          <h2 id="chat-title">Trò chuyện</h2>
+          <div id="chat-messages"></div>
+          <form id="chat-form">
+            <input id="chat-input" maxlength="160" autocomplete="off" placeholder="Nhập tin nhắn..." />
+            <button id="chat-send" type="submit">Gửi</button>
+          </form>
+        </div>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,156 @@
+export type Language = "vi" | "en";
+
+const dictionaries = {
+  vi: {
+    connecting: "Đang kết nối...",
+    language: "Ngôn ngữ",
+    equipment: "Trang bị",
+    inventory: "Túi đồ",
+    shop: "Cửa hàng",
+    world: "Thế giới",
+    chat: "Trò chuyện",
+    chatPlaceholder: "Nhập tin nhắn...",
+    send: "Gửi",
+    town: "Thị trấn",
+    levelShort: "Cấp",
+    hp: "Máu",
+    exp: "Kinh nghiệm",
+    atk: "Công",
+    def: "Thủ",
+    gold: "Vàng",
+    empty: "Trống",
+    noDrops: "Chưa có đồ rơi",
+    dropHere: "Kéo đồ vào ô này",
+    lootedGold: "Nhặt được {gold} vàng",
+    lootedGoldItem: "Nhặt được {gold} vàng và {rarity} {item}",
+    common: "Thường",
+    rare: "Hiếm",
+    epic: "Sử thi",
+    weapon: "Vũ khí",
+    helmet: "Mũ",
+    armor: "Giáp",
+    boots: "Giày",
+    ring: "Nhẫn",
+    maxHp: "máu tối đa",
+    attack: "công",
+    defense: "thủ",
+    itemWeapon: "VK",
+    itemHelmet: "MŨ",
+    itemArmor: "GIÁP",
+    itemBoots: "GIÀY",
+    itemRing: "NHẪN",
+    monsterForestSlime: "Slime Rừng",
+    monsterWildBoar: "Heo Rừng",
+    monsterCaveBat: "Dơi Hang",
+    monsterGoblinScout: "Trinh Sát Goblin",
+    monsterDireWolf: "Sói Hung",
+    monsterMossCrawler: "Bò Sát Rêu",
+    monsterStoneImp: "Tiểu Quỷ Đá",
+    monsterEmberSprite: "Tinh Linh Lửa",
+    monsterCursedTreant: "Cây Quỷ Ám",
+    monsterAshWraith: "Hồn Ma Tro Tàn",
+    monsterFrostRevenant: "Oan Hồn Băng",
+    monsterCrystalGolem: "Golem Pha Lê",
+    monsterBloodHarpy: "Huyết Điểu",
+    monsterAncientDrake: "Rồng Cổ",
+    monsterVoidKnight: "Kỵ Sĩ Hư Không",
+    monsterElderHydra: "Hydra Cổ Đại",
+    loginCopy: "Nhập email để bắt đầu hành trình.",
+    email: "Email",
+    characterName: "Tên nhân vật",
+    enterGame: "Vào game",
+    invalidEmail: "Vui lòng nhập email hợp lệ.",
+    buy: "Mua",
+    sell: "Bán",
+    drop: "Thả",
+    price: "Giá",
+    value: "Giá trị"
+  },
+  en: {
+    connecting: "Connecting...",
+    language: "Language",
+    equipment: "Equipment",
+    inventory: "Inventory",
+    shop: "Shop",
+    world: "World",
+    chat: "Chat",
+    chatPlaceholder: "Say something...",
+    send: "Send",
+    town: "Town",
+    levelShort: "Lv",
+    hp: "HP",
+    exp: "EXP",
+    atk: "ATK",
+    def: "DEF",
+    gold: "GOLD",
+    empty: "Empty",
+    noDrops: "No drops yet",
+    dropHere: "Drop item here",
+    lootedGold: "Looted {gold} gold",
+    lootedGoldItem: "Looted {gold} gold and {rarity} {item}",
+    common: "common",
+    rare: "rare",
+    epic: "epic",
+    weapon: "weapon",
+    helmet: "helmet",
+    armor: "armor",
+    boots: "boots",
+    ring: "ring",
+    maxHp: "max HP",
+    attack: "attack",
+    defense: "defense",
+    itemWeapon: "WPN",
+    itemHelmet: "HLM",
+    itemArmor: "ARM",
+    itemBoots: "BTS",
+    itemRing: "RNG",
+    monsterForestSlime: "Forest Slime",
+    monsterWildBoar: "Wild Boar",
+    monsterCaveBat: "Cave Bat",
+    monsterGoblinScout: "Goblin Scout",
+    monsterDireWolf: "Dire Wolf",
+    monsterMossCrawler: "Moss Crawler",
+    monsterStoneImp: "Stone Imp",
+    monsterEmberSprite: "Ember Sprite",
+    monsterCursedTreant: "Cursed Treant",
+    monsterAshWraith: "Ash Wraith",
+    monsterFrostRevenant: "Frost Revenant",
+    monsterCrystalGolem: "Crystal Golem",
+    monsterBloodHarpy: "Blood Harpy",
+    monsterAncientDrake: "Ancient Drake",
+    monsterVoidKnight: "Void Knight",
+    monsterElderHydra: "Elder Hydra",
+    loginCopy: "Enter your email to begin the journey.",
+    email: "Email",
+    characterName: "Character name",
+    enterGame: "Enter game",
+    invalidEmail: "Please enter a valid email.",
+    buy: "Buy",
+    sell: "Sell",
+    drop: "Drop",
+    price: "Price",
+    value: "Value"
+  }
+} as const;
+
+export function getLanguage(): Language {
+  const saved = localStorage.getItem("language");
+  return saved === "en" ? "en" : "vi";
+}
+
+export function setLanguage(language: Language): void {
+  localStorage.setItem("language", language);
+}
+
+export function t(key: keyof typeof dictionaries.vi, values: Record<string, string | number> = {}): string {
+  let text: string = dictionaries[getLanguage()][key] ?? dictionaries.vi[key];
+  for (const [name, value] of Object.entries(values)) {
+    text = text.replaceAll(`{${name}}`, String(value));
+  }
+  return text;
+}
+
+export function translateMonsterName(name: string): string {
+  const key = `monster${name.replace(/\s+/g, "")}` as keyof typeof dictionaries.vi;
+  return t(key);
+}

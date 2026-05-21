@@ -1,0 +1,51 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  username varchar(32) NOT NULL UNIQUE,
+  email varchar(255) NOT NULL UNIQUE,
+  password_hash text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS email varchar(255);
+UPDATE accounts SET email = username || '@local.prototype' WHERE email IS NULL;
+ALTER TABLE accounts ALTER COLUMN email SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS accounts_email_unique_idx ON accounts(email);
+
+CREATE TABLE IF NOT EXISTS characters (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  account_id uuid NOT NULL UNIQUE REFERENCES accounts(id) ON DELETE CASCADE,
+  level integer NOT NULL DEFAULT 1,
+  exp integer NOT NULL DEFAULT 0,
+  hp integer NOT NULL DEFAULT 110,
+  max_hp integer NOT NULL DEFAULT 110,
+  attack integer NOT NULL DEFAULT 12,
+  defense integer NOT NULL DEFAULT 5,
+  gold integer NOT NULL DEFAULT 0,
+  map_id varchar(64) NOT NULL DEFAULT 'greenwood',
+  position_x integer NOT NULL DEFAULT 224,
+  position_y integer NOT NULL DEFAULT 224,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS inventory_items (
+  id uuid PRIMARY KEY,
+  character_id uuid NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  name varchar(80) NOT NULL,
+  rarity varchar(16) NOT NULL CHECK (rarity IN ('common', 'rare', 'epic')),
+  slot varchar(16) NOT NULL CHECK (slot IN ('weapon', 'helmet', 'armor', 'boots', 'ring')),
+  stats jsonb NOT NULL DEFAULT '{}',
+  value integer NOT NULL DEFAULT 0,
+  equipped boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS value integer NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS inventory_items_character_idx ON inventory_items(character_id);
+CREATE UNIQUE INDEX IF NOT EXISTS equipped_slot_unique_idx
+  ON inventory_items(character_id, slot)
+  WHERE equipped = true;

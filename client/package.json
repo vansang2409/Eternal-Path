@@ -1,0 +1,21 @@
+{
+  "name": "@mmorpg/client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mmorpg/shared": "file:../shared",
+    "phaser": "^3.87.0",
+    "socket.io-client": "^4.8.1",
+    "vite": "^6.0.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

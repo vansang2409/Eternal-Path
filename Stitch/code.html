@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Linh Vực - Main Gameplay</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;family=Literata:opsz,wght@7..72,600;7..72,700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed": "#ffdad6",
+                    "tertiary": "#ffb4ac",
+                    "inverse-surface": "#e4e2e1",
+                    "on-secondary-fixed": "#241a00",
+                    "surface-bright": "#393939",
+                    "surface": "#131313",
+                    "on-tertiary-fixed-variant": "#92030f",
+                    "on-surface-variant": "#c4c7c7",
+                    "surface-tint": "#c8c6c5",
+                    "secondary-fixed-dim": "#e9c349",
+                    "inverse-on-surface": "#303030",
+                    "on-background": "#e4e2e1",
+                    "on-primary-container": "#848282",
+                    "tertiary-container": "#3e0002",
+                    "surface-container-highest": "#353535",
+                    "secondary-fixed": "#ffe088",
+                    "primary": "#c8c6c5",
+                    "on-tertiary": "#690007",
+                    "surface-dim": "#131313",
+                    "surface-container-low": "#1b1c1c",
+                    "inverse-primary": "#5f5e5e",
+                    "surface-container-high": "#2a2a2a",
+                    "on-secondary": "#3c2f00",
+                    "outline-variant": "#444748",
+                    "outline": "#8e9192",
+                    "on-error-container": "#ffdad6",
+                    "error-container": "#93000a",
+                    "primary-container": "#1a1a1a",
+                    "primary-fixed": "#e5e2e1",
+                    "tertiary-fixed-dim": "#ffb4ac",
+                    "secondary": "#e9c349",
+                    "on-surface": "#e4e2e1",
+                    "secondary-container": "#af8d11",
+                    "on-secondary-fixed-variant": "#574500",
+                    "on-primary": "#313030",
+                    "surface-container": "#1f2020",
+                    "error": "#ffb4ab",
+                    "on-tertiary-fixed": "#410003",
+                    "on-tertiary-container": "#e84a43",
+                    "background": "#131313",
+                    "primary-fixed-dim": "#c8c6c5",
+                    "surface-variant": "#353535",
+                    "on-error": "#690005",
+                    "on-secondary-container": "#342800",
+                    "surface-container-lowest": "#0e0e0e",
+                    "on-primary-fixed": "#1c1b1b",
+                    "on-primary-fixed-variant": "#474746"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar_width": "280px",
+                    "gutter": "8px",
+                    "unit": "4px",
+                    "panel_padding": "12px",
+                    "inventory_slot": "48px"
+            },
+            "fontFamily": {
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "headline-lg": [
+                            "Literata"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "headline-sm": [
+                            "Literata"
+                    ],
+                    "headline-md": [
+                            "Literata"
+                    ],
+                    "stats-num": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "14px",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-sm": [
+                            "18px",
+                            {
+                                    "lineHeight": "24px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "stats-num": [
+                            "13px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "700"
+                            }
+                    ]
+            }
+        },
+        },
+      }
+    </script>
+<style>
+        .stone-panel {
+            background-color: #2d2d2d;
+            border-top: 1px solid #4a4a4a;
+            border-bottom: 1px solid #1a1a1a;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+        .recessed-slot {
+            background-color: #1a1a1a;
+            box-shadow: inset 2px 2px 5px rgba(0,0,0,0.8), inset -1px -1px 2px rgba(255,255,255,0.05);
+        }
+        .gold-leaf-btn {
+            background: linear-gradient(to bottom, #d4af37, #af8d11);
+            border: 1px solid #ffe088;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .forged-iron-btn {
+            background: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+            border: 1px solid #5f5e5e;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+        .bar-fill {
+            background-image: linear-gradient(to bottom, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 100%);
+        }
+        
+        /* Rarity Borders */
+        .rarity-common { border: 1px solid #8e9192; }
+        .rarity-uncommon { border: 1px solid #3b82f6; box-shadow: inset 0 0 8px rgba(59, 130, 246, 0.4); }
+        .rarity-rare { border: 1px solid #a855f7; box-shadow: inset 0 0 8px rgba(168, 85, 247, 0.4); }
+        .rarity-epic { border: 1px solid #eab308; box-shadow: inset 0 0 8px rgba(234, 179, 8, 0.4); }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #131313;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444748;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8e9192;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden flex font-body-md">
+<!-- Top Navigation (Suppressed per logic: Login intent overlay is present, but we maintain the shell for the underlying game if needed. For now, we omit as it's a fixed layout) -->
+<!-- Canvas Area (80%) -->
+<main class="flex-1 relative bg-surface-container-lowest">
+<!-- Game Background Map -->
+<div class="absolute inset-0 z-0 bg-cover bg-center" data-alt="A dark, moody 2D isometric pixel art representation of an ancient, overgrown dungeon or forest ruins. The lighting is dim with dramatic volumetric rays piercing through dense canopy or broken stone ceilings. The color palette features deep moss greens, charcoal greys, and cold stone blues. Small glowing elements suggest magical flora or faint torchlight in the distance, establishing a gritty, hardcore fantasy atmosphere." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0TrrZA7JufgAS5jW2W81_RoWjuQ-QDQh70l93AzkOHGxa-uU4AiRVHFm8MdZB2IZeybchhTPeOuqM_qyIyTDh-91bbMRhg3F6qnnFYwmhW6GZIDJUj6y1DS4Vlt-orMUfc74cPgNYo2HXzami9zKvllaLbdkgHITjgGCNDp5J7m4A62yBkOuOt0EICgrxRm6Ivl0fNMAlBMPTVspIbeHGEhZiCQH9-pD7QrSHpZY8KKs-2lejW7HynYes08iaoRNjcO6Un8L9Wh0');">
+<!-- Player Sprite Placeholder -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-16 bg-blue-500 rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.5)] flex items-center justify-center opacity-80 mix-blend-screen">
+<span class="material-symbols-outlined text-white text-3xl">person</span>
+</div>
+<!-- Monster Sprite Placeholder -->
+<div class="absolute top-1/3 left-1/3 w-10 h-10 bg-red-800 rounded shadow-lg flex items-center justify-center opacity-70">
+<span class="material-symbols-outlined text-white">pest_control</span>
+</div>
+</div>
+<!-- Login Modal Overlay -->
+<div class="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+<div class="stone-panel w-96 p-8 rounded-lg relative overflow-hidden border-2 border-secondary/50">
+<!-- Inner Bevel/Glow for Epic Modal feel -->
+<div class="absolute inset-0 border-2 border-secondary/20 pointer-events-none rounded-lg m-1"></div>
+<h1 class="font-headline-lg text-headline-lg text-secondary text-center mb-8 drop-shadow-md tracking-tighter">Linh Vực</h1>
+<form class="space-y-6 relative z-10">
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Email</label>
+<input class="w-full recessed-slot border-none rounded text-primary focus:text-secondary focus:ring-1 focus:ring-secondary px-4 py-3" placeholder="Nhập email..." type="email"/>
+</div>
+<div>
+<label class="block font-label-caps text-label-caps text-on-surface-variant mb-2">Tên nhân vật</label>
+<input class="w-full recessed-slot border-none rounded text-primary focus:text-secondary focus:ring-1 focus:ring-secondary px-4 py-3" placeholder="Nhập tên..." type="text"/>
+</div>
+<button class="w-full gold-leaf-btn py-3 rounded font-headline-sm text-headline-sm text-on-secondary-fixed mt-4 transition-transform active:scale-95" type="button">
+                        Vào game
+                    </button>
+</form>
+</div>
+</div>
+</main>
+<!-- SideNavBar (20% - Fixed 280px per JSON) -->
+<aside class="fixed right-0 top-0 bottom-0 z-40 bg-surface-container border-l border-outline-variant inset-shadow-sm shadow-xl flex flex-col pt-4 pb-4 overflow-y-auto w-sidebar_width text-on-surface-variant font-medium">
+<!-- Section 1: Player Status -->
+<div class="px-panel_padding mb-6 flex-shrink-0">
+<div class="flex justify-between items-start mb-2">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-secondary font-bold">Kiếm Sĩ</h2>
+<p class="font-stats-num text-stats-num text-primary">Level 10</p>
+</div>
+<button class="text-xs border border-outline-variant rounded px-2 py-1 hover:bg-surface-variant transition-colors">VN/EN</button>
+</div>
+<!-- HP Bar -->
+<div class="mb-2">
+<div class="flex justify-between font-label-caps text-label-caps mb-1">
+<span>HP</span>
+<span>450/500</span>
+</div>
+<div class="h-3 recessed-slot rounded-full overflow-hidden">
+<div class="h-full bg-error bar-fill w-[90%] transition-all duration-300"></div>
+</div>
+</div>
+<!-- MP/EXP Bar (Blue) -->
+<div class="mb-4">
+<div class="flex justify-between font-label-caps text-label-caps mb-1">
+<span>EXP</span>
+<span>1200/2000</span>
+</div>
+<div class="h-3 recessed-slot rounded-full overflow-hidden">
+<div class="h-full bg-blue-600 bar-fill w-[60%] transition-all duration-300"></div>
+</div>
+</div>
+<!-- Stats -->
+<div class="grid grid-cols-3 gap-2 font-stats-num text-stats-num">
+<div class="stone-panel p-2 rounded text-center flex flex-col items-center">
+<span class="material-symbols-outlined text-red-400 text-sm mb-1">swords</span>
+<span>Công: 45</span>
+</div>
+<div class="stone-panel p-2 rounded text-center flex flex-col items-center">
+<span class="material-symbols-outlined text-blue-300 text-sm mb-1">shield</span>
+<span>Thủ: 30</span>
+</div>
+<div class="stone-panel p-2 rounded text-center flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary text-sm mb-1">monetization_on</span>
+<span class="text-secondary">2500</span>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant mb-4"></div>
+<!-- Section 2: Trang bị (Equipment) -->
+<div class="px-panel_padding mb-6 flex-shrink-0">
+<h3 class="font-label-caps text-label-caps text-outline mb-3 uppercase tracking-wider">Trang bị</h3>
+<div class="flex flex-wrap gap-unit justify-center">
+<!-- Weapon -->
+<div class="w-inventory_slot h-inventory_slot recessed-slot rarity-rare flex items-center justify-center relative group cursor-pointer">
+<span class="material-symbols-outlined text-on-surface">colorize</span>
+<div class="absolute inset-0 group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+</div>
+<!-- Head -->
+<div class="w-inventory_slot h-inventory_slot recessed-slot rarity-common flex items-center justify-center relative group cursor-pointer">
+<span class="material-symbols-outlined text-outline">sports_martial_arts</span>
+<div class="absolute inset-0 group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+</div>
+<!-- Chest -->
+<div class="w-inventory_slot h-inventory_slot recessed-slot rarity-uncommon flex items-center justify-center relative group cursor-pointer">
+<span class="material-symbols-outlined text-on-surface">accessibility_new</span>
+<div class="absolute inset-0 group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+</div>
+<!-- Feet -->
+<div class="w-inventory_slot h-inventory_slot recessed-slot rarity-common flex items-center justify-center relative group cursor-pointer">
+<span class="material-symbols-outlined text-outline">hiking</span>
+<div class="absolute inset-0 group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+</div>
+<!-- Ring -->
+<div class="w-inventory_slot h-inventory_slot recessed-slot rarity-epic flex items-center justify-center relative group cursor-pointer">
+<span class="material-symbols-outlined text-secondary">radio_button_unchecked</span>
+<div class="absolute inset-0 group-hover:bg-secondary/10 transition-colors pointer-events-none"></div>
+</div>
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant mb-4"></div>
+<!-- Section 3: Túi đồ (Inventory) -->
+<div class="px-panel_padding mb-6 flex-shrink-0">
+<h3 class="font-label-caps text-label-caps text-outline mb-3 uppercase tracking-wider">Túi đồ</h3>
+<div class="grid grid-cols-5 gap-[2px] bg-primary-container p-1 rounded-sm border border-outline-variant">
+<!-- Row 1 -->
+<div class="w-10 h-10 recessed-slot rarity-common flex items-center justify-center relative group">
+<span class="material-symbols-outlined text-sm">water_drop</span>
+</div>
+<div class="w-10 h-10 recessed-slot rarity-uncommon flex items-center justify-center relative group">
+<span class="material-symbols-outlined text-sm text-blue-300">water_drop</span>
+</div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<!-- Row 2 -->
+<div class="w-10 h-10 recessed-slot rarity-common flex items-center justify-center relative group">
+<span class="material-symbols-outlined text-sm text-outline">hardware</span>
+</div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<!-- Row 3 -->
+<div class="w-10 h-10 recessed-slot rarity-rare flex items-center justify-center relative group">
+<span class="material-symbols-outlined text-sm text-purple-400">diamond</span>
+</div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<!-- Row 4 -->
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+<div class="w-10 h-10 recessed-slot flex items-center justify-center"></div>
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant mb-4"></div>
+<!-- Section 4: Cửa hàng (Shop) - Collapsed visual state -->
+<div class="px-panel_padding mb-4 flex-shrink-0">
+<div class="flex justify-between items-center cursor-pointer hover:text-on-surface transition-colors mb-2">
+<h3 class="font-label-caps text-label-caps text-outline uppercase tracking-wider">Cửa hàng</h3>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+<div class="space-y-2 hidden">
+<!-- Shop items would go here -->
+</div>
+</div>
+<div class="w-full h-px bg-outline-variant mb-4"></div>
+<!-- Section 5: Trò chuyện (Chat) -->
+<div class="px-panel_padding flex-1 flex flex-col min-h-[150px]">
+<h3 class="font-label-caps text-label-caps text-outline mb-2 uppercase tracking-wider">Trò chuyện</h3>
+<div class="flex-1 recessed-slot p-2 rounded mb-2 overflow-y-auto font-body-md text-xs space-y-1">
+<p><span class="text-blue-400">[Hệ thống]</span> Chào mừng đến với Linh Vực.</p>
+<p><span class="text-secondary">[Thế giới]</span> <b>Dũng Sĩ:</b> Cần pt đi map rừng.</p>
+</div>
+<div class="flex gap-1">
+<input class="flex-1 recessed-slot border-none rounded text-xs px-2 py-1 focus:ring-1 focus:ring-secondary text-primary" placeholder="Nhập tin nhắn..." type="text"/>
+<button class="forged-iron-btn px-2 rounded text-xs font-bold text-on-surface">Gửi</button>
+</div>
+</div>
+</aside>
+</body></html>
