@@ -1030,6 +1030,118 @@ h2 {
   background: var(--outline);
 }
 
+.party-invite {
+  margin-bottom: 8px;
+  padding: 8px;
+  color: #f0c3ff;
+  font-size: 12px;
+  background: #251032;
+  border: 1px solid var(--epic);
+  border-radius: 4px;
+}
+
+.party-invite.hidden {
+  display: none;
+}
+
+.party-invite-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.party-invite-actions button {
+  min-height: 26px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+  border: 1px solid #5f5e5e;
+  border-radius: 3px;
+}
+
+.party-invite-actions button:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+#party-members {
+  display: grid;
+  gap: 6px;
+}
+
+.party-member {
+  padding: 6px 8px;
+  background: rgba(20, 24, 28, 0.5);
+  border: 1px solid rgba(142, 145, 146, 0.28);
+  border-radius: 4px;
+}
+
+.party-member-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.party-member-head strong {
+  overflow: hidden;
+  color: #8be78b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.party-member-head span {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.party-leader {
+  color: var(--gold);
+}
+
+.bar.party-hp {
+  height: 8px;
+}
+
+.bar.party-hp span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(to bottom, #6ce08a, #2f9a52);
+}
+
+.party-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.party-actions button {
+  min-height: 28px;
+  padding: 0 8px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+  border: 1px solid #5f5e5e;
+  border-radius: 3px;
+}
+
+.party-actions button:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.party-actions button.hidden {
+  display: none;
+}
+
 @media (max-width: 860px) {
   #hud {
     top: auto;

@@ -37,6 +37,7 @@ import type {
   MonsterState,
   PlayerState,
   ChatMessage,
+  PartyView,
   QuestListPayload,
   QuestView,
   ShopItem,
@@ -64,6 +65,15 @@ const ELITE_REWARD_MULTIPLIER = 2.5;
 const WORLD_BOSS_RESPAWN_MS = 4 * 60 * 1000;
 const WORLD_BOSS_REWARD_MULTIPLIER = 8;
 const MAX_ACTIVE_QUESTS = 3;
+const PARTY_MAX_SIZE = 4;
+const PARTY_INVITE_RANGE = 600;
+const PARTY_SHARE_RANGE = 360;
+
+interface Party {
+  id: string;
+  leaderId: string;
+  memberIds: string[];
+}
 
 interface QuestTemplate {
   id: string;
@@ -119,6 +129,9 @@ export class GameWorld {
   private readonly lastTownHealTextAt = new Map<string, number>();
   private readonly autoRetarget = new Map<string, boolean>();
   private readonly activeQuests = new Map<string, ActiveQuestState[]>();
+  private readonly parties = new Map<string, Party>();
+  private readonly playerParty = new Map<string, string>();
+  private readonly pendingInvites = new Map<string, string>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
   private readonly returningToSpawn = new Set<string>();
@@ -223,6 +236,70 @@ export class GameWorld {
       socket.emit("system", `Quest complete: ${template.title}.`);
       this.emitQuestList(player);
       await this.repository.save(player);
+    });
+
+    socket.on("inviteParty", ({ playerId }) => {
+      const inviter = this.players.get(socket.id);
+      const target = playerId ? this.players.get(playerId) : undefined;
+      if (!inviter || !target || target.id === inviter.id) return;
+      if (distance(inviter.position, target.position) > PARTY_INVITE_RANGE) {
+        socket.emit("system", "Người chơi ở quá xa để mời.");
+        return;
+      }
+      if (this.playerParty.get(target.id)) {
+        socket.emit("system", `${target.accountName} đã ở trong một tổ đội.`);
+        return;
+      }
+      let party = this.getParty(inviter.id);
+      if (party && party.memberIds.length >= PARTY_MAX_SIZE) {
+        socket.emit("system", "Tổ đội đã đầy.");
+        return;
+      }
+      if (!party) {
+        party = { id: `party-${Date.now()}-${Math.random().toString(36).slice(2)}`, leaderId: inviter.id, memberIds: [inviter.id] };
+        this.parties.set(party.id, party);
+        this.playerParty.set(inviter.id, party.id);
+        this.emitPartyUpdate(party);
+      }
+      this.pendingInvites.set(target.id, party.id);
+      this.sockets.get(target.id)?.emit("partyInvite", { partyId: party.id, fromName: inviter.accountName });
+      this.sockets.get(target.id)?.emit("system", `${inviter.accountName} mời bạn vào tổ đội.`);
+      socket.emit("system", `Đã mời ${target.accountName} vào tổ đội.`);
+    });
+
+    socket.on("acceptParty", ({ partyId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (this.playerParty.get(player.id)) {
+        socket.emit("system", "Bạn đã ở trong một tổ đội.");
+        return;
+      }
+      const pending = this.pendingInvites.get(player.id);
+      const party = this.parties.get(partyId);
+      if (!party || pending !== partyId) {
+        socket.emit("system", "Lời mời đã hết hạn.");
+        return;
+      }
+      if (party.memberIds.length >= PARTY_MAX_SIZE) {
+        socket.emit("system", "Tổ đội đã đầy.");
+        return;
+      }
+      this.pendingInvites.delete(player.id);
+      party.memberIds.push(player.id);
+      this.playerParty.set(player.id, party.id);
+      for (const memberId of party.memberIds) {
+        this.sockets.get(memberId)?.emit("system", `${player.accountName} đã vào tổ đội.`);
+      }
+      this.emitPartyUpdate(party);
+    });
+
+    socket.on("leaveParty", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!this.playerParty.get(player.id)) return;
+      this.removeFromParty(player.id);
+      this.sockets.get(player.id)?.emit("partyUpdate", null);
+      this.sockets.get(player.id)?.emit("system", "Bạn đã rời tổ đội.");
     });
 
     socket.on("equipItem", async ({ itemId }) => {
@@ -438,6 +515,7 @@ export class GameWorld {
     socket.on("disconnect", async () => {
       const player = this.players.get(socket.id);
       if (player) await this.repository.save(player);
+      this.removeFromParty(socket.id);
       this.players.delete(socket.id);
       this.sockets.delete(socket.id);
       this.inputs.delete(socket.id);
@@ -644,14 +722,20 @@ export class GameWorld {
 
     const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
     const gold = goldForMonster(monster);
-    const leveled = grantExp(player.stats, exp);
-    player.stats = leveled.stats;
     player.stats.gold += gold;
+    for (const recipient of this.expRecipientsFor(player)) {
+      const leveled = grantExp(recipient.stats, exp);
+      recipient.stats = leveled.stats;
+      if (leveled.leveled) this.updateReachLevelQuests(recipient);
+      this.emitFloating(recipient.id, recipient.position, exp, "exp", `+${exp} exp`);
+      if (leveled.leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
+      if (recipient.id !== player.id) {
+        this.sockets.get(recipient.id)?.emit("player", recipient);
+        void this.repository.save(recipient);
+      }
+    }
     this.updateQuestProgressForKill(player, monster);
-    if (leveled.leveled) this.updateReachLevelQuests(player);
-    this.emitFloating(player.id, player.position, exp, "exp", `+${exp} exp`);
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
-    if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
 
     const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
     let collectedItem: Item | undefined;
@@ -724,6 +808,70 @@ export class GameWorld {
   private emitQuestList(player: PlayerState): void {
     this.updateReachLevelQuests(player);
     this.sockets.get(player.id)?.emit("questList", questListFor(player, this.activeQuests.get(player.id) ?? []));
+  }
+
+  private getParty(playerId: string): Party | undefined {
+    const partyId = this.playerParty.get(playerId);
+    return partyId ? this.parties.get(partyId) : undefined;
+  }
+
+  private expRecipientsFor(killer: PlayerState): PlayerState[] {
+    const party = this.getParty(killer.id);
+    if (!party) return [killer];
+    const recipients: PlayerState[] = [];
+    for (const id of party.memberIds) {
+      const member = this.players.get(id);
+      if (!member) continue;
+      if (member.id === killer.id || distance(killer.position, member.position) <= PARTY_SHARE_RANGE) {
+        recipients.push(member);
+      }
+    }
+    if (!recipients.some((member) => member.id === killer.id)) recipients.push(killer);
+    return recipients;
+  }
+
+  private partyView(party: Party): PartyView {
+    return {
+      id: party.id,
+      leaderId: party.leaderId,
+      members: party.memberIds.map((id) => {
+        const member = this.players.get(id);
+        return {
+          id,
+          accountName: member?.accountName ?? "?",
+          level: member?.stats.level ?? 1,
+          hp: member?.stats.hp ?? 0,
+          maxHp: member?.stats.maxHp ?? 1,
+          isLeader: id === party.leaderId
+        };
+      })
+    };
+  }
+
+  private emitPartyUpdate(party: Party): void {
+    const view = this.partyView(party);
+    for (const id of party.memberIds) this.sockets.get(id)?.emit("partyUpdate", view);
+  }
+
+  private removeFromParty(playerId: string): void {
+    this.pendingInvites.delete(playerId);
+    const partyId = this.playerParty.get(playerId);
+    if (!partyId) return;
+    this.playerParty.delete(playerId);
+    const party = this.parties.get(partyId);
+    if (!party) return;
+    party.memberIds = party.memberIds.filter((id) => id !== playerId);
+    if (party.leaderId === playerId) party.leaderId = party.memberIds[0] ?? "";
+    if (party.memberIds.length <= 1) {
+      for (const remaining of party.memberIds) {
+        this.playerParty.delete(remaining);
+        this.sockets.get(remaining)?.emit("partyUpdate", null);
+        this.sockets.get(remaining)?.emit("system", "Tổ đội đã giải tán.");
+      }
+      this.parties.delete(party.id);
+    } else {
+      this.emitPartyUpdate(party);
+    }
   }
 
   private cleanupGroundItems(now: number): void {

@@ -1,5 +1,5 @@
 import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { ChatMessage, EquipmentSlot, Item, MonsterState, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -13,6 +13,8 @@ export class Hud {
   private selectedItemId?: string;
   private autoRetargetEnabled = false;
   private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0 };
+  private party: PartyView | null = null;
+  private pendingInvitePartyId?: string;
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -26,7 +28,10 @@ export class Hud {
     private readonly onSkill: (skillId: SkillId) => void,
     private readonly onAcceptQuest: (questId: string) => void,
     private readonly onClaimQuest: (questId: string) => void,
-    private readonly onAutoRetarget: (enabled: boolean) => void
+    private readonly onAutoRetarget: (enabled: boolean) => void,
+    private readonly onInviteParty: () => void,
+    private readonly onAcceptParty: (partyId: string) => void,
+    private readonly onLeaveParty: () => void
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -39,6 +44,9 @@ export class Hud {
       button.addEventListener("click", () => this.onSkill(skillId));
     });
     window.setInterval(() => this.renderSkillCooldowns(), 100);
+    (document.querySelector("#party-invite-button") as HTMLButtonElement).addEventListener("click", () => this.onInviteParty());
+    (document.querySelector("#party-leave-button") as HTMLButtonElement).addEventListener("click", () => this.onLeaveParty());
+    this.setParty(null);
     languageSelect.value = getLanguage();
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
@@ -143,6 +151,72 @@ export class Hud {
     if (payload.active.length === 0 && payload.available.length === 0) {
       root.innerHTML = `<div class="empty">${t("noQuests")}</div>`;
     }
+  }
+
+  setParty(view: PartyView | null): void {
+    this.party = view;
+    const root = document.querySelector("#party-members")!;
+    const leaveButton = document.querySelector("#party-leave-button") as HTMLButtonElement;
+    root.innerHTML = "";
+    if (!view || view.members.length === 0) {
+      root.innerHTML = `<div class="empty">${t("noParty")}</div>`;
+      leaveButton.classList.add("hidden");
+      return;
+    }
+    leaveButton.classList.remove("hidden");
+    for (const member of view.members) {
+      const row = document.createElement("div");
+      row.className = "party-member";
+      row.dataset.memberId = member.id;
+      const pct = Math.max(0, Math.min(1, member.hp / member.maxHp));
+      row.innerHTML = `
+        <div class="party-member-head">
+          <strong>${escapeHtml(member.accountName)}${member.isLeader ? ` <span class="party-leader" title="${t("partyLeader")}">★</span>` : ""}</strong>
+          <span data-party-level="${member.id}">${t("levelShort")} ${member.level}</span>
+        </div>
+        <div class="bar hp party-hp"><span data-party-hp="${member.id}" style="width: ${pct * 100}%"></span></div>
+      `;
+      root.append(row);
+    }
+  }
+
+  showPartyInvite(invite: PartyInvite): void {
+    this.pendingInvitePartyId = invite.partyId;
+    const banner = document.querySelector("#party-invite") as HTMLElement;
+    banner.classList.remove("hidden");
+    banner.innerHTML = `
+      <span>${escapeHtml(t("partyInvitePrompt", { name: invite.fromName }))}</span>
+      <div class="party-invite-actions">
+        <button type="button" data-invite="accept">${t("partyAccept")}</button>
+        <button type="button" data-invite="decline">${t("partyDecline")}</button>
+      </div>
+    `;
+    banner.querySelector('[data-invite="accept"]')?.addEventListener("click", () => {
+      const partyId = this.pendingInvitePartyId;
+      this.clearPartyInvite();
+      if (partyId) this.onAcceptParty(partyId);
+    });
+    banner.querySelector('[data-invite="decline"]')?.addEventListener("click", () => this.clearPartyInvite());
+  }
+
+  updatePartyVitals(players: PlayerState[]): void {
+    if (!this.party) return;
+    const byId = new Map(players.map((candidate) => [candidate.id, candidate]));
+    for (const member of this.party.members) {
+      const live = byId.get(member.id);
+      if (!live) continue;
+      const fill = document.querySelector(`[data-party-hp="${member.id}"]`) as HTMLElement | null;
+      const level = document.querySelector(`[data-party-level="${member.id}"]`) as HTMLElement | null;
+      if (fill) fill.style.width = `${Math.max(0, Math.min(1, live.stats.hp / live.stats.maxHp)) * 100}%`;
+      if (level) level.textContent = `${t("levelShort")} ${live.stats.level}`;
+    }
+  }
+
+  private clearPartyInvite(): void {
+    this.pendingInvitePartyId = undefined;
+    const banner = document.querySelector("#party-invite") as HTMLElement;
+    banner.classList.add("hidden");
+    banner.innerHTML = "";
   }
 
   private renderEquipment(): void {
@@ -255,6 +329,9 @@ export class Hud {
     document.querySelector("#equipment-title")!.textContent = t("equipment");
     document.querySelector("#skills-title")!.textContent = t("skills");
     document.querySelector("#quests-title")!.textContent = t("quests");
+    document.querySelector("#party-title")!.textContent = t("party");
+    document.querySelector("#party-invite-button")!.textContent = t("partyInviteTarget");
+    document.querySelector("#party-leave-button")!.textContent = t("partyLeave");
     document.querySelector("#skill-power-strike")!.textContent = t("powerStrike");
     document.querySelector("#skill-cleave")!.textContent = t("cleave");
     document.querySelector("#target-title")!.textContent = t("selectedTarget");

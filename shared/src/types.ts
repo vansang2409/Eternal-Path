@@ -128,6 +128,26 @@ export interface QuestListPayload {
   active: QuestView[];
 }
 
+export interface PartyMemberView {
+  id: string;
+  accountName: string;
+  level: number;
+  hp: number;
+  maxHp: number;
+  isLeader: boolean;
+}
+
+export interface PartyView {
+  id: string;
+  leaderId: string;
+  members: PartyMemberView[];
+}
+
+export interface PartyInvite {
+  partyId: string;
+  fromName: string;
+}
+
 export type ShopItem = Item & { shopId: string };
 
 export interface GroundItem {
@@ -184,6 +204,8 @@ export interface ServerToClientEvents {
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
   questList: (payload: QuestListPayload) => void;
+  partyUpdate: (payload: PartyView | null) => void;
+  partyInvite: (payload: PartyInvite) => void;
   chatHistory: (messages: ChatMessage[]) => void;
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;
@@ -196,6 +218,9 @@ export interface ClientToServerEvents {
   setAutoRetarget: (payload: { enabled: boolean }) => void;
   acceptQuest: (payload: { questId: string }) => void;
   claimQuest: (payload: { questId: string }) => void;
+  inviteParty: (payload: { playerId: string }) => void;
+  acceptParty: (payload: { partyId: string }) => void;
+  leaveParty: () => void;
   equipItem: (payload: EquipItemPayload) => void;
   unequipItem: (payload: { slot: EquipmentSlot }) => void;
   targetMonster: (payload: TargetMonsterPayload) => void;

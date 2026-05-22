@@ -36,6 +36,7 @@ export class GameScene extends Phaser.Scene {
   private moveTarget?: Phaser.Math.Vector2;
   private moveMarker?: Phaser.GameObjects.Graphics;
   private selfPlayer?: PlayerState;
+  private partyMemberIds = new Set<string>();
   private snapshotBuffer: WorldSnapshot[] = [];
   private serverClockOffset = 0;
   private predictedSelfPosition?: Vec2;
@@ -62,7 +63,10 @@ export class GameScene extends Phaser.Scene {
       (skillId) => this.socket.emit("useSkill", { skillId }),
       (questId) => this.socket.emit("acceptQuest", { questId }),
       (questId) => this.socket.emit("claimQuest", { questId }),
-      (enabled) => this.socket.emit("setAutoRetarget", { enabled })
+      (enabled) => this.socket.emit("setAutoRetarget", { enabled }),
+      () => this.inviteCurrentTarget(),
+      (partyId) => this.socket.emit("acceptParty", { partyId }),
+      () => this.socket.emit("leaveParty")
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -215,6 +219,11 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("chatMessage", (message) => this.hud.appendChat(message));
     this.socket.on("shopStock", (items) => this.hud.setShopStock(items));
     this.socket.on("questList", (quests) => this.hud.setQuests(quests));
+    this.socket.on("partyUpdate", (party) => {
+      this.partyMemberIds = new Set((party?.members ?? []).map((member) => member.id));
+      this.hud.setParty(party);
+    });
+    this.socket.on("partyInvite", (invite) => this.hud.showPartyInvite(invite));
     this.socket.on("system", (message) => {
       if (!this.loggedIn) {
         const error = document.querySelector("#login-error");
@@ -338,6 +347,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.updateTargetPanel(snapshot);
+    this.hud.updatePartyVitals(snapshot.players);
   }
 
   private updateTargetPanel(snapshot = this.snapshotBuffer[this.snapshotBuffer.length - 1]): void {
@@ -481,7 +491,8 @@ export class GameScene extends Phaser.Scene {
       sprite.disableInteractive();
       sprite.setInteractive({ useHandCursor: true });
     }
-    this.names.get(player.id)?.setText(player.accountName).setPosition(position.x, position.y - 42);
+    const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
+    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(position.x, position.y - 42);
     this.drawPlayerBar(player, position);
     this.drawPlayerEquipment(player, position, facing);
   }
@@ -638,6 +649,15 @@ export class GameScene extends Phaser.Scene {
   private useFirstPotion(): void {
     const potion = this.selfPlayer?.inventory.items.find((item) => item.kind === "consumable");
     if (potion) this.socket.emit("useItem", { itemId: potion.id });
+  }
+
+  private inviteCurrentTarget(): void {
+    const targetId = this.selfPlayer?.targetId;
+    if (targetId && targetId !== this.selfId && this.players.has(targetId)) {
+      this.socket.emit("inviteParty", { playerId: targetId });
+    } else {
+      this.hud.log(t("selectPlayerToInvite"));
+    }
   }
 
   private playHitEffect(entityId: string, position: { x: number; y: number }): void {
