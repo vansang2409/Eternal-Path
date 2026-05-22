@@ -164,7 +164,7 @@ export class GameWorld {
         id: socket.id,
         email: normalizedEmail,
         accountName: name,
-        position: { ...townSpawn },
+        position: saved.position ? { ...saved.position } : { ...townSpawn },
         velocity: { x: 0, y: 0 },
         facing: "down",
         stats: saved.stats,

@@ -1,12 +1,13 @@
 import type pg from "pg";
 import { baseStatsForLevel } from "@mmorpg/shared";
-import type { EquipmentItem, InventoryState, Item, PlayerState, Stats } from "@mmorpg/shared";
+import type { EquipmentItem, InventoryState, Item, PlayerState, Stats, Vec2 } from "@mmorpg/shared";
 
 interface SavedPlayer {
   accountName: string;
   email: string;
   stats: Stats;
   inventory: InventoryState;
+  position?: Vec2;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -41,8 +42,9 @@ export class PlayerRepository {
           [accountId]
         )).rows[0].id;
 
-        const statsRow = await client.query<Stats>(
-          `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold
+        const statsRow = await client.query<Stats & { posX: number | null; posY: number | null }>(
+          `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold,
+                  position_x AS "posX", position_y AS "posY"
            FROM characters WHERE id = $1`,
           [characterId]
         );
@@ -54,10 +56,14 @@ export class PlayerRepository {
         );
         await client.query("COMMIT");
 
+        const characterRow = statsRow.rows[0];
         return {
           accountName,
           email,
-          stats: normalizeStats(statsRow.rows[0]),
+          stats: normalizeStats(characterRow),
+          position: characterRow && characterRow.posX != null && characterRow.posY != null
+            ? { x: characterRow.posX, y: characterRow.posY }
+            : undefined,
           inventory: {
             items: items.rows.filter((item) => !item.equipped).map(normalizeItem),
             equipped: Object.fromEntries(items.rows
@@ -85,7 +91,8 @@ export class PlayerRepository {
       accountName: player.accountName,
       email: player.email,
       stats: player.stats,
-      inventory: player.inventory
+      inventory: player.inventory,
+      position: { x: player.position.x, y: player.position.y }
     };
     memorySaves.set(player.email, saved);
 
@@ -103,7 +110,8 @@ export class PlayerRepository {
 
         await client.query(
           `UPDATE characters
-           SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8, updated_at = now()
+           SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8,
+               position_x = $9, position_y = $10, updated_at = now()
            WHERE id = $1`,
           [
             characterId,
@@ -113,7 +121,9 @@ export class PlayerRepository {
             player.stats.maxHp,
             player.stats.attack,
             player.stats.defense,
-            player.stats.gold
+            player.stats.gold,
+            Math.round(player.position.x),
+            Math.round(player.position.y)
           ]
         );
         await client.query("DELETE FROM inventory_items WHERE character_id = $1", [characterId]);
@@ -147,11 +157,17 @@ export class PlayerRepository {
   }
 }
 
-function normalizeStats(row: Stats | undefined): Stats {
+function normalizeStats(row: Partial<Stats> | undefined): Stats {
+  const base = baseStatsForLevel(1);
+  if (!row) return base;
   return {
-    ...baseStatsForLevel(1),
-    ...row,
-    gold: row?.gold ?? 0
+    level: row.level ?? base.level,
+    exp: row.exp ?? base.exp,
+    maxHp: row.maxHp ?? base.maxHp,
+    hp: row.hp ?? base.hp,
+    attack: row.attack ?? base.attack,
+    defense: row.defense ?? base.defense,
+    gold: row.gold ?? 0
   };
 }
 
