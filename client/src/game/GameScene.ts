@@ -1,15 +1,22 @@
 import Phaser from "phaser";
 import {
+  PLAYER_SPEED,
   TILE_SIZE,
   WORLD_HEIGHT,
   WORLD_WIDTH,
+  clampToWorld,
   getMonsterDefinition
 } from "@mmorpg/shared";
-import type { ClientInput, GroundItem, MonsterState, PlayerState, WorldSnapshot } from "@mmorpg/shared";
+import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, Vec2, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
 import { createPixelArt } from "./assets";
 import { t, translateMonsterName } from "../i18n";
+
+const INTERPOLATION_DELAY_MS = 100;
+const MAX_SNAPSHOT_BUFFER = 8;
+const LOCAL_SNAP_DISTANCE = 64;
+const LOCAL_RECONCILE_ALPHA = 0.16;
 
 export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
@@ -29,6 +36,11 @@ export class GameScene extends Phaser.Scene {
   private moveTarget?: Phaser.Math.Vector2;
   private moveMarker?: Phaser.GameObjects.Graphics;
   private selfPlayer?: PlayerState;
+  private snapshotBuffer: WorldSnapshot[] = [];
+  private serverClockOffset = 0;
+  private predictedSelfPosition?: Vec2;
+  private predictedSelfFacing: Direction = "down";
+  private authoritativeSelfPosition?: Vec2;
   private loggedIn = false;
   private formCaptureHandlers: Array<{ type: string; handler: EventListener }> = [];
 
@@ -61,7 +73,7 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  update(): void {
+  update(time: number, delta: number): void {
     if (!this.socket?.connected || !this.loggedIn) return;
     const input: ClientInput = {
       seq: this.seq++,
@@ -73,6 +85,8 @@ export class GameScene extends Phaser.Scene {
     };
     if (input.up || input.down || input.left || input.right) this.clearMoveTarget();
     this.socket.emit("input", input);
+    this.predictLocalPlayer(input, delta);
+    this.renderBufferedWorld(time);
   }
 
   private createMap(): void {
@@ -109,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("player", (player) => {
       if (player.id === this.selfId) {
         this.selfPlayer = player;
+        this.reconcileLocalPlayer(player.position);
         if (this.moveTarget && Phaser.Math.Distance.Between(player.position.x, player.position.y, this.moveTarget.x, this.moveTarget.y) < 8) {
           this.clearMoveTarget();
         }
@@ -210,13 +225,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applySnapshot(snapshot: WorldSnapshot): void {
+    this.pushSnapshot(snapshot);
     const seenPlayers = new Set<string>();
     for (const player of snapshot.players) {
       seenPlayers.add(player.id);
-      this.renderPlayer(player);
       if (player.id === this.selfId) {
         this.selfPlayer = player;
+        this.reconcileLocalPlayer(player.position);
       }
+      const currentPosition = player.id === this.selfId
+        ? this.predictedSelfPosition ?? player.position
+        : this.players.get(player.id) ?? player.position;
+      this.renderPlayer(player, currentPosition);
     }
     for (const [id, sprite] of this.players) {
       if (!seenPlayers.has(id)) {
@@ -234,7 +254,7 @@ export class GameScene extends Phaser.Scene {
     const seenMonsters = new Set<string>();
     for (const monster of snapshot.monsters) {
       seenMonsters.add(monster.id);
-      this.renderMonster(monster);
+      this.renderMonster(monster, this.monsters.get(monster.id) ?? monster.position);
     }
     for (const [id, sprite] of this.monsters) {
       if (!seenMonsters.has(id)) {
@@ -262,10 +282,115 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private renderPlayer(player: PlayerState): void {
+  private pushSnapshot(snapshot: WorldSnapshot): void {
+    this.snapshotBuffer.push(snapshot);
+    this.snapshotBuffer.sort((a, b) => a.serverTime - b.serverTime);
+    while (this.snapshotBuffer.length > MAX_SNAPSHOT_BUFFER) this.snapshotBuffer.shift();
+    const measuredOffset = snapshot.serverTime - this.time.now;
+    this.serverClockOffset = this.serverClockOffset === 0
+      ? measuredOffset
+      : Phaser.Math.Linear(this.serverClockOffset, measuredOffset, 0.08);
+  }
+
+  private renderBufferedWorld(time: number): void {
+    if (this.snapshotBuffer.length === 0) return;
+    const renderServerTime = time + this.serverClockOffset - INTERPOLATION_DELAY_MS;
+    const pair = this.snapshotPairFor(renderServerTime);
+    const playersFrom = new Map(pair.from.players.map((player) => [player.id, player]));
+    for (const player of pair.to.players) {
+      const previous = playersFrom.get(player.id);
+      if (player.id === this.selfId) {
+        this.renderPlayer(player, this.predictedSelfPosition ?? player.position);
+        continue;
+      }
+      const position = previous
+        ? interpolatePosition(previous.position, player.position, pair.alpha)
+        : player.position;
+      this.renderPlayer(player, position);
+    }
+
+    const monstersFrom = new Map(pair.from.monsters.map((monster) => [monster.id, monster]));
+    for (const monster of pair.to.monsters) {
+      const previous = monstersFrom.get(monster.id);
+      const position = previous
+        ? interpolatePosition(previous.position, monster.position, pair.alpha)
+        : monster.position;
+      this.renderMonster(monster, position);
+    }
+  }
+
+  private snapshotPairFor(renderServerTime: number): { from: WorldSnapshot; to: WorldSnapshot; alpha: number } {
+    const first = this.snapshotBuffer[0];
+    const last = this.snapshotBuffer[this.snapshotBuffer.length - 1];
+    if (!first || !last || renderServerTime <= first.serverTime) return { from: first ?? last, to: first ?? last, alpha: 1 };
+    if (renderServerTime >= last.serverTime) return { from: last, to: last, alpha: 1 };
+
+    for (let i = 0; i < this.snapshotBuffer.length - 1; i += 1) {
+      const from = this.snapshotBuffer[i];
+      const to = this.snapshotBuffer[i + 1];
+      if (renderServerTime >= from.serverTime && renderServerTime <= to.serverTime) {
+        const duration = Math.max(1, to.serverTime - from.serverTime);
+        return { from, to, alpha: Phaser.Math.Clamp((renderServerTime - from.serverTime) / duration, 0, 1) };
+      }
+    }
+    return { from: last, to: last, alpha: 1 };
+  }
+
+  private predictLocalPlayer(input: ClientInput, deltaMs: number): void {
+    if (!this.selfPlayer) return;
+    if (!this.predictedSelfPosition) this.predictedSelfPosition = { ...this.selfPlayer.position };
+
+    const dt = deltaMs / 1000;
+    const axis = {
+      x: Number(input.right) - Number(input.left),
+      y: Number(input.down) - Number(input.up)
+    };
+    const manualLength = Math.hypot(axis.x, axis.y);
+    let velocity = { x: 0, y: 0 };
+    if (manualLength > 0) {
+      velocity = { x: (axis.x / manualLength) * PLAYER_SPEED, y: (axis.y / manualLength) * PLAYER_SPEED };
+    } else if (input.moveTarget) {
+      const dx = input.moveTarget.x - this.predictedSelfPosition.x;
+      const dy = input.moveTarget.y - this.predictedSelfPosition.y;
+      const targetDistance = Math.hypot(dx, dy);
+      if (targetDistance > 5) {
+        velocity = { x: (dx / targetDistance) * PLAYER_SPEED, y: (dy / targetDistance) * PLAYER_SPEED };
+      }
+    }
+
+    this.predictedSelfPosition = clampToWorld({
+      x: this.predictedSelfPosition.x + velocity.x * dt,
+      y: this.predictedSelfPosition.y + velocity.y * dt
+    });
+    this.predictedSelfFacing = facingFromAxis(velocity, this.predictedSelfFacing);
+
+    if (this.authoritativeSelfPosition) {
+      this.predictedSelfPosition = {
+        x: Phaser.Math.Linear(this.predictedSelfPosition.x, this.authoritativeSelfPosition.x, LOCAL_RECONCILE_ALPHA),
+        y: Phaser.Math.Linear(this.predictedSelfPosition.y, this.authoritativeSelfPosition.y, LOCAL_RECONCILE_ALPHA)
+      };
+    }
+
+    if (this.moveTarget && Phaser.Math.Distance.Between(this.predictedSelfPosition.x, this.predictedSelfPosition.y, this.moveTarget.x, this.moveTarget.y) < 8) {
+      this.clearMoveTarget();
+    }
+  }
+
+  private reconcileLocalPlayer(serverPosition: Vec2): void {
+    this.authoritativeSelfPosition = { ...serverPosition };
+    if (!this.predictedSelfPosition) {
+      this.predictedSelfPosition = { ...serverPosition };
+      return;
+    }
+    if (Phaser.Math.Distance.Between(this.predictedSelfPosition.x, this.predictedSelfPosition.y, serverPosition.x, serverPosition.y) > LOCAL_SNAP_DISTANCE) {
+      this.predictedSelfPosition = { ...serverPosition };
+    }
+  }
+
+  private renderPlayer(player: PlayerState, position: Vec2): void {
     let sprite = this.players.get(player.id);
     if (!sprite) {
-      sprite = this.add.sprite(player.position.x, player.position.y, "player").setScale(3).setDepth(10);
+      sprite = this.add.sprite(position.x, position.y, "player").setScale(3).setDepth(10);
       if (player.id !== this.selfId) {
         sprite.setInteractive({ useHandCursor: true });
         sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -273,7 +398,7 @@ export class GameScene extends Phaser.Scene {
         });
       }
       this.players.set(player.id, sprite);
-      const name = this.add.text(player.position.x, player.position.y - 34, player.accountName, {
+      const name = this.add.text(position.x, position.y - 34, player.accountName, {
         fontFamily: "monospace",
         fontSize: "12px",
         color: player.id === this.selfId ? "#a8d8ff" : "#f1f1f1",
@@ -285,23 +410,24 @@ export class GameScene extends Phaser.Scene {
       this.playerEquipment.set(player.id, this.add.graphics().setDepth(13));
       if (player.id === this.selfId) this.cameras.main.startFollow(sprite, true, 0.12, 0.12);
     }
-    sprite.setPosition(player.position.x, player.position.y);
-    sprite.setFlipX(player.facing === "left");
+    const facing = player.id === this.selfId ? this.predictedSelfFacing : player.facing;
+    sprite.setPosition(position.x, position.y);
+    sprite.setFlipX(facing === "left");
     if (player.id !== this.selfId) {
       sprite.disableInteractive();
       sprite.setInteractive({ useHandCursor: true });
     }
-    this.names.get(player.id)?.setPosition(player.position.x, player.position.y - 42);
-    this.drawPlayerBar(player);
-    this.drawPlayerEquipment(player);
+    this.names.get(player.id)?.setText(player.accountName).setPosition(position.x, position.y - 42);
+    this.drawPlayerBar(player, position);
+    this.drawPlayerEquipment(player, position, facing);
   }
 
-  private drawPlayerEquipment(player: PlayerState): void {
+  private drawPlayerEquipment(player: PlayerState, position: Vec2, facing: Direction): void {
     const gear = this.playerEquipment.get(player.id);
     if (!gear) return;
-    const { x, y } = player.position;
+    const { x, y } = position;
     const equipped = player.inventory.equipped;
-    const facingLeft = player.facing === "left";
+    const facingLeft = facing === "left";
     const weaponSide = facingLeft ? -1 : 1;
 
     gear.clear();
@@ -339,17 +465,17 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private renderMonster(monster: MonsterState): void {
+  private renderMonster(monster: MonsterState, position: Vec2): void {
     let sprite = this.monsters.get(monster.id);
     if (!sprite) {
-      sprite = this.add.sprite(monster.position.x, monster.position.y, "monster").setScale(3).setDepth(9);
+      sprite = this.add.sprite(position.x, position.y, "monster").setScale(3).setDepth(9);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", () => {
         if (!monster.respawnsAt) this.socket.emit("targetMonster", { monsterId: monster.id });
       });
       this.monsters.set(monster.id, sprite);
       this.monsterBars.set(monster.id, this.add.graphics().setDepth(12));
-      this.monsterLabels.set(monster.id, this.add.text(monster.position.x, monster.position.y - 45, "", {
+      this.monsterLabels.set(monster.id, this.add.text(position.x, position.y - 45, "", {
         fontFamily: "monospace",
         fontSize: "11px",
         color: "#f3e7bf",
@@ -365,9 +491,9 @@ export class GameScene extends Phaser.Scene {
     sprite.setScale(definition.scale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
-    sprite.setPosition(monster.position.x, monster.position.y);
-    this.monsterLabels.get(monster.id)?.setText(`${t("levelShort")} ${monster.level} ${translateMonsterName(monster.name)}`).setPosition(monster.position.x, monster.position.y - 45).setVisible(!monster.respawnsAt);
-    this.drawMonsterBar(monster);
+    sprite.setPosition(position.x, position.y);
+    this.monsterLabels.get(monster.id)?.setText(`${t("levelShort")} ${monster.level} ${translateMonsterName(monster.name)}`).setPosition(position.x, position.y - 45).setVisible(!monster.respawnsAt);
+    this.drawMonsterBar(monster, position);
   }
 
   private renderGroundItem(groundItem: GroundItem): void {
@@ -396,31 +522,31 @@ export class GameScene extends Phaser.Scene {
       .setPosition(groundItem.position.x, groundItem.position.y - 20);
   }
 
-  private drawPlayerBar(player: PlayerState): void {
+  private drawPlayerBar(player: PlayerState, position: Vec2): void {
     const bar = this.playerBars.get(player.id);
     if (!bar) return;
     const pct = Phaser.Math.Clamp(player.stats.hp / player.stats.maxHp, 0, 1);
     const width = player.id === this.selfId ? 46 : 38;
-    const y = player.position.y - 31;
+    const y = position.y - 31;
     bar.clear();
-    bar.fillStyle(0x151515, 0.9).fillRect(player.position.x - width / 2, y, width, 6);
-    bar.fillStyle(player.id === this.selfId ? 0x50d36f : 0x69a7ff, 1).fillRect(player.position.x - width / 2 + 1, y + 1, (width - 2) * pct, 4);
-    bar.lineStyle(1, 0x0b0d10, 0.8).strokeRect(player.position.x - width / 2, y, width, 6);
+    bar.fillStyle(0x151515, 0.9).fillRect(position.x - width / 2, y, width, 6);
+    bar.fillStyle(player.id === this.selfId ? 0x50d36f : 0x69a7ff, 1).fillRect(position.x - width / 2 + 1, y + 1, (width - 2) * pct, 4);
+    bar.lineStyle(1, 0x0b0d10, 0.8).strokeRect(position.x - width / 2, y, width, 6);
     if (this.selfPlayer?.targetId === player.id && player.id !== this.selfId) {
-      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(player.position.x - width / 2 - 2, y - 2, width + 4, 10);
+      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 2, y - 2, width + 4, 10);
     }
   }
 
-  private drawMonsterBar(monster: MonsterState): void {
+  private drawMonsterBar(monster: MonsterState, position: Vec2): void {
     const bar = this.monsterBars.get(monster.id);
     if (!bar) return;
     bar.clear();
     if (monster.respawnsAt) return;
     const pct = Phaser.Math.Clamp(monster.hp / monster.maxHp, 0, 1);
-    bar.fillStyle(0x151515, 0.9).fillRect(monster.position.x - 24, monster.position.y - 34, 48, 6);
-    bar.fillStyle(0xd94b4b, 1).fillRect(monster.position.x - 23, monster.position.y - 33, 46 * pct, 4);
+    bar.fillStyle(0x151515, 0.9).fillRect(position.x - 24, position.y - 34, 48, 6);
+    bar.fillStyle(0xd94b4b, 1).fillRect(position.x - 23, position.y - 33, 46 * pct, 4);
     if (this.selfPlayer && this.selfPlayer.targetId === monster.id) {
-      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(monster.position.x - 25, monster.position.y - 35, 50, 8);
+      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - 25, position.y - 35, 50, 8);
     }
   }
 
@@ -478,4 +604,18 @@ function rarityHex(rarity: "common" | "rare" | "epic"): string {
   if (rarity === "epic") return "#d98cff";
   if (rarity === "rare") return "#69a7ff";
   return "#d6dddf";
+}
+
+function interpolatePosition(from: Vec2, to: Vec2, alpha: number): Vec2 {
+  if (Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y) > LOCAL_SNAP_DISTANCE) return to;
+  return {
+    x: Phaser.Math.Linear(from.x, to.x, alpha),
+    y: Phaser.Math.Linear(from.y, to.y, alpha)
+  };
+}
+
+function facingFromAxis(axis: Vec2, fallback: Direction): Direction {
+  if (Math.abs(axis.x) > Math.abs(axis.y)) return axis.x > 0 ? "right" : "left";
+  if (axis.y !== 0) return axis.y > 0 ? "down" : "up";
+  return fallback;
 }

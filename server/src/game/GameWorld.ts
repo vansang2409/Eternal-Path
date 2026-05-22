@@ -39,7 +39,7 @@ type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type GameServerSocket = Server<ClientToServerEvents, ServerToClientEvents>;
 
 const TICK_RATE = 20;
-const SNAPSHOT_RATE = 10;
+const SNAPSHOT_RATE = 15;
 const townSpawn = { x: 7 * TILE_SIZE, y: 7 * TILE_SIZE };
 const TOWN_HEAL_PER_SECOND = 0.14;
 const TOWN_HEAL_FLOATING_COOLDOWN_MS = 1400;
