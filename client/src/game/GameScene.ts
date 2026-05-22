@@ -79,6 +79,14 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (!this.socket?.connected || !this.loggedIn) return;
+    if (isEditableFocused()) {
+      const input = this.neutralInput();
+      this.clearMoveTarget();
+      this.socket.emit("input", input);
+      this.predictLocalPlayer(input, delta);
+      this.renderBufferedWorld(time);
+      return;
+    }
     const input: ClientInput = {
       seq: this.seq++,
       up: this.cursors.W.isDown,
@@ -94,6 +102,16 @@ export class GameScene extends Phaser.Scene {
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
+  }
+
+  private neutralInput(): ClientInput {
+    return {
+      seq: this.seq++,
+      up: false,
+      down: false,
+      left: false,
+      right: false
+    };
   }
 
   private createMap(): void {
@@ -672,4 +690,11 @@ function facingFromAxis(axis: Vec2, fallback: Direction): Direction {
   if (Math.abs(axis.x) > Math.abs(axis.y)) return axis.x > 0 ? "right" : "left";
   if (axis.y !== 0) return axis.y > 0 ? "down" : "up";
   return fallback;
+}
+
+function isEditableFocused(): boolean {
+  const element = document.activeElement;
+  if (!element) return false;
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) return true;
+  return element instanceof HTMLElement && element.isContentEditable;
 }
