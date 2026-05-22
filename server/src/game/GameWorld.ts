@@ -62,6 +62,7 @@ export class GameWorld {
   private readonly autoRetarget = new Map<string, boolean>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
+  private readonly returningToSpawn = new Set<string>();
   private monsters: MonsterState[] = [];
   private tickTimer?: NodeJS.Timeout;
   private snapshotTimer?: NodeJS.Timeout;
@@ -396,15 +397,32 @@ export class GameWorld {
     for (const monster of this.monsters) {
       if (monster.respawnsAt) continue;
 
+      const previousTarget = monster.targetPlayerId ? this.players.get(monster.targetPlayerId) : undefined;
       const target = this.findMonsterTarget(monster);
       monster.targetPlayerId = target?.id;
       if (target) {
+        this.returningToSpawn.delete(monster.id);
+        if (isInTown(target.position)) {
+          monster.targetPlayerId = undefined;
+          monster.velocity = { x: 0, y: 0 };
+          continue;
+        }
         const dx = target.position.x - monster.position.x;
         const dy = target.position.y - monster.position.y;
         const len = Math.hypot(dx, dy) || 1;
         monster.velocity = distance(monster.position, target.position) > MONSTER_ATTACK_RANGE
           ? { x: (dx / len) * MONSTER_SPEED, y: (dy / len) * MONSTER_SPEED }
           : { x: 0, y: 0 };
+      } else if (previousTarget && isInTown(previousTarget.position)) {
+        this.returningToSpawn.add(monster.id);
+        monster.velocity = velocityToward(monster.position, monster.spawn, MONSTER_SPEED);
+      } else if (this.returningToSpawn.has(monster.id)) {
+        if (distance(monster.position, monster.spawn) <= 8) {
+          this.returningToSpawn.delete(monster.id);
+          monster.velocity = { x: 0, y: 0 };
+        } else {
+          monster.velocity = velocityToward(monster.position, monster.spawn, MONSTER_SPEED);
+        }
       } else if (now % 1800 < 60) {
         const angle = Math.random() * Math.PI * 2;
         monster.velocity = { x: Math.cos(angle) * MONSTER_SPEED * 0.45, y: Math.sin(angle) * MONSTER_SPEED * 0.45 };
@@ -419,6 +437,7 @@ export class GameWorld {
       } else {
         monster.velocity = { x: 0, y: 0 };
         monster.targetPlayerId = undefined;
+        this.returningToSpawn.add(monster.id);
       }
     }
   }
@@ -447,6 +466,11 @@ export class GameWorld {
     for (const monster of this.monsters) {
       if (monster.respawnsAt || !monster.targetPlayerId) continue;
       const player = this.players.get(monster.targetPlayerId);
+      if (player && isInTown(player.position)) {
+        monster.targetPlayerId = undefined;
+        monster.velocity = { x: 0, y: 0 };
+        continue;
+      }
       if (!player || distance(monster.position, player.position) > MONSTER_ATTACK_RANGE) continue;
       if (Date.now() - monster.lastAttackAt < MONSTER_ATTACK_COOLDOWN_MS) continue;
 
@@ -467,6 +491,7 @@ export class GameWorld {
     monster.respawnsAt = now + 6500 + monster.level * 900;
     monster.velocity = { x: 0, y: 0 };
     monster.targetPlayerId = undefined;
+    this.returningToSpawn.delete(monster.id);
 
     const exp = 28 + monster.level * 18;
     const gold = goldForMonster(monster);
@@ -508,6 +533,7 @@ export class GameWorld {
       monster.hp = monster.maxHp;
       monster.position = { ...monster.spawn };
       monster.respawnsAt = undefined;
+      this.returningToSpawn.delete(monster.id);
     }
   }
 
@@ -521,6 +547,7 @@ export class GameWorld {
     let best: PlayerState | undefined;
     let bestDistance = monster.aggroRadius;
     for (const player of this.players.values()) {
+      if (isInTown(player.position)) continue;
       const d = distance(monster.position, player.position);
       if (d < bestDistance) {
         best = player;
@@ -678,6 +705,14 @@ function facingFromAxis(axis: { x: number; y: number }, fallback: Direction): Di
   if (Math.abs(axis.x) > Math.abs(axis.y)) return axis.x > 0 ? "right" : "left";
   if (axis.y !== 0) return axis.y > 0 ? "down" : "up";
   return fallback;
+}
+
+function velocityToward(from: { x: number; y: number }, to: { x: number; y: number }, speed: number): { x: number; y: number } {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const len = Math.hypot(dx, dy);
+  if (len <= 1) return { x: 0, y: 0 };
+  return { x: (dx / len) * speed, y: (dy / len) * speed };
 }
 
 function cloneShopItem(offer: ShopItem): Item {
