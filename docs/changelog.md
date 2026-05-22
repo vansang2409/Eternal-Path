@@ -22,6 +22,20 @@
 - Note: in pure in-memory mode (no DATABASE_URL) auth/tokens reset on server restart, matching the ephemeral saves
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 5 · Task 5.3 — Reduce database write churn
+
+- Implemented directly by the manager (Codex out of tokens), following docs/codex-tasks/task-5.3-reduce-db-churn.md
+- Replaced the per-action immediate saves with a dirty-set + periodic flush (every 9s); a continuously farming player now triggers at most ~1 DB write per flush interval instead of one per kill
+- Disconnect still flushes immediately (`saveNow`) so nothing is lost when a player leaves
+- Self-reviewed against Task 5.3 acceptance criteria: PASS (build + logic; stats/inventory/position survive relog in memory mode)
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 5 complete
+
+- All three Sprint 5 tasks (save position, password+session auth, batched saves) shipped and reviewed PASS
+- Watchlist items resolved: save position, email-only auth, and DB write churn
+- Remaining watchlist note: equipment stats are still "baked" into saved stats (consider separating base vs bonus later)
+
 ## 2026-05-22 (Sprint 4)
 
 ### Sprint 4 · Task 4.1 — Active skills
