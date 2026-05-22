@@ -13,6 +13,16 @@
 - `npm run typecheck` and `npm run build` passed
 - Note: with E/R/Q hotkeys now added, the pre-existing "game keys fire while chat input is focused" issue is more noticeable; queued as a quick fix
 
+### Sprint 4 · Task 4.2 — Quest board
+
+- Added 3 quest templates (defeat 5 any / defeat 4 of level >= 4 / reach level 5) with gold + EXP rewards
+- Added `questList` / `acceptQuest` / `claimQuest` events and `QuestView`/`QuestListPayload` types
+- Server tracks active quests per session (max 3), increments kill/level progress live, and validates completion before granting a reward once
+- Client quest panel shows active/available quests with live progress bars and Accept/Claim buttons (Claim enabled only when complete)
+- Quest progress is session-only (in-memory), as scoped; save/load unaffected
+- Reviewed by manager against Task 4.2 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ### Polish — Suppress game hotkeys while typing
 
 - While a text input/textarea/contentEditable is focused, `update()` sends neutral input and skips WASD movement and the Q/E/R hotkeys; normal input resumes on blur
