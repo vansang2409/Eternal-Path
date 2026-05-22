@@ -1,5 +1,17 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 3)
+
+### Sprint 3 · Task 3.1 — Elite monsters
+
+- Added an `elite` flag to `MonsterState`; ~15% chance on spawn and re-rolled on each respawn
+- Elite stats boosted (HP x2.2, ATK x1.5, DEF x1.3); EXP and gold x2.5
+- Elite loot has a higher drop rate (+0.35, capped 0.95) and a rarity floor of Rare (biased toward Epic); elite Epic still triggers the global announcement
+- Client shows elites distinctly: gold tint, larger sprite, wider orange HP bar, and an "Elite/Tinh anh" name prefix (also in the target panel)
+- Non-elite monsters are unchanged
+- Reviewed by manager against Task 3.1 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 2)
 
 ### Sprint 2 · Task 2.1 — Inventory capacity + sell junk
