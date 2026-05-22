@@ -205,6 +205,24 @@ Acceptance criteria chi tiết nằm trong từng file. Quy trình review giữ 
 
 ---
 
+## 4c. SPRINT 3 — "Thế giới sâu hơn & phần thưởng lớn"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1 & 2 đã xong (mọi task review PASS).
+
+Bối cảnh: vòng farm đã mượt và bền (Sprint 1+2) → giờ thêm chiều sâu nội dung và lý do cày tiếp, tận dụng hệ thống thông báo loot vừa làm.
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 3.1 | `task-3.1-elite-monsters.md` | Quái tinh anh (~15%): mạnh hơn, khác hình, EXP/vàng & droprate cao hơn, loot tối thiểu Rare |
+| 3.2 | `task-3.2-world-boss.md` | World boss spawn theo timer, thông báo toàn server lúc xuất hiện & bị hạ, thưởng lớn + đồ hiếm |
+| 3.3 | `task-3.3-deep-zone-labels.md` | Gom spawn theo độ khó + nhãn vùng trên bản đồ (Town / giữa / vùng sâu), tạo cảm giác tiến triển |
+
+Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyên: xem diff → đối chiếu acceptance → typecheck/build → ghi changelog → commit.
+
+Sau Sprint 3, **Sprint 4** dự kiến quay lại nền tảng: lưu vị trí nhân vật, session/mật khẩu thay email-only, và giảm churn ghi DB (các mục trong watchlist).
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
