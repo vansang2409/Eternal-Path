@@ -9,7 +9,9 @@ import { PlayerRepository } from "./db/PlayerRepository.js";
 import { createPool } from "./db/pool.js";
 
 const port = Number(process.env.PORT ?? 3000);
-const clientOrigin = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
+// Allow any origin by default so LAN players can connect; set CLIENT_ORIGIN to
+// lock this down to a specific origin when deploying publicly.
+const clientOrigin = process.env.CLIENT_ORIGIN ?? "*";
 
 const app = express();
 app.use(cors({ origin: clientOrigin }));
