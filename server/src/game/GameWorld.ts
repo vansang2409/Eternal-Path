@@ -68,6 +68,7 @@ const MAX_ACTIVE_QUESTS = 3;
 const PARTY_MAX_SIZE = 4;
 const PARTY_INVITE_RANGE = 600;
 const PARTY_SHARE_RANGE = 360;
+const SAVE_FLUSH_MS = 9000;
 
 interface Party {
   id: string;
@@ -133,6 +134,7 @@ export class GameWorld {
   private readonly playerParty = new Map<string, string>();
   private readonly pendingInvites = new Map<string, string>();
   private readonly sessions = new Map<string, { email: string; accountName: string }>();
+  private readonly dirtyPlayers = new Set<string>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
   private readonly returningToSpawn = new Set<string>();
@@ -150,6 +152,24 @@ export class GameWorld {
   start(): void {
     this.tickTimer = setInterval(() => this.tick(1000 / TICK_RATE), 1000 / TICK_RATE);
     this.snapshotTimer = setInterval(() => this.broadcastSnapshot(), 1000 / SNAPSHOT_RATE);
+    setInterval(() => this.flushDirty(), SAVE_FLUSH_MS);
+  }
+
+  private markDirty(player: PlayerState): void {
+    this.dirtyPlayers.add(player.id);
+  }
+
+  private flushDirty(): void {
+    for (const id of this.dirtyPlayers) {
+      const player = this.players.get(id);
+      if (player) void this.repository.save(player);
+    }
+    this.dirtyPlayers.clear();
+  }
+
+  private saveNow(player: PlayerState): Promise<void> {
+    this.dirtyPlayers.delete(player.id);
+    return this.repository.save(player);
   }
 
   connect(socket: GameSocket): void {
@@ -263,7 +283,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Quest complete: ${template.title}.`);
       this.emitQuestList(player);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("inviteParty", ({ playerId }) => {
@@ -350,7 +370,7 @@ export class GameWorld {
       addItemStats(player, item);
       socket.emit("player", player);
       socket.emit("system", `Đã trang bị ${item.name}.`);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("unequipItem", async ({ slot }) => {
@@ -362,7 +382,7 @@ export class GameWorld {
       removeItemStats(player, item);
       socket.emit("player", player);
       socket.emit("system", `Đã tháo ${item.name}.`);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("targetMonster", ({ monsterId }) => {
@@ -402,7 +422,7 @@ export class GameWorld {
       player.inventory.items.push(item);
       socket.emit("player", player);
       socket.emit("system", `Đã mua ${offer.name} với ${offer.value} vàng.`);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("useSkill", ({ skillId }) => {
@@ -425,7 +445,7 @@ export class GameWorld {
       socket.emit("player", player);
       if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
       socket.emit("system", healed > 0 ? `Đã dùng ${item.name} hồi ${healed} máu.` : "Máu đã đầy.");
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("sellItem", async ({ itemId }) => {
@@ -443,7 +463,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã bán ${item.name} được ${gold} vàng.`);
       this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("sellJunk", async () => {
@@ -473,7 +493,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã bán ${soldCount} món đồ thường được ${gold} vàng.`);
       this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
-      await this.repository.save(player);
+      this.markDirty(player);
     });
 
     socket.on("dropItem", async ({ itemId }) => {
@@ -492,7 +512,7 @@ export class GameWorld {
       this.groundItems.set(groundItem.id, groundItem);
       socket.emit("player", player);
       socket.emit("system", `Đã thả ${item.name}.`);
-      await this.repository.save(player);
+      this.markDirty(player);
       this.broadcastSnapshot();
     });
 
@@ -513,7 +533,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã nhặt ${groundItem.item.name}.`);
       this.emitFloating(player.id, player.position, 0, "loot", groundItem.item.name);
-      await this.repository.save(player);
+      this.markDirty(player);
       this.broadcastSnapshot();
     });
 
@@ -542,7 +562,7 @@ export class GameWorld {
 
     socket.on("disconnect", async () => {
       const player = this.players.get(socket.id);
-      if (player) await this.repository.save(player);
+      if (player) await this.saveNow(player);
       this.removeFromParty(socket.id);
       this.players.delete(socket.id);
       this.sockets.delete(socket.id);
@@ -759,7 +779,7 @@ export class GameWorld {
       if (leveled.leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
       if (recipient.id !== player.id) {
         this.sockets.get(recipient.id)?.emit("player", recipient);
-        void this.repository.save(recipient);
+        this.markDirty(recipient);
       }
     }
     this.updateQuestProgressForKill(player, monster);
@@ -791,7 +811,7 @@ export class GameWorld {
     this.emitQuestList(player);
 
     this.sockets.get(player.id)?.emit("player", player);
-    void this.repository.save(player);
+    this.markDirty(player);
   }
 
   private updateRespawns(now: number): void {
@@ -973,8 +993,8 @@ export class GameWorld {
       attacker.targetId = undefined;
       this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ gục và được đưa về thị trấn.`);
       this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ gục ${target.accountName}.`);
-      void this.repository.save(target);
-      void this.repository.save(attacker);
+      this.markDirty(target);
+      this.markDirty(attacker);
     }
 
     this.sockets.get(target.id)?.emit("player", target);
