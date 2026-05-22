@@ -1,5 +1,18 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 4)
+
+### Sprint 4 · Task 4.1 — Active skills
+
+- Added two cooldown-based active skills, server-authoritative: Power Strike (E, single-target ~2.2x, ~4s cd) and Cleave (R, AoE within 90px ~1.3x each, ~8s cd)
+- Added `SkillId` type, `useSkill` event, and per-player `skillCooldowns` on `PlayerState`
+- Refactored monster damage into a shared `damageMonster` helper so auto-attack and skills share the same kill/loot/EXP/announcement path
+- Skills hit monsters only (PvP unchanged); no mana system (cooldown-only)
+- Client skill bar with E/R hotkeys and live cooldown countdown
+- Reviewed by manager against Task 4.1 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+- Note: with E/R/Q hotkeys now added, the pre-existing "game keys fire while chat input is focused" issue is more noticeable; queued as a quick fix
+
 ## 2026-05-22 (Sprint 3)
 
 ### Sprint 3 · Task 3.1 — Elite monsters
