@@ -12,6 +12,17 @@
 - Reviewed by manager against Task 3.1 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 3 · Task 3.2 — World boss
+
+- Added a boss monster "Eternal Warden" (lvl 12, very high stats) at a fixed far-map location
+- Added `boss` flag and `respawnDurationMs` to `MonsterState`; normal monsters keep the original respawn formula (now parameterized), boss respawns on a long timer (4 min)
+- Boss grants ~8x EXP/gold and a guaranteed high-rarity (Rare/Epic) drop
+- Added a `bossAnnounce` event; global announcements fire when the boss appears and when it is defeated
+- Client renders the boss distinctly (large, gold tint, wider gold HP bar, "Boss/Trùm" prefix, in target panel too)
+- Reviewed by manager against Task 3.2 acceptance criteria: PASS
+- Minor cosmetic note: before its first timed spawn the boss shows as a faint respawning sprite at its spot (harmless)
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 2)
 
 ### Sprint 2 · Task 2.1 — Inventory capacity + sell junk
