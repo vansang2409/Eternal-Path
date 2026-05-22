@@ -23,6 +23,21 @@
 - Reviewed by manager against Task 4.2 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 4 · Task 4.3 — Basic party system
+
+- Implemented directly by the manager (Codex was out of tokens), following docs/codex-tasks/task-4.3-basic-party.md
+- Added `PartyView`/`PartyMemberView`/`PartyInvite` types and `inviteParty`/`acceptParty`/`leaveParty` + `partyUpdate`/`partyInvite` events
+- Session-only parties (max 4): invite a nearby targeted player, accept/decline prompt, leave; party disbands when it drops below 2 members; cleaned up on disconnect
+- Shared EXP: party members within 360px of a kill all receive EXP; gold and loot stay with the killer
+- Party panel shows members with leader marker, level, and live HP (refreshed from snapshots); party members' names are highlighted green in the world
+- Self-reviewed against Task 4.3 acceptance criteria: PASS (build + logic review; two-client runtime test pending user)
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 4 complete
+
+- All three Sprint 4 tasks (active skills, quest board, basic party) plus a chat-focus hotkey fix shipped and reviewed PASS
+- Combat now has active skills, players have goals via quests, and groups can farm together with shared EXP
+
 ### Polish — Suppress game hotkeys while typing
 
 - While a text input/textarea/contentEditable is focused, `update()` sends neutral input and skips WASD movement and the Q/E/R hotkeys; normal input resumes on blur
