@@ -4,6 +4,7 @@ export type Rarity = "common" | "rare" | "epic";
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type ItemKind = "equipment" | "consumable";
+export type SkillId = "powerStrike" | "cleave";
 
 export interface Vec2 {
   x: number;
@@ -62,6 +63,7 @@ export interface PlayerState {
   stats: Stats;
   inventory: InventoryState;
   lastAttackAt: number;
+  skillCooldowns: Record<SkillId, number>;
   targetId?: string;
 }
 
@@ -180,6 +182,7 @@ export interface ClientToServerEvents {
   targetMonster: (payload: TargetMonsterPayload) => void;
   targetPlayer: (payload: TargetPlayerPayload) => void;
   buyShopItem: (payload: { shopId: string }) => void;
+  useSkill: (payload: { skillId: SkillId }) => void;
   useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;

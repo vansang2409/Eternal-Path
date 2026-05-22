@@ -1,5 +1,5 @@
 import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, Rarity, ShopItem } from "@mmorpg/shared";
+import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -12,6 +12,7 @@ export class Hud {
   private player?: PlayerState;
   private selectedItemId?: string;
   private autoRetargetEnabled = false;
+  private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0 };
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -22,6 +23,7 @@ export class Hud {
     private readonly onDrop: (itemId: string) => void,
     private readonly onUse: (itemId: string) => void,
     private readonly onSellJunk: () => void,
+    private readonly onSkill: (skillId: SkillId) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void
   ) {
     this.applyLanguage();
@@ -30,6 +32,11 @@ export class Hud {
     const languageSelect = document.querySelector("#language-select") as HTMLSelectElement;
     const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
     sellJunkButton.addEventListener("click", () => this.onSellJunk());
+    document.querySelectorAll<HTMLButtonElement>(".skill-button").forEach((button) => {
+      const skillId = button.dataset.skill as SkillId;
+      button.addEventListener("click", () => this.onSkill(skillId));
+    });
+    window.setInterval(() => this.renderSkillCooldowns(), 100);
     languageSelect.value = getLanguage();
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
@@ -62,6 +69,8 @@ export class Hud {
     `;
     this.renderEquipment();
     this.renderInventory();
+    this.skillCooldowns = player.skillCooldowns;
+    this.renderSkillCooldowns();
   }
 
   setTarget(monster?: MonsterState): void {
@@ -226,6 +235,9 @@ export class Hud {
     document.documentElement.lang = getLanguage();
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
+    document.querySelector("#skills-title")!.textContent = t("skills");
+    document.querySelector("#skill-power-strike")!.textContent = t("powerStrike");
+    document.querySelector("#skill-cleave")!.textContent = t("cleave");
     document.querySelector("#target-title")!.textContent = t("selectedTarget");
     document.querySelector("#auto-retarget-label")!.textContent = t("autoRetarget");
     document.querySelector("#inventory-title")!.textContent = t("inventory");
@@ -236,6 +248,18 @@ export class Hud {
     document.querySelector("#chat-send")!.textContent = t("send");
     (document.querySelector("#chat-input") as HTMLInputElement).placeholder = t("chatPlaceholder");
     document.querySelector("#player-name")!.textContent = t("connecting");
+  }
+
+  private renderSkillCooldowns(): void {
+    const now = Date.now();
+    for (const skillId of ["powerStrike", "cleave"] as const) {
+      const remaining = Math.max(0, this.skillCooldowns[skillId] - now);
+      const button = document.querySelector(`[data-skill="${skillId}"]`) as HTMLButtonElement | null;
+      const label = document.querySelector(`[data-cooldown="${skillId}"]`) as HTMLElement | null;
+      if (!button || !label) continue;
+      button.classList.toggle("cooling", remaining > 0);
+      label.textContent = remaining > 0 ? `${(remaining / 1000).toFixed(1)}s` : "";
+    }
   }
 }
 

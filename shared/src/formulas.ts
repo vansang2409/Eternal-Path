@@ -10,6 +10,11 @@ export const MONSTER_ATTACK_RANGE = 36;
 export const PLAYER_ATTACK_COOLDOWN_MS = 650;
 export const MONSTER_ATTACK_COOLDOWN_MS = 1100;
 export const INVENTORY_CAPACITY = 30;
+export const POWER_STRIKE_COOLDOWN_MS = 4000;
+export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
+export const CLEAVE_COOLDOWN_MS = 8000;
+export const CLEAVE_DAMAGE_MULTIPLIER = 1.3;
+export const CLEAVE_RADIUS = 90;
 
 export function expToNextLevel(level: number): number {
   return Math.floor(60 + level * level * 38);

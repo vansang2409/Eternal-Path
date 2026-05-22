@@ -486,6 +486,71 @@ h2 {
   margin: 18px 0 8px;
 }
 
+#skill-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.skill-button {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 5px;
+  align-items: center;
+  min-height: 42px;
+  padding: 7px 6px;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 900;
+  text-align: left;
+  cursor: pointer;
+  background: #181818;
+  border: 1px solid #313131;
+  border-radius: 3px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.56);
+}
+
+.skill-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.skill-button.cooling {
+  color: #8f9192;
+  cursor: default;
+}
+
+.skill-button kbd {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #1d1500;
+  font: inherit;
+  background: var(--gold);
+  border-radius: 3px;
+}
+
+.skill-button strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-button span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f3e7bf;
+  font-size: 12px;
+  background: rgba(0, 0, 0, 0.58);
+  pointer-events: none;
+}
+
 .slot,
 .item,
 .empty,

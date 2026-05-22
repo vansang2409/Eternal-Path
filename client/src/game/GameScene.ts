@@ -22,7 +22,7 @@ export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
   private hud!: Hud;
   private selfId = "";
-  private cursors!: Record<"W" | "A" | "S" | "D" | "Q", Phaser.Input.Keyboard.Key>;
+  private cursors!: Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
   private names = new Map<string, Phaser.GameObjects.Text>();
@@ -59,12 +59,13 @@ export class GameScene extends Phaser.Scene {
       (itemId) => this.socket.emit("dropItem", { itemId }),
       (itemId) => this.socket.emit("useItem", { itemId }),
       () => this.socket.emit("sellJunk"),
+      (skillId) => this.socket.emit("useSkill", { skillId }),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled })
     );
     this.socket = createSocket();
     this.registerSocketEvents();
 
-    this.cursors = this.input.keyboard!.addKeys("W,A,S,D,Q") as Record<"W" | "A" | "S" | "D" | "Q", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard!.addKeys("W,A,S,D,Q,E,R") as Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
@@ -88,6 +89,8 @@ export class GameScene extends Phaser.Scene {
     };
     if (input.up || input.down || input.left || input.right) this.clearMoveTarget();
     if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useFirstPotion();
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) this.socket.emit("useSkill", { skillId: "powerStrike" });
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.R)) this.socket.emit("useSkill", { skillId: "cleave" });
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
@@ -242,7 +245,7 @@ export class GameScene extends Phaser.Scene {
   private enableGameKeyboard(): void {
     if (!this.input.keyboard) return;
     this.input.keyboard.enabled = true;
-    this.cursors = this.input.keyboard.addKeys("W,A,S,D,Q") as Record<"W" | "A" | "S" | "D" | "Q", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard.addKeys("W,A,S,D,Q,E,R") as Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
   }
 
   private captureFormEvents(overlay: HTMLElement): void {

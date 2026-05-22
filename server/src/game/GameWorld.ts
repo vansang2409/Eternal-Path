@@ -1,9 +1,14 @@
 import type { Server, Socket } from "socket.io";
 import {
+  CLEAVE_COOLDOWN_MS,
+  CLEAVE_DAMAGE_MULTIPLIER,
+  CLEAVE_RADIUS,
   INVENTORY_CAPACITY,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
+  POWER_STRIKE_COOLDOWN_MS,
+  POWER_STRIKE_DAMAGE_MULTIPLIER,
   PLAYER_ATTACK_COOLDOWN_MS,
   PLAYER_ATTACK_RANGE,
   PLAYER_SPEED,
@@ -34,6 +39,7 @@ import type {
   ChatMessage,
   ShopItem,
   ServerToClientEvents,
+  SkillId,
   WorldSnapshot
 } from "@mmorpg/shared";
 import type { PlayerRepository } from "../db/PlayerRepository.js";
@@ -101,7 +107,8 @@ export class GameWorld {
         facing: "down",
         stats: saved.stats,
         inventory: saved.inventory,
-        lastAttackAt: 0
+        lastAttackAt: 0,
+        skillCooldowns: createSkillCooldowns()
       };
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
@@ -193,6 +200,12 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã mua ${offer.name} với ${offer.value} vàng.`);
       await this.repository.save(player);
+    });
+
+    socket.on("useSkill", ({ skillId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.useSkill(player, skillId, Date.now());
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -458,10 +471,7 @@ export class GameWorld {
 
       player.lastAttackAt = now;
       if (monsterTarget && canAttackMonster) {
-        const result = rollDamage(player.stats.attack, monsterTarget.defense, player.stats.level - monsterTarget.level);
-        monsterTarget.hp = Math.max(0, monsterTarget.hp - result.damage);
-        this.emitFloating(monsterTarget.id, monsterTarget.position, result.damage, "damage", result.crit ? `${result.damage} crit` : undefined);
-        if (monsterTarget.hp <= 0) this.killMonster(player, monsterTarget, now);
+        this.damageMonster(player, monsterTarget, 1, now);
       } else if (playerTarget) {
         this.hitPlayer(player, playerTarget);
       }
@@ -489,6 +499,42 @@ export class GameWorld {
       }
       this.sockets.get(player.id)?.emit("player", player);
     }
+  }
+
+  private useSkill(player: PlayerState, skillId: SkillId, now: number): void {
+    if (now < player.skillCooldowns[skillId]) {
+      this.sockets.get(player.id)?.emit("system", "Kỹ năng đang hồi.");
+      return;
+    }
+
+    if (skillId === "powerStrike") {
+      const target = this.selectedLivingMonster(player);
+      if (!target || distance(player.position, target.position) > PLAYER_ATTACK_RANGE) {
+        this.sockets.get(player.id)?.emit("system", "Cần chọn quái trong tầm để dùng Power Strike.");
+        return;
+      }
+      player.skillCooldowns.powerStrike = now + POWER_STRIKE_COOLDOWN_MS;
+      this.damageMonster(player, target, POWER_STRIKE_DAMAGE_MULTIPLIER, now, "Power");
+      this.sockets.get(player.id)?.emit("player", player);
+      return;
+    }
+
+    const targets = this.monsters.filter((monster) => !monster.respawnsAt && monster.hp > 0 && distance(player.position, monster.position) <= CLEAVE_RADIUS);
+    if (targets.length === 0) {
+      this.sockets.get(player.id)?.emit("system", "Không có quái nào trong tầm Cleave.");
+      return;
+    }
+    player.skillCooldowns.cleave = now + CLEAVE_COOLDOWN_MS;
+    for (const monster of targets) this.damageMonster(player, monster, CLEAVE_DAMAGE_MULTIPLIER, now, "Cleave");
+    this.sockets.get(player.id)?.emit("player", player);
+  }
+
+  private damageMonster(player: PlayerState, monster: MonsterState, attackMultiplier: number, now: number, label?: string): void {
+    const result = rollDamage(player.stats.attack * attackMultiplier, monster.defense, player.stats.level - monster.level);
+    monster.hp = Math.max(0, monster.hp - result.damage);
+    const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
+    this.emitFloating(monster.id, monster.position, result.damage, "damage", text);
+    if (monster.hp <= 0) this.killMonster(player, monster, now);
   }
 
   private killMonster(player: PlayerState, monster: MonsterState, now: number): void {
@@ -758,6 +804,13 @@ function normalRespawnDurationMs(level: number): number {
 
 function rollElite(): boolean {
   return Math.random() < ELITE_CHANCE;
+}
+
+function createSkillCooldowns(): Record<SkillId, number> {
+  return {
+    powerStrike: 0,
+    cleave: 0
+  };
 }
 
 function sanitizeName(name: string): string {
