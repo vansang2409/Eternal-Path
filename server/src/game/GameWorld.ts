@@ -486,6 +486,13 @@ export class GameWorld {
         collectedItem = lootItem;
         player.inventory.items.push(lootItem);
         this.emitFloating(player.id, player.position, 0, "loot", lootItem.name);
+        if (lootItem.rarity === "rare" || lootItem.rarity === "epic") {
+          this.io.emit("announce", {
+            accountName: player.accountName,
+            itemName: lootItem.name,
+            rarity: lootItem.rarity
+          });
+        }
       }
     }
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });

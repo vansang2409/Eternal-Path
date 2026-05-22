@@ -156,9 +156,15 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.socket.on("loot", ({ item, gold }) => {
-      this.hud.log(item
-        ? t("lootedGoldItem", { gold, rarity: t(item.rarity), item: item.name })
-        : t("lootedGold", { gold }));
+      this.hud.log(
+        item
+          ? t("lootedGoldItem", { gold, rarity: t(item.rarity), item: item.name })
+          : t("lootedGold", { gold }),
+        item ? `loot-line rarity-${item.rarity}` : "loot-line"
+      );
+    });
+    this.socket.on("announce", ({ accountName, itemName, rarity }) => {
+      this.hud.announceDrop(accountName, itemName, rarity);
     });
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
     this.socket.on("chatMessage", (message) => this.hud.appendChat(message));

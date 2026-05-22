@@ -1,5 +1,5 @@
 import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, ShopItem } from "@mmorpg/shared";
+import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, Rarity, ShopItem } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -76,12 +76,17 @@ export class Hud {
     setBar("#target-hp-fill", "#target-hp-label", monster.hp, monster.maxHp, t("hp"));
   }
 
-  log(message: string): void {
+  log(message: string, className = ""): void {
     const log = document.querySelector("#log")!;
     const line = document.createElement("div");
+    if (className) line.className = className;
     line.textContent = message;
     log.prepend(line);
     while (log.childElementCount > 8) log.lastElementChild?.remove();
+  }
+
+  announceDrop(accountName: string, itemName: string, rarity: Rarity): void {
+    this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
   }
 
   setChatHistory(messages: ChatMessage[]): void {

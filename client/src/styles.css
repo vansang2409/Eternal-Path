@@ -764,6 +764,45 @@ h2 {
   font-size: 12px;
 }
 
+#log div.loot-line.rarity-rare {
+  color: #8bb8ff;
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow:
+    inset 0 0 8px rgba(59, 130, 246, 0.26),
+    inset 2px 2px 5px rgba(0, 0, 0, 0.82);
+}
+
+#log div.loot-line.rarity-epic {
+  color: #e5b0ff;
+  border-color: rgba(168, 85, 247, 0.82);
+  box-shadow:
+    inset 0 0 10px rgba(168, 85, 247, 0.38),
+    0 0 8px rgba(168, 85, 247, 0.18);
+}
+
+#log div.announcement {
+  min-height: 34px;
+  padding: 9px;
+  font-weight: 900;
+  border-width: 1px;
+  text-transform: none;
+}
+
+#log div.announcement-rare {
+  color: #9fc7ff;
+  background: #102035;
+  border-color: var(--rare);
+}
+
+#log div.announcement-epic {
+  color: #f0c3ff;
+  background: #251032;
+  border-color: var(--epic);
+  box-shadow:
+    inset 0 0 12px rgba(168, 85, 247, 0.46),
+    0 0 12px rgba(168, 85, 247, 0.26);
+}
+
 .chat-panel {
   display: flex;
   flex: 1;

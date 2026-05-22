@@ -160,6 +160,7 @@ export interface ServerToClientEvents {
   player: (player: PlayerState) => void;
   floatingText: (event: FloatingTextEvent) => void;
   loot: (event: LootEvent) => void;
+  announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   chatHistory: (messages: ChatMessage[]) => void;
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;
