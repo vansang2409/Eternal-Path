@@ -24,6 +24,22 @@
 - `npm run typecheck` and `npm run build` passed
 - Note: target panel currently displays monster targets only; PvP targets do not populate the panel (acceptable for now)
 
+### Sprint 1 · Task 1.3 — HP potions + town vendor (consumables)
+
+- Reworked the shared `Item` type into a discriminated union (`EquipmentItem | ConsumableItem`) with a `kind` field; `equipped` now only accepts equipment
+- Added Minor (45 HP / 28g) and Major (130 HP / 95g) potions to the town shop
+- Added a `useItem` socket event; server heals capped at maxHp, removes one potion, emits floating heal text, and saves
+- Buying potions reuses the in-town + gold checks; equipping a consumable is rejected
+- Inventory/shop show potions distinctly (drink icon), with tooltips showing heal amount; use via button, double-click, or the `Q` hotkey (first potion)
+- Extended PostgreSQL schema (kind/heal columns, nullable slot, idempotent ALTERs) and PlayerRepository so consumables persist in both memory and Postgres modes
+- Reviewed by manager against Task 1.3 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 1 complete
+
+- All three Sprint 1 tasks (netcode smoothness, target panel + auto-retarget, potions + vendor) shipped and manager-reviewed PASS
+- Known follow-up (pre-existing): game hotkeys (WASD/Q) still fire while the chat input is focused; suppress them when chat is focused in a later polish pass
+
 ## 2026-05-21
 
 ### Initial Prototype
