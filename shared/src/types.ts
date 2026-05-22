@@ -177,6 +177,7 @@ export interface ClientToServerEvents {
   buyShopItem: (payload: { shopId: string }) => void;
   useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
+  sellJunk: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import {
+  INVENTORY_CAPACITY,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
@@ -49,6 +50,7 @@ const GROUND_ITEM_PICKUP_RANGE = 72;
 const GROUND_ITEM_TTL_MS = 10 * 60 * 1000;
 const SELL_VALUE_RATE = 0.6;
 const AUTO_RETARGET_RANGE = 260;
+const BAG_FULL_MESSAGE = "Túi đồ đã đầy.";
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -172,6 +174,10 @@ export class GameWorld {
         socket.emit("system", "Bạn cần về thị trấn để mua đồ.");
         return;
       }
+      if (isBagFull(player)) {
+        socket.emit("system", BAG_FULL_MESSAGE);
+        return;
+      }
       if (player.stats.gold < offer.value) {
         socket.emit("system", "Không đủ vàng.");
         return;
@@ -219,6 +225,36 @@ export class GameWorld {
       await this.repository.save(player);
     });
 
+    socket.on("sellJunk", async () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Bạn cần về thị trấn để bán trang bị.");
+        return;
+      }
+
+      let soldCount = 0;
+      let gold = 0;
+      player.inventory.items = player.inventory.items.filter((item) => {
+        const junk = item.kind === "equipment" && item.rarity === "common";
+        if (junk) {
+          soldCount += 1;
+          gold += sellValue(item.value);
+        }
+        return !junk;
+      });
+      if (soldCount === 0) {
+        socket.emit("system", "Không có trang bị thường nào để bán.");
+        return;
+      }
+
+      player.stats.gold += gold;
+      socket.emit("player", player);
+      socket.emit("system", `Đã bán ${soldCount} món đồ thường được ${gold} vàng.`);
+      this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
+      await this.repository.save(player);
+    });
+
     socket.on("dropItem", async ({ itemId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -245,6 +281,10 @@ export class GameWorld {
       if (!player || !groundItem) return;
       if (distance(player.position, groundItem.position) > GROUND_ITEM_PICKUP_RANGE) {
         socket.emit("system", "Bạn cần đứng gần vật phẩm hơn để nhặt.");
+        return;
+      }
+      if (isBagFull(player)) {
+        socket.emit("system", BAG_FULL_MESSAGE);
         return;
       }
       this.groundItems.delete(groundItem.id);
@@ -437,12 +477,18 @@ export class GameWorld {
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
     if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
 
-    const item = createLoot(monster.level, monster.type);
-    if (item) {
-      player.inventory.items.push(item);
-      this.emitFloating(player.id, player.position, 0, "loot", item.name);
+    const lootItem = createLoot(monster.level, monster.type);
+    let collectedItem: Item | undefined;
+    if (lootItem) {
+      if (isBagFull(player)) {
+        this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
+      } else {
+        collectedItem = lootItem;
+        player.inventory.items.push(lootItem);
+        this.emitFloating(player.id, player.position, 0, "loot", lootItem.name);
+      }
     }
-    this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item });
+    this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });
     this.tryAutoRetarget(player);
 
     this.sockets.get(player.id)?.emit("player", player);
@@ -666,6 +712,10 @@ function goldForMonster(monster: MonsterState): number {
 
 function sellValue(value: number): number {
   return Math.max(1, Math.floor(value * SELL_VALUE_RATE));
+}
+
+function isBagFull(player: PlayerState): boolean {
+  return player.inventory.items.length >= INVENTORY_CAPACITY;
 }
 
 function scatterAround(position: { x: number; y: number }): { x: number; y: number } {

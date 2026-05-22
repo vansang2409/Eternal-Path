@@ -1,4 +1,4 @@
-import { expToNextLevel } from "@mmorpg/shared";
+import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
 import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, ShopItem } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -21,12 +21,15 @@ export class Hud {
     private readonly onSell: (itemId: string) => void,
     private readonly onDrop: (itemId: string) => void,
     private readonly onUse: (itemId: string) => void,
+    private readonly onSellJunk: () => void,
     private readonly onAutoRetarget: (enabled: boolean) => void
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
     const input = document.querySelector("#chat-input") as HTMLInputElement;
     const languageSelect = document.querySelector("#language-select") as HTMLSelectElement;
+    const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
+    sellJunkButton.addEventListener("click", () => this.onSellJunk());
     languageSelect.value = getLanguage();
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
@@ -141,6 +144,7 @@ export class Hud {
 
   private renderInventory(): void {
     if (!this.player) return;
+    document.querySelector("#inventory-count")!.textContent = `${this.player.inventory.items.length} / ${INVENTORY_CAPACITY}`;
     const root = document.querySelector("#inventory")!;
     root.innerHTML = "";
     if (this.player.inventory.items.length === 0) {
@@ -220,6 +224,7 @@ export class Hud {
     document.querySelector("#target-title")!.textContent = t("selectedTarget");
     document.querySelector("#auto-retarget-label")!.textContent = t("autoRetarget");
     document.querySelector("#inventory-title")!.textContent = t("inventory");
+    document.querySelector("#sell-junk-button")!.textContent = t("sellJunk");
     document.querySelector("#shop-title")!.textContent = t("shop");
     document.querySelector("#world-title")!.textContent = t("world");
     document.querySelector("#chat-title")!.textContent = t("chat");

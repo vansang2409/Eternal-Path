@@ -9,6 +9,7 @@ export const PLAYER_ATTACK_RANGE = 42;
 export const MONSTER_ATTACK_RANGE = 36;
 export const PLAYER_ATTACK_COOLDOWN_MS = 650;
 export const MONSTER_ATTACK_COOLDOWN_MS = 1100;
+export const INVENTORY_CAPACITY = 30;
 
 export function expToNextLevel(level: number): number {
   return Math.floor(60 + level * level * 38);

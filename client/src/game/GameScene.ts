@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
       (itemId) => this.socket.emit("sellItem", { itemId }),
       (itemId) => this.socket.emit("dropItem", { itemId }),
       (itemId) => this.socket.emit("useItem", { itemId }),
+      () => this.socket.emit("sellJunk"),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled })
     );
     this.socket = createSocket();

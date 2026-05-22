@@ -549,6 +549,24 @@ h2 {
   border-radius: 2px;
 }
 
+.inventory-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.inventory-heading h2 {
+  margin-bottom: 0;
+}
+
+#inventory-count {
+  color: var(--outline);
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .item {
   display: grid;
   place-items: center;
@@ -638,6 +656,27 @@ h2 {
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.42),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#sell-junk-button {
+  width: 100%;
+  min-height: 30px;
+  margin-top: 8px;
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(to bottom, #4a4a4a, #2d2d2d);
+  border: 1px solid #5f5e5e;
+  border-radius: 3px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+#sell-junk-button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
 }
 
 #inventory-actions button:hover {
