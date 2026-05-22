@@ -13,6 +13,13 @@
 - `npm run typecheck` and `npm run build` passed
 - Note: with E/R/Q hotkeys now added, the pre-existing "game keys fire while chat input is focused" issue is more noticeable; queued as a quick fix
 
+### Polish — Suppress game hotkeys while typing
+
+- While a text input/textarea/contentEditable is focused, `update()` sends neutral input and skips WASD movement and the Q/E/R hotkeys; normal input resumes on blur
+- Resolves the long-standing "game keys fire while chat is focused" issue
+- Reviewed by manager: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 3)
 
 ### Sprint 3 · Task 3.1 — Elite monsters
