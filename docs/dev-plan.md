@@ -223,6 +223,22 @@ Sau Sprint 3, **Sprint 4** dự kiến quay lại nền tảng: lưu vị trí n
 
 ---
 
+## 4d. SPRINT 4 — "Chiều sâu gameplay"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1–3 đã xong (mọi task review PASS).
+
+Bối cảnh: theo lựa chọn của chủ dự án, ưu tiên thêm chiều sâu/nội dung thay vì nền tảng. Nền tảng (lưu vị trí, session/mật khẩu, giảm churn DB) dời sang sprint sau (vẫn trong watchlist).
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 4.1 | `task-4.1-active-skills.md` | 2 kỹ năng chủ động theo cooldown: Power Strike (E, đơn mục tiêu mạnh), Cleave (R, AoE quanh người); server-authoritative + UI cooldown |
+| 4.2 | `task-4.2-quest-board.md` | Bảng nhiệm vụ trong town: kill quest / đạt cấp, theo dõi tiến độ, nhận thưởng vàng + EXP |
+| 4.3 | `task-4.3-basic-party.md` | Party cơ bản (tối đa 4): mời/nhận, chia EXP khi ở gần lúc giết quái, panel thành viên; session-only |
+
+Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyên: xem diff → đối chiếu acceptance → typecheck/build → ghi changelog → commit.
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
