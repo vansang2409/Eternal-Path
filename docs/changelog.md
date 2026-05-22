@@ -19,6 +19,19 @@
 - Reviewed by manager against Task 2.2 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 2 · Task 2.3 — Town safe-zone guard
+
+- Monsters no longer target or damage players standing in town (`findMonsterTarget` and the monster-attack loop now check `isInTown`)
+- Monsters drop aggro and walk back to spawn when their target enters town or when they exceed leash range
+- No changes to monster stats, spawns, speed, leash, or aggro values
+- Reviewed by manager against Task 2.3 acceptance criteria: PASS (one harmless dead branch noted: in-town check inside the `if (target)` block can never fire since town players are already filtered)
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 2 complete
+
+- All three Sprint 2 tasks (inventory capacity + sell junk, rare/epic drop announcements, town safe-zone guard) shipped and manager-reviewed PASS
+- Watchlist item "town safe zone inconsistency" is now resolved by Task 2.3
+
 ## 2026-05-22
 
 ### Sprint 1 · Task 1.1 — Netcode smoothness
