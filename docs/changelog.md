@@ -1,5 +1,16 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 5)
+
+### Sprint 5 · Task 5.1 — Save & restore player position
+
+- Implemented directly by the manager (Codex out of tokens), following docs/codex-tasks/task-5.1-save-position.md
+- `PlayerRepository` now persists and restores character position (the schema already had `position_x`/`position_y`, defaulting to the town spawn); works in both the Postgres and in-memory paths
+- Login spawns the player at the saved position, or the town spawn for new characters
+- `normalizeStats` rewritten to construct stats explicitly (no longer leaks position columns into the stats object)
+- Self-reviewed against Task 5.1 acceptance criteria: PASS (build + logic; position persists on disconnect/relog in memory mode)
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 4)
 
 ### Sprint 4 · Task 4.1 — Active skills
