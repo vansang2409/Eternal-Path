@@ -1,6 +1,6 @@
 import { expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, PlayerState, ShopItem } from "@mmorpg/shared";
-import { getLanguage, setLanguage, t, type Language } from "../i18n";
+import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, ShopItem } from "@mmorpg/shared";
+import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
   common: "rarity-common",
@@ -11,6 +11,7 @@ const rarityClass = {
 export class Hud {
   private player?: PlayerState;
   private selectedItemId?: string;
+  private autoRetargetEnabled = false;
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -18,7 +19,8 @@ export class Hud {
     private readonly onChat: (message: string) => void,
     private readonly onBuy: (shopId: string) => void,
     private readonly onSell: (itemId: string) => void,
-    private readonly onDrop: (itemId: string) => void
+    private readonly onDrop: (itemId: string) => void,
+    private readonly onAutoRetarget: (enabled: boolean) => void
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -28,6 +30,12 @@ export class Hud {
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
       window.location.reload();
+    });
+    const autoRetargetToggle = document.querySelector("#auto-retarget-toggle") as HTMLInputElement;
+    autoRetargetToggle.checked = this.autoRetargetEnabled;
+    autoRetargetToggle.addEventListener("change", () => {
+      this.autoRetargetEnabled = autoRetargetToggle.checked;
+      this.onAutoRetarget(this.autoRetargetEnabled);
     });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
@@ -50,6 +58,18 @@ export class Hud {
     `;
     this.renderEquipment();
     this.renderInventory();
+  }
+
+  setTarget(monster?: MonsterState): void {
+    const panel = document.querySelector("#selected-target") as HTMLElement;
+    if (!monster || monster.respawnsAt || monster.hp <= 0) {
+      panel.classList.add("hidden");
+      return;
+    }
+    panel.classList.remove("hidden");
+    document.querySelector("#target-name")!.textContent = translateMonsterName(monster.name);
+    document.querySelector("#target-level")!.textContent = `${t("levelShort")} ${monster.level}`;
+    setBar("#target-hp-fill", "#target-hp-label", monster.hp, monster.maxHp, t("hp"));
   }
 
   log(message: string): void {
@@ -193,6 +213,8 @@ export class Hud {
     document.documentElement.lang = getLanguage();
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
+    document.querySelector("#target-title")!.textContent = t("selectedTarget");
+    document.querySelector("#auto-retarget-label")!.textContent = t("autoRetarget");
     document.querySelector("#inventory-title")!.textContent = t("inventory");
     document.querySelector("#shop-title")!.textContent = t("shop");
     document.querySelector("#world-title")!.textContent = t("world");

@@ -56,7 +56,8 @@ export class GameScene extends Phaser.Scene {
       (message) => this.socket.emit("chatMessage", { message }),
       (shopId) => this.socket.emit("buyShopItem", { shopId }),
       (itemId) => this.socket.emit("sellItem", { itemId }),
-      (itemId) => this.socket.emit("dropItem", { itemId })
+      (itemId) => this.socket.emit("dropItem", { itemId }),
+      (enabled) => this.socket.emit("setAutoRetarget", { enabled })
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -124,6 +125,7 @@ export class GameScene extends Phaser.Scene {
       if (player.id === this.selfId) {
         this.selfPlayer = player;
         this.reconcileLocalPlayer(player.position);
+        this.updateTargetPanel();
         if (this.moveTarget && Phaser.Math.Distance.Between(player.position.x, player.position.y, this.moveTarget.x, this.moveTarget.y) < 8) {
           this.clearMoveTarget();
         }
@@ -280,6 +282,13 @@ export class GameScene extends Phaser.Scene {
         this.groundItemLabels.delete(id);
       }
     }
+    this.updateTargetPanel(snapshot);
+  }
+
+  private updateTargetPanel(snapshot = this.snapshotBuffer[this.snapshotBuffer.length - 1]): void {
+    const targetId = this.selfPlayer?.targetId;
+    const target = targetId ? snapshot?.monsters.find((monster) => monster.id === targetId) : undefined;
+    this.hud.setTarget(target);
   }
 
   private pushSnapshot(snapshot: WorldSnapshot): void {

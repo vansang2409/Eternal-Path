@@ -158,6 +158,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   login: (payload: LoginPayload) => void;
   input: (input: ClientInput) => void;
+  setAutoRetarget: (payload: { enabled: boolean }) => void;
   equipItem: (payload: EquipItemPayload) => void;
   unequipItem: (payload: { slot: EquipmentSlot }) => void;
   targetMonster: (payload: TargetMonsterPayload) => void;

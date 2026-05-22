@@ -46,6 +46,7 @@ const TOWN_HEAL_FLOATING_COOLDOWN_MS = 1400;
 const GROUND_ITEM_PICKUP_RANGE = 72;
 const GROUND_ITEM_TTL_MS = 10 * 60 * 1000;
 const SELL_VALUE_RATE = 0.6;
+const AUTO_RETARGET_RANGE = 260;
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -54,6 +55,7 @@ export class GameWorld {
   private readonly chatMessages: ChatMessage[] = [];
   private readonly chatCooldowns = new Map<string, number>();
   private readonly lastTownHealTextAt = new Map<string, number>();
+  private readonly autoRetarget = new Map<string, boolean>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
   private monsters: MonsterState[] = [];
@@ -103,6 +105,10 @@ export class GameWorld {
 
     socket.on("input", (input) => {
       if (this.players.has(socket.id)) this.inputs.set(socket.id, input);
+    });
+
+    socket.on("setAutoRetarget", ({ enabled }) => {
+      if (this.players.has(socket.id)) this.autoRetarget.set(socket.id, enabled);
     });
 
     socket.on("equipItem", async ({ itemId }) => {
@@ -264,6 +270,7 @@ export class GameWorld {
       this.inputs.delete(socket.id);
       this.chatCooldowns.delete(socket.id);
       this.lastTownHealTextAt.delete(socket.id);
+      this.autoRetarget.delete(socket.id);
     });
   }
 
@@ -361,13 +368,16 @@ export class GameWorld {
 
   private updateCombat(now: number): void {
     for (const player of this.players.values()) {
-      const monsterTarget = this.selectedLivingMonster(player);
+      let monsterTarget = this.selectedLivingMonster(player);
       const playerTarget = monsterTarget ? undefined : this.selectedPvpTarget(player);
-      if (player.targetId && !monsterTarget && !playerTarget) player.targetId = undefined;
-      if ((!monsterTarget && !playerTarget) || now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) continue;
+      if (player.targetId && !monsterTarget && !playerTarget) {
+        monsterTarget = this.tryAutoRetarget(player);
+      }
+      const canAttackMonster = monsterTarget && distance(player.position, monsterTarget.position) <= PLAYER_ATTACK_RANGE;
+      if (((!monsterTarget || !canAttackMonster) && !playerTarget) || now - player.lastAttackAt < PLAYER_ATTACK_COOLDOWN_MS) continue;
 
       player.lastAttackAt = now;
-      if (monsterTarget) {
+      if (monsterTarget && canAttackMonster) {
         const result = rollDamage(player.stats.attack, monsterTarget.defense, player.stats.level - monsterTarget.level);
         monsterTarget.hp = Math.max(0, monsterTarget.hp - result.damage);
         this.emitFloating(monsterTarget.id, monsterTarget.position, result.damage, "damage", result.crit ? `${result.damage} crit` : undefined);
@@ -416,6 +426,7 @@ export class GameWorld {
       this.emitFloating(player.id, player.position, 0, "loot", item.name);
     }
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item });
+    this.tryAutoRetarget(player);
 
     this.sockets.get(player.id)?.emit("player", player);
     void this.repository.save(player);
@@ -452,8 +463,31 @@ export class GameWorld {
   private selectedLivingMonster(player: PlayerState): MonsterState | undefined {
     if (!player.targetId) return undefined;
     const target = this.monsters.find((monster) => monster.id === player.targetId && !monster.respawnsAt);
-    if (!target || distance(player.position, target.position) > PLAYER_ATTACK_RANGE) return undefined;
-    return target;
+    return target?.hp && target.hp > 0 ? target : undefined;
+  }
+
+  private tryAutoRetarget(player: PlayerState): MonsterState | undefined {
+    const selectedMonster = player.targetId ? this.monsters.find((monster) => monster.id === player.targetId) : undefined;
+    const previousTargetId = player.targetId;
+    if (!selectedMonster || !this.autoRetarget.get(player.id)) {
+      player.targetId = undefined;
+      if (player.targetId !== previousTargetId) this.sockets.get(player.id)?.emit("player", player);
+      return undefined;
+    }
+
+    let best: MonsterState | undefined;
+    let bestDistance = AUTO_RETARGET_RANGE;
+    for (const monster of this.monsters) {
+      if (monster.id === selectedMonster.id || monster.respawnsAt || monster.hp <= 0) continue;
+      const d = distance(player.position, monster.position);
+      if (d <= bestDistance) {
+        best = monster;
+        bestDistance = d;
+      }
+    }
+    player.targetId = best?.id;
+    if (player.targetId !== previousTargetId) this.sockets.get(player.id)?.emit("player", player);
+    return best;
   }
 
   private selectedPvpTarget(attacker: PlayerState): PlayerState | undefined {

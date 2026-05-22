@@ -418,6 +418,74 @@ h2 {
   gap: 4px;
 }
 
+.target-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.target-heading h2 {
+  margin-bottom: 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toggle-row input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--gold);
+}
+
+.selected-target.hidden {
+  display: none;
+}
+
+.selected-target {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 9px 8px 4px;
+  background: #181818;
+  border-top: 1px solid #3a3a3a;
+  border-bottom: 1px solid #0e0e0e;
+  border-radius: 3px;
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.56);
+}
+
+.selected-target strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gold);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-target > span {
+  color: var(--outline);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.target-hp {
+  grid-column: 1 / -1;
+  margin: 18px 0 8px;
+}
+
 .slot,
 .item,
 .empty,
