@@ -1,5 +1,16 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 2)
+
+### Sprint 2 · Task 2.1 — Inventory capacity + sell junk
+
+- Added shared `INVENTORY_CAPACITY` (30); applies to carried items, not equipped gear
+- Bag full now blocks: monster loot is skipped with a message (EXP and gold still granted), shop purchase is blocked before any gold is deducted, and ground pickup is blocked
+- Added a `sellJunk` socket event; in town it sells only Common equipment (keeps consumables, Rare/Epic, and equipped gear) and grants gold
+- HUD shows a live inventory counter (`x / 30`) and a "Sell junk" button
+- Reviewed by manager against Task 2.1 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22
 
 ### Sprint 1 · Task 1.1 — Netcode smoothness
