@@ -189,6 +189,22 @@ After implementing, run `npm run typecheck` and `npm run build`, then explain ho
 
 ---
 
+## 4b. SPRINT 2 — "Giữ cho vòng farm bền và đã"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1 đã xong (mọi task review PASS).
+
+Bối cảnh: sau Sprint 1, farm đã liền mạch (auto-retarget) nên loot đổ về nhanh → cần quản lý túi + tăng cảm giác thưởng, đồng thời vá nốt điểm an toàn town.
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 2.1 | `task-2.1-inventory-capacity-sell-junk.md` | Giới hạn 30 ô túi + nút "bán đồ rác" (chỉ bán đồ Common, giữ bình & Rare/Epic) trong town; hiện số ô đang dùng |
+| 2.2 | `task-2.2-rare-drop-announcements.md` | Thông báo toàn server khi ai đó rớt đồ Rare/Epic; log loot tô màu theo độ hiếm |
+| 2.3 | `task-2.3-town-safezone-guard.md` | Quái không target/đánh người trong town; bỏ aggro khi mục tiêu vào town (quick win, vá watchlist) |
+
+Acceptance criteria chi tiết nằm trong từng file. Quy trình review giữ nguyên như Sprint 1: xem diff → đối chiếu acceptance → typecheck/build → ghi changelog → commit.
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
