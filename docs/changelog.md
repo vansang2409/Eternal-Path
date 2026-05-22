@@ -1,5 +1,18 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22
+
+### Sprint 1 · Task 1.1 — Netcode smoothness
+
+- Raised server `SNAPSHOT_RATE` from 10 to 15 (tick rate unchanged at 20)
+- Added client snapshot buffering with server-clock offset estimation
+- Added entity interpolation (~100ms render delay) for other players and monsters
+- Added client-side prediction for the local player using shared movement math
+- Added reconciliation toward the authoritative server position (soft lerp, snap when gap > 64px)
+- Made name labels, HP bars, equipment overlays, and monster labels follow interpolated/predicted positions
+- Reviewed by manager against Task 1.1 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-21
 
 ### Initial Prototype
