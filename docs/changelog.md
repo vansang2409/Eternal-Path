@@ -11,6 +11,14 @@
 - Reviewed by manager against Task 2.1 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 2 · Task 2.2 — Rare/Epic drop announcements + colored loot log
+
+- Added an `announce` server->client event; `killMonster` broadcasts it to all clients only for Rare/Epic loot (never Common)
+- Client shows a rarity-colored announcement line; Epic is more prominent than Rare (glow vs plain border)
+- Local loot log lines are now color-coded by item rarity
+- Reviewed by manager against Task 2.2 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22
 
 ### Sprint 1 · Task 1.1 — Netcode smoothness
