@@ -505,12 +505,17 @@ export class GameScene extends Phaser.Scene {
     sprite.setTexture(monster.respawnsAt ? "dead" : "monster");
     sprite.setAlpha(monster.respawnsAt ? 0.35 : 1);
     const definition = getMonsterDefinition(monster.type);
-    sprite.setTint(definition.tint);
-    sprite.setScale(definition.scale);
+    sprite.setTint(monster.elite ? 0xffd36b : definition.tint);
+    sprite.setScale(monster.elite ? definition.scale * 1.18 : definition.scale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
     sprite.setPosition(position.x, position.y);
-    this.monsterLabels.get(monster.id)?.setText(`${t("levelShort")} ${monster.level} ${translateMonsterName(monster.name)}`).setPosition(position.x, position.y - 45).setVisible(!monster.respawnsAt);
+    const name = `${monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
+    this.monsterLabels.get(monster.id)
+      ?.setText(`${t("levelShort")} ${monster.level} ${name}`)
+      .setColor(monster.elite ? "#ffe088" : "#f3e7bf")
+      .setPosition(position.x, position.y - (monster.elite ? 52 : 45))
+      .setVisible(!monster.respawnsAt);
     this.drawMonsterBar(monster, position);
   }
 
@@ -561,10 +566,11 @@ export class GameScene extends Phaser.Scene {
     bar.clear();
     if (monster.respawnsAt) return;
     const pct = Phaser.Math.Clamp(monster.hp / monster.maxHp, 0, 1);
-    bar.fillStyle(0x151515, 0.9).fillRect(position.x - 24, position.y - 34, 48, 6);
-    bar.fillStyle(0xd94b4b, 1).fillRect(position.x - 23, position.y - 33, 46 * pct, 4);
+    const width = monster.elite ? 58 : 48;
+    bar.fillStyle(0x151515, 0.9).fillRect(position.x - width / 2, position.y - 34, width, 6);
+    bar.fillStyle(monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(position.x - width / 2 + 1, position.y - 33, (width - 2) * pct, 4);
     if (this.selfPlayer && this.selfPlayer.targetId === monster.id) {
-      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - 25, position.y - 35, 50, 8);
+      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 1, position.y - 35, width + 2, 8);
     }
   }
 

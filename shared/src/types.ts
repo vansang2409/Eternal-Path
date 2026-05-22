@@ -69,6 +69,7 @@ export interface MonsterState {
   id: string;
   type: string;
   name: string;
+  elite: boolean;
   position: Vec2;
   velocity: Vec2;
   spawn: Vec2;

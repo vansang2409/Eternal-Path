@@ -229,14 +229,17 @@ export function getMonsterDefinition(type: string): MonsterDefinition {
   return MONSTER_DEFINITIONS[type] ?? MONSTER_DEFINITIONS.forestSlime;
 }
 
-export function monsterMaxHp(definition: MonsterDefinition): number {
-  return Math.floor((42 + definition.level * 36 + definition.level * definition.level * 4) * definition.hpMultiplier);
+export function monsterMaxHp(definition: MonsterDefinition, elite = false): number {
+  const base = Math.floor((42 + definition.level * 36 + definition.level * definition.level * 4) * definition.hpMultiplier);
+  return elite ? Math.floor(base * 2.2) : base;
 }
 
-export function monsterAttack(definition: MonsterDefinition): number {
-  return Math.floor((7 + definition.level * 5) * definition.attackMultiplier);
+export function monsterAttack(definition: MonsterDefinition, elite = false): number {
+  const base = Math.floor((7 + definition.level * 5) * definition.attackMultiplier);
+  return elite ? Math.floor(base * 1.5) : base;
 }
 
-export function monsterDefense(definition: MonsterDefinition): number {
-  return Math.floor((2 + definition.level * 3) * definition.defenseMultiplier);
+export function monsterDefense(definition: MonsterDefinition, elite = false): number {
+  const base = Math.floor((2 + definition.level * 3) * definition.defenseMultiplier);
+  return elite ? Math.floor(base * 1.3) : base;
 }

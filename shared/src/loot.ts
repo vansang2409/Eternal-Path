@@ -22,15 +22,16 @@ export function rollRarity(): Rarity {
   return "common";
 }
 
-export function createLoot(monsterLevel: number, monsterType = "forestSlime"): Item | undefined {
+export function createLoot(monsterLevel: number, monsterType = "forestSlime", elite = false): Item | undefined {
   const monster = getMonsterDefinition(monsterType);
-  if (Math.random() > monster.dropRate) return undefined;
+  const dropRate = elite ? Math.min(0.95, monster.dropRate + 0.35) : monster.dropRate;
+  if (Math.random() > dropRate) return undefined;
 
-  const rarity = rollRarity();
+  const rarity = elite ? rollEliteRarity() : rollRarity();
   const slotPool = Math.random() < 0.72 ? monster.preferredSlots : slots;
   const slot = slotPool[Math.floor(Math.random() * slotPool.length)];
   const power = rarity === "epic" ? 3 : rarity === "rare" ? 2 : 1;
-  const value = itemValue(monsterLevel, rarity, monster.dropRate, power);
+  const value = itemValue(monsterLevel, rarity, dropRate, power);
   const item: EquipmentItem = {
     id: cryptoRandomId(),
     kind: "equipment",
@@ -46,6 +47,10 @@ export function createLoot(monsterLevel: number, monsterType = "forestSlime"): I
   };
 
   return item;
+}
+
+function rollEliteRarity(): Rarity {
+  return Math.random() > 0.78 ? "epic" : "rare";
 }
 
 export function createShopStock(): ShopItem[] {

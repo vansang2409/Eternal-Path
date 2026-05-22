@@ -51,6 +51,8 @@ const GROUND_ITEM_TTL_MS = 10 * 60 * 1000;
 const SELL_VALUE_RATE = 0.6;
 const AUTO_RETARGET_RANGE = 260;
 const BAG_FULL_MESSAGE = "Túi đồ đã đầy.";
+const ELITE_CHANCE = 0.15;
+const ELITE_REWARD_MULTIPLIER = 2.5;
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -493,7 +495,7 @@ export class GameWorld {
     monster.targetPlayerId = undefined;
     this.returningToSpawn.delete(monster.id);
 
-    const exp = 28 + monster.level * 18;
+    const exp = Math.floor((28 + monster.level * 18) * (monster.elite ? ELITE_REWARD_MULTIPLIER : 1));
     const gold = goldForMonster(monster);
     const leveled = grantExp(player.stats, exp);
     player.stats = leveled.stats;
@@ -502,7 +504,7 @@ export class GameWorld {
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
     if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
 
-    const lootItem = createLoot(monster.level, monster.type);
+    const lootItem = createLoot(monster.level, monster.type, monster.elite);
     let collectedItem: Item | undefined;
     if (lootItem) {
       if (isBagFull(player)) {
@@ -534,6 +536,7 @@ export class GameWorld {
       monster.position = { ...monster.spawn };
       monster.respawnsAt = undefined;
       this.returningToSpawn.delete(monster.id);
+      rerollMonsterRank(monster);
     }
   }
 
@@ -670,24 +673,39 @@ function createMonsterSpawns(): MonsterState[] {
 
   return spawns.map(([type, tx, ty], index) => {
     const definition = getMonsterDefinition(type);
-    const maxHp = monsterMaxHp(definition);
+    const elite = rollElite();
+    const maxHp = monsterMaxHp(definition, elite);
     return {
       id: `monster-${index}`,
       type,
       name: definition.name,
+      elite,
       level: definition.level,
       position: { x: tx * TILE_SIZE, y: ty * TILE_SIZE },
       spawn: { x: tx * TILE_SIZE, y: ty * TILE_SIZE },
       velocity: { x: 0, y: 0 },
       maxHp,
       hp: maxHp,
-      attack: monsterAttack(definition),
-      defense: monsterDefense(definition),
+      attack: monsterAttack(definition, elite),
+      defense: monsterDefense(definition, elite),
       aggroRadius: 135 + definition.level * 8,
       leashRadius: 220 + definition.level * 10,
       lastAttackAt: 0
     };
   });
+}
+
+function rerollMonsterRank(monster: MonsterState): void {
+  const definition = getMonsterDefinition(monster.type);
+  monster.elite = rollElite();
+  monster.maxHp = monsterMaxHp(definition, monster.elite);
+  monster.hp = monster.maxHp;
+  monster.attack = monsterAttack(definition, monster.elite);
+  monster.defense = monsterDefense(definition, monster.elite);
+}
+
+function rollElite(): boolean {
+  return Math.random() < ELITE_CHANCE;
 }
 
 function sanitizeName(name: string): string {
@@ -749,7 +767,8 @@ function goldForMonster(monster: MonsterState): number {
   const definition = getMonsterDefinition(monster.type);
   const base = 6 + monster.level * 6;
   const toughness = definition.hpMultiplier + definition.attackMultiplier + definition.defenseMultiplier;
-  return Math.max(3, Math.floor(base * toughness * 0.55 + Math.random() * (monster.level * 8 + 8)));
+  const gold = Math.max(3, Math.floor(base * toughness * 0.55 + Math.random() * (monster.level * 8 + 8)));
+  return monster.elite ? Math.floor(gold * ELITE_REWARD_MULTIPLIER) : gold;
 }
 
 function sellValue(value: number): number {

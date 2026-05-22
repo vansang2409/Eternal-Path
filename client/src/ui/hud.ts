@@ -71,7 +71,7 @@ export class Hud {
       return;
     }
     panel.classList.remove("hidden");
-    document.querySelector("#target-name")!.textContent = translateMonsterName(monster.name);
+    document.querySelector("#target-name")!.textContent = `${monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
     document.querySelector("#target-level")!.textContent = `${t("levelShort")} ${monster.level}`;
     setBar("#target-hp-fill", "#target-hp-label", monster.hp, monster.maxHp, t("hp"));
   }
