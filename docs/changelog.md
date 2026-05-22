@@ -11,6 +11,17 @@
 - Self-reviewed against Task 5.1 acceptance criteria: PASS (build + logic; position persists on disconnect/relog in memory mode)
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 5 · Task 5.2 — Password auth + session token
+
+- Implemented directly by the manager (Codex out of tokens), following docs/codex-tasks/task-5.2-password-session.md
+- Passwords hashed with Node's built-in `crypto` (scrypt + per-account salt), stored in `accounts.password_hash` (Postgres) or an in-memory map (fallback); no new dependencies
+- First login for an email sets the password; later logins verify it and reject mismatches with a clear message; minimum 4 characters enforced client- and server-side
+- On successful login the server issues a session token; the client stores it and auto-logs-in on reload (tokens are in-memory, invalidated on server restart)
+- Added a password field to the login form and a stale-token cleanup on any pre-login error
+- Self-reviewed against Task 5.2 acceptance criteria: PASS (build + logic; full verification needs a running server)
+- Note: in pure in-memory mode (no DATABASE_URL) auth/tokens reset on server restart, matching the ephemeral saves
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 4)
 
 ### Sprint 4 · Task 4.1 — Active skills
