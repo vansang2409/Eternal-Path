@@ -62,7 +62,7 @@ function createTexture(scene: Phaser.Scene, key: string, pixels: string[], color
 }
 
 function createTile(scene: Phaser.Scene, key: string, colors: Record<string, string>): void {
-  const canvas = scene.textures.createCanvas(key, 96, 32);
+  const canvas = scene.textures.createCanvas(key, 128, 32);
   if (!canvas) return;
   const ctx = canvas.getContext();
   ctx.fillStyle = colors.ground;
@@ -75,6 +75,12 @@ function createTile(scene: Phaser.Scene, key: string, colors: Record<string, str
   ctx.fillRect(64, 0, 32, 32);
   ctx.strokeStyle = "#4d463c";
   ctx.strokeRect(64, 0, 32, 32);
+  ctx.fillStyle = colors.deepGround;
+  ctx.fillRect(96, 0, 32, 32);
+  ctx.fillStyle = colors.deepGrass;
+  for (let i = 0; i < 24; i += 1) ctx.fillRect(96 + Math.random() * 30, Math.random() * 30, 2, 1);
+  ctx.strokeStyle = colors.deepCrack;
+  ctx.strokeRect(96, 0, 32, 32);
   canvas.refresh();
 }
 
@@ -91,6 +97,9 @@ function palette(): Record<string, string> {
     ground: "#2f6b3f",
     grass: "#4f9a4d",
     town: "#736453",
-    road: "#9b865f"
+    road: "#9b865f",
+    deepGround: "#2b2947",
+    deepGrass: "#5c4fa3",
+    deepCrack: "#17142b"
   };
 }
