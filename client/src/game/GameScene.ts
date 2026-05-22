@@ -60,6 +60,8 @@ export class GameScene extends Phaser.Scene {
       (itemId) => this.socket.emit("useItem", { itemId }),
       () => this.socket.emit("sellJunk"),
       (skillId) => this.socket.emit("useSkill", { skillId }),
+      (questId) => this.socket.emit("acceptQuest", { questId }),
+      (questId) => this.socket.emit("claimQuest", { questId }),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled })
     );
     this.socket = createSocket();
@@ -212,6 +214,7 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
     this.socket.on("chatMessage", (message) => this.hud.appendChat(message));
     this.socket.on("shopStock", (items) => this.hud.setShopStock(items));
+    this.socket.on("questList", (quests) => this.hud.setQuests(quests));
     this.socket.on("system", (message) => {
       if (!this.loggedIn) {
         const error = document.querySelector("#login-error");

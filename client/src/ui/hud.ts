@@ -1,5 +1,5 @@
 import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { ChatMessage, EquipmentSlot, Item, MonsterState, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -24,6 +24,8 @@ export class Hud {
     private readonly onUse: (itemId: string) => void,
     private readonly onSellJunk: () => void,
     private readonly onSkill: (skillId: SkillId) => void,
+    private readonly onAcceptQuest: (questId: string) => void,
+    private readonly onClaimQuest: (questId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void
   ) {
     this.applyLanguage();
@@ -124,6 +126,22 @@ export class Hud {
       row.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><strong>${escapeHtml(item.name)}</strong><span>${t("price")}: ${item.value} ${t("gold")}</span><em>${shortStats(item)}</em>`;
       row.addEventListener("click", () => this.onBuy(item.shopId));
       root.append(row);
+    }
+  }
+
+  setQuests(payload: QuestListPayload): void {
+    const root = document.querySelector("#quests")!;
+    root.innerHTML = "";
+    if (payload.active.length > 0) {
+      root.append(sectionTitle(t("activeQuests")));
+      for (const quest of payload.active) root.append(this.renderQuest(quest, "active"));
+    }
+    if (payload.available.length > 0) {
+      root.append(sectionTitle(t("availableQuests")));
+      for (const quest of payload.available) root.append(this.renderQuest(quest, "available"));
+    }
+    if (payload.active.length === 0 && payload.available.length === 0) {
+      root.innerHTML = `<div class="empty">${t("noQuests")}</div>`;
     }
   }
 
@@ -236,6 +254,7 @@ export class Hud {
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
     document.querySelector("#skills-title")!.textContent = t("skills");
+    document.querySelector("#quests-title")!.textContent = t("quests");
     document.querySelector("#skill-power-strike")!.textContent = t("powerStrike");
     document.querySelector("#skill-cleave")!.textContent = t("cleave");
     document.querySelector("#target-title")!.textContent = t("selectedTarget");
@@ -261,6 +280,35 @@ export class Hud {
       label.textContent = remaining > 0 ? `${(remaining / 1000).toFixed(1)}s` : "";
     }
   }
+
+  private renderQuest(quest: QuestView, mode: "available" | "active"): HTMLElement {
+    const row = document.createElement("div");
+    row.className = `quest-card${quest.completed ? " complete" : ""}`;
+    const pct = Math.max(0, Math.min(1, quest.progress / quest.required));
+    row.innerHTML = `
+      <strong>${escapeHtml(quest.title)}</strong>
+      <p>${escapeHtml(quest.description)}</p>
+      <div class="quest-progress"><span style="width: ${pct * 100}%"></span><label>${quest.progress} / ${quest.required}</label></div>
+      <em>${t("reward")}: ${quest.rewardGold} ${t("gold")} + ${quest.rewardExp} ${t("exp")}</em>
+      <button type="button">${mode === "available" ? t("accept") : quest.completed ? t("claim") : t("inProgress")}</button>
+    `;
+    const button = row.querySelector("button")!;
+    if (mode === "available") {
+      button.addEventListener("click", () => this.onAcceptQuest(quest.id));
+    } else if (quest.completed) {
+      button.addEventListener("click", () => this.onClaimQuest(quest.id));
+    } else {
+      button.setAttribute("disabled", "true");
+    }
+    return row;
+  }
+}
+
+function sectionTitle(label: string): HTMLElement {
+  const title = document.createElement("div");
+  title.className = "quest-section-title";
+  title.textContent = label;
+  return title;
 }
 
 function setBar(fillSelector: string, labelSelector: string, value: number, max: number, label: string): void {

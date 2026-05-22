@@ -37,6 +37,8 @@ import type {
   MonsterState,
   PlayerState,
   ChatMessage,
+  QuestListPayload,
+  QuestView,
   ShopItem,
   ServerToClientEvents,
   SkillId,
@@ -61,6 +63,52 @@ const ELITE_CHANCE = 0.15;
 const ELITE_REWARD_MULTIPLIER = 2.5;
 const WORLD_BOSS_RESPAWN_MS = 4 * 60 * 1000;
 const WORLD_BOSS_REWARD_MULTIPLIER = 8;
+const MAX_ACTIVE_QUESTS = 3;
+
+interface QuestTemplate {
+  id: string;
+  title: string;
+  description: string;
+  required: number;
+  rewardGold: number;
+  rewardExp: number;
+  objective: { kind: "killAny" } | { kind: "killLevel"; minLevel: number } | { kind: "reachLevel"; level: number };
+}
+
+interface ActiveQuestState {
+  questId: string;
+  progress: number;
+}
+
+const QUEST_TEMPLATES: QuestTemplate[] = [
+  {
+    id: "cull-greenwood",
+    title: "Cull Greenwood",
+    description: "Defeat 5 monsters anywhere.",
+    required: 5,
+    rewardGold: 45,
+    rewardExp: 90,
+    objective: { kind: "killAny" }
+  },
+  {
+    id: "prove-midlands",
+    title: "Prove the Midlands",
+    description: "Defeat 4 monsters level 4 or higher.",
+    required: 4,
+    rewardGold: 95,
+    rewardExp: 180,
+    objective: { kind: "killLevel", minLevel: 4 }
+  },
+  {
+    id: "reach-level-five",
+    title: "Reach Level 5",
+    description: "Reach character level 5.",
+    required: 5,
+    rewardGold: 150,
+    rewardExp: 260,
+    objective: { kind: "reachLevel", level: 5 }
+  }
+];
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -70,6 +118,7 @@ export class GameWorld {
   private readonly chatCooldowns = new Map<string, number>();
   private readonly lastTownHealTextAt = new Map<string, number>();
   private readonly autoRetarget = new Map<string, boolean>();
+  private readonly activeQuests = new Map<string, ActiveQuestState[]>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
   private readonly returningToSpawn = new Set<string>();
@@ -112,8 +161,10 @@ export class GameWorld {
       };
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
+      this.activeQuests.set(socket.id, []);
       socket.emit("init", { selfId: socket.id, snapshot: this.snapshot() });
       socket.emit("player", player);
+      this.emitQuestList(player);
       socket.emit("shopStock", this.shopStock);
       socket.emit("chatHistory", this.chatMessages);
       socket.emit("system", `Chào mừng trở lại, ${name}.`);
@@ -125,6 +176,53 @@ export class GameWorld {
 
     socket.on("setAutoRetarget", ({ enabled }) => {
       if (this.players.has(socket.id)) this.autoRetarget.set(socket.id, enabled);
+    });
+
+    socket.on("acceptQuest", ({ questId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const quest = questById(questId);
+      if (!quest) return;
+      const active = this.activeQuests.get(socket.id) ?? [];
+      if (active.some((entry) => entry.questId === questId)) {
+        socket.emit("system", "Quest already accepted.");
+        return;
+      }
+      if (active.length >= MAX_ACTIVE_QUESTS) {
+        socket.emit("system", "Quest log is full.");
+        return;
+      }
+      active.push({ questId, progress: initialQuestProgress(quest, player) });
+      this.activeQuests.set(socket.id, active);
+      this.updateReachLevelQuests(player);
+      this.emitQuestList(player);
+    });
+
+    socket.on("claimQuest", async ({ questId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.updateReachLevelQuests(player);
+      const active = this.activeQuests.get(socket.id) ?? [];
+      const index = active.findIndex((entry) => entry.questId === questId);
+      const template = questById(questId);
+      if (index < 0 || !template) return;
+      if (!isQuestComplete(active[index], template)) {
+        socket.emit("system", "Quest is not complete yet.");
+        this.emitQuestList(player);
+        return;
+      }
+      active.splice(index, 1);
+      player.stats.gold += template.rewardGold;
+      const leveled = grantExp(player.stats, template.rewardExp);
+      player.stats = leveled.stats;
+      this.emitFloating(player.id, player.position, template.rewardExp, "exp", `+${template.rewardExp} exp`);
+      this.emitFloating(player.id, player.position, template.rewardGold, "loot", `+${template.rewardGold} gold`);
+      if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
+      this.updateReachLevelQuests(player);
+      socket.emit("player", player);
+      socket.emit("system", `Quest complete: ${template.title}.`);
+      this.emitQuestList(player);
+      await this.repository.save(player);
     });
 
     socket.on("equipItem", async ({ itemId }) => {
@@ -346,6 +444,7 @@ export class GameWorld {
       this.chatCooldowns.delete(socket.id);
       this.lastTownHealTextAt.delete(socket.id);
       this.autoRetarget.delete(socket.id);
+      this.activeQuests.delete(socket.id);
     });
   }
 
@@ -548,6 +647,8 @@ export class GameWorld {
     const leveled = grantExp(player.stats, exp);
     player.stats = leveled.stats;
     player.stats.gold += gold;
+    this.updateQuestProgressForKill(player, monster);
+    if (leveled.leveled) this.updateReachLevelQuests(player);
     this.emitFloating(player.id, player.position, exp, "exp", `+${exp} exp`);
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
     if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
@@ -575,6 +676,7 @@ export class GameWorld {
     }
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });
     this.tryAutoRetarget(player);
+    this.emitQuestList(player);
 
     this.sockets.get(player.id)?.emit("player", player);
     void this.repository.save(player);
@@ -594,6 +696,34 @@ export class GameWorld {
         rerollMonsterRank(monster);
       }
     }
+  }
+
+  private updateQuestProgressForKill(player: PlayerState, monster: MonsterState): void {
+    const active = this.activeQuests.get(player.id);
+    if (!active) return;
+    for (const entry of active) {
+      const template = questById(entry.questId);
+      if (!template || isQuestComplete(entry, template)) continue;
+      if (template.objective.kind === "killAny" || (template.objective.kind === "killLevel" && monster.level >= template.objective.minLevel)) {
+        entry.progress = Math.min(template.required, entry.progress + 1);
+      }
+    }
+  }
+
+  private updateReachLevelQuests(player: PlayerState): void {
+    const active = this.activeQuests.get(player.id);
+    if (!active) return;
+    for (const entry of active) {
+      const template = questById(entry.questId);
+      if (template?.objective.kind === "reachLevel") {
+        entry.progress = Math.min(template.required, player.stats.level);
+      }
+    }
+  }
+
+  private emitQuestList(player: PlayerState): void {
+    this.updateReachLevelQuests(player);
+    this.sockets.get(player.id)?.emit("questList", questListFor(player, this.activeQuests.get(player.id) ?? []));
   }
 
   private cleanupGroundItems(now: number): void {
@@ -810,6 +940,46 @@ function createSkillCooldowns(): Record<SkillId, number> {
   return {
     powerStrike: 0,
     cleave: 0
+  };
+}
+
+function questById(questId: string): QuestTemplate | undefined {
+  return QUEST_TEMPLATES.find((quest) => quest.id === questId);
+}
+
+function initialQuestProgress(quest: QuestTemplate, player: PlayerState): number {
+  return quest.objective.kind === "reachLevel" ? Math.min(quest.required, player.stats.level) : 0;
+}
+
+function isQuestComplete(entry: ActiveQuestState, quest: QuestTemplate): boolean {
+  return entry.progress >= quest.required;
+}
+
+function questListFor(player: PlayerState, active: ActiveQuestState[]): QuestListPayload {
+  const activeIds = new Set(active.map((entry) => entry.questId));
+  return {
+    available: QUEST_TEMPLATES
+      .filter((quest) => !activeIds.has(quest.id))
+      .map((quest) => questView(quest, { questId: quest.id, progress: initialQuestProgress(quest, player) })),
+    active: active
+      .map((entry) => {
+        const quest = questById(entry.questId);
+        return quest ? questView(quest, entry) : undefined;
+      })
+      .filter((quest): quest is QuestView => Boolean(quest))
+  };
+}
+
+function questView(quest: QuestTemplate, entry: ActiveQuestState): QuestView {
+  return {
+    id: quest.id,
+    title: quest.title,
+    description: quest.description,
+    progress: Math.min(quest.required, entry.progress),
+    required: quest.required,
+    completed: isQuestComplete(entry, quest),
+    rewardGold: quest.rewardGold,
+    rewardExp: quest.rewardExp
   };
 }
 

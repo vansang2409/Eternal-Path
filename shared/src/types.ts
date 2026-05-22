@@ -112,6 +112,22 @@ export interface ChatMessage {
   sentAt: number;
 }
 
+export interface QuestView {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  required: number;
+  completed: boolean;
+  rewardGold: number;
+  rewardExp: number;
+}
+
+export interface QuestListPayload {
+  available: QuestView[];
+  active: QuestView[];
+}
+
 export type ShopItem = Item & { shopId: string };
 
 export interface GroundItem {
@@ -167,6 +183,7 @@ export interface ServerToClientEvents {
   loot: (event: LootEvent) => void;
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
+  questList: (payload: QuestListPayload) => void;
   chatHistory: (messages: ChatMessage[]) => void;
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;
@@ -177,6 +194,8 @@ export interface ClientToServerEvents {
   login: (payload: LoginPayload) => void;
   input: (input: ClientInput) => void;
   setAutoRetarget: (payload: { enabled: boolean }) => void;
+  acceptQuest: (payload: { questId: string }) => void;
+  claimQuest: (payload: { questId: string }) => void;
   equipItem: (payload: EquipItemPayload) => void;
   unequipItem: (payload: { slot: EquipmentSlot }) => void;
   targetMonster: (payload: TargetMonsterPayload) => void;
