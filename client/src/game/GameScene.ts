@@ -100,7 +100,8 @@ export class GameScene extends Phaser.Scene {
       for (let x = 0; x < WORLD_WIDTH; x += 1) {
         const town = x < 11 && y < 11;
         const road = x === 10 || y === 10 || (x > 18 && x < 42 && y === 22);
-        row.push(town ? 1 : road ? 2 : 0);
+        const deep = x >= 36 && y >= 12;
+        row.push(town ? 1 : road ? 2 : deep ? 3 : 0);
       }
       data.push(row);
     }
@@ -110,7 +111,20 @@ export class GameScene extends Phaser.Scene {
     map.createLayer(0, tiles!, 0, 0);
 
     this.add.rectangle(6 * TILE_SIZE, 5 * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
-    this.add.text(4.1 * TILE_SIZE, 3.7 * TILE_SIZE, t("town"), { fontFamily: "monospace", fontSize: "18px", color: "#f3e7bf" }).setDepth(2);
+    this.addZoneLabel(6 * TILE_SIZE, 4.6 * TILE_SIZE, t("town"), 18, "#f3e7bf");
+    this.addZoneLabel(19 * TILE_SIZE, 8.2 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
+    this.addZoneLabel(31.5 * TILE_SIZE, 20.5 * TILE_SIZE, t("zoneMidlands"), 15, "#d8d6c2");
+    this.addZoneLabel(42 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
+  }
+
+  private addZoneLabel(x: number, y: number, label: string, fontSize: number, color: string): void {
+    this.add.text(x, y, label, {
+      fontFamily: "monospace",
+      fontSize: `${fontSize}px`,
+      color,
+      stroke: "#080a0a",
+      strokeThickness: 4
+    }).setOrigin(0.5).setAlpha(0.82).setDepth(2);
   }
 
   private registerSocketEvents(): void {
