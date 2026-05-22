@@ -163,6 +163,8 @@ export class GameScene extends Phaser.Scene {
       this.applySnapshot(snapshot);
     });
 
+    this.socket.on("session", ({ token }) => localStorage.setItem("sessionToken", token));
+
     this.socket.on("snapshot", (snapshot) => this.applySnapshot(snapshot));
 
     this.socket.on("player", (player) => {
@@ -226,6 +228,7 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("partyInvite", (invite) => this.hud.showPartyInvite(invite));
     this.socket.on("system", (message) => {
       if (!this.loggedIn) {
+        localStorage.removeItem("sessionToken");
         const error = document.querySelector("#login-error");
         if (error) error.textContent = message;
       }
@@ -239,6 +242,7 @@ export class GameScene extends Phaser.Scene {
     const form = document.querySelector("#login-form") as HTMLFormElement;
     const emailInput = document.querySelector("#email-input") as HTMLInputElement;
     const nameInput = document.querySelector("#name-input") as HTMLInputElement;
+    const passwordInput = document.querySelector("#password-input") as HTMLInputElement;
     const error = document.querySelector("#login-error") as HTMLElement;
 
     this.captureFormEvents(overlay);
@@ -246,6 +250,7 @@ export class GameScene extends Phaser.Scene {
     document.querySelector("#login-copy")!.textContent = t("loginCopy");
     document.querySelector("#email-label")!.textContent = t("email");
     document.querySelector("#name-label")!.textContent = t("characterName");
+    document.querySelector("#password-label")!.textContent = t("password");
     document.querySelector("#login-button")!.textContent = t("enterGame");
     emailInput.value = localStorage.getItem("loginEmail") ?? "";
     nameInput.value = localStorage.getItem("accountName") ?? "";
@@ -254,15 +259,23 @@ export class GameScene extends Phaser.Scene {
       event.preventDefault();
       const email = emailInput.value.trim();
       const accountName = nameInput.value.trim() || email.split("@")[0] || "hero";
+      const password = passwordInput.value;
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         error.textContent = t("invalidEmail");
+        return;
+      }
+      if (password.length < 4) {
+        error.textContent = t("passwordHint");
         return;
       }
       error.textContent = "";
       localStorage.setItem("loginEmail", email);
       localStorage.setItem("accountName", accountName);
-      this.socket.emit("login", { email, accountName });
+      this.socket.emit("login", { email, accountName, password });
     });
+
+    const savedToken = localStorage.getItem("sessionToken");
+    if (savedToken) this.socket.emit("login", { token: savedToken });
     emailInput.focus();
   }
 

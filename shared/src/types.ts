@@ -175,8 +175,10 @@ export interface ClientInput {
 }
 
 export interface LoginPayload {
-  email: string;
+  email?: string;
   accountName?: string;
+  password?: string;
+  token?: string;
 }
 
 export interface EquipItemPayload {
@@ -197,6 +199,7 @@ export interface ChatPayload {
 
 export interface ServerToClientEvents {
   init: (data: { selfId: string; snapshot: WorldSnapshot }) => void;
+  session: (payload: { token: string }) => void;
   snapshot: (snapshot: WorldSnapshot) => void;
   player: (player: PlayerState) => void;
   floatingText: (event: FloatingTextEvent) => void;

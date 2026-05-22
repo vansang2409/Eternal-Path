@@ -132,6 +132,7 @@ export class GameWorld {
   private readonly parties = new Map<string, Party>();
   private readonly playerParty = new Map<string, string>();
   private readonly pendingInvites = new Map<string, string>();
+  private readonly sessions = new Map<string, { email: string; accountName: string }>();
   private readonly shopStock: ShopItem[] = createShopStock();
   private readonly groundItems = new Map<string, GroundItem>();
   private readonly returningToSpawn = new Set<string>();
@@ -152,18 +153,42 @@ export class GameWorld {
   }
 
   connect(socket: GameSocket): void {
-    socket.on("login", async ({ email, accountName }) => {
-      const normalizedEmail = normalizeEmail(email);
-      if (!normalizedEmail) {
-        socket.emit("system", "Vui lòng nhập email hợp lệ để vào game.");
-        return;
+    socket.on("login", async ({ email, accountName, password, token }) => {
+      let resolvedEmail: string;
+      let resolvedName: string;
+
+      if (token) {
+        const session = this.sessions.get(token);
+        if (!session) {
+          socket.emit("system", "Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
+          return;
+        }
+        resolvedEmail = session.email;
+        resolvedName = session.accountName;
+      } else {
+        const normalizedEmail = normalizeEmail(email ?? "");
+        if (!normalizedEmail) {
+          socket.emit("system", "Vui lòng nhập email hợp lệ để vào game.");
+          return;
+        }
+        if (!password || password.length < 4) {
+          socket.emit("system", "Mật khẩu phải có ít nhất 4 ký tự.");
+          return;
+        }
+        resolvedName = sanitizeName(accountName || normalizedEmail.split("@")[0]);
+        const auth = await this.repository.verifyOrCreateAuth(normalizedEmail, resolvedName, password);
+        if (!auth.ok) {
+          socket.emit("system", "Sai mật khẩu.");
+          return;
+        }
+        resolvedEmail = normalizedEmail;
       }
-      const name = sanitizeName(accountName || normalizedEmail.split("@")[0]);
-      const saved = await this.repository.load(normalizedEmail, name);
+
+      const saved = await this.repository.load(resolvedEmail, resolvedName);
       const player: PlayerState = {
         id: socket.id,
-        email: normalizedEmail,
-        accountName: name,
+        email: resolvedEmail,
+        accountName: resolvedName,
         position: saved.position ? { ...saved.position } : { ...townSpawn },
         velocity: { x: 0, y: 0 },
         facing: "down",
@@ -175,12 +200,15 @@ export class GameWorld {
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
+      const sessionToken = crypto.randomUUID();
+      this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
+      socket.emit("session", { token: sessionToken });
       socket.emit("init", { selfId: socket.id, snapshot: this.snapshot() });
       socket.emit("player", player);
       this.emitQuestList(player);
       socket.emit("shopStock", this.shopStock);
       socket.emit("chatHistory", this.chatMessages);
-      socket.emit("system", `Chào mừng trở lại, ${name}.`);
+      socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
     });
 
     socket.on("input", (input) => {

@@ -1,3 +1,4 @@
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type pg from "pg";
 import { baseStatsForLevel } from "@mmorpg/shared";
 import type { EquipmentItem, InventoryState, Item, PlayerState, Stats, Vec2 } from "@mmorpg/shared";
@@ -11,9 +12,50 @@ interface SavedPlayer {
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
+const memoryAuth = new Map<string, string>();
 
 export class PlayerRepository {
   constructor(private readonly pool?: pg.Pool) {}
+
+  async verifyOrCreateAuth(email: string, accountName: string, password: string): Promise<{ ok: boolean }> {
+    if (!this.pool) {
+      const existing = memoryAuth.get(email);
+      if (existing) return { ok: verifyPassword(password, existing) };
+      memoryAuth.set(email, hashPassword(password));
+      return { ok: true };
+    }
+
+    try {
+      const client = await this.pool.connect();
+      try {
+        const account = await client.query<{ id: string; password_hash: string | null }>(
+          "SELECT id, password_hash FROM accounts WHERE email = $1",
+          [email]
+        );
+        if (account.rows[0]) {
+          const stored = account.rows[0].password_hash;
+          if (stored) return { ok: verifyPassword(password, stored) };
+          await client.query("UPDATE accounts SET password_hash = $2, updated_at = now() WHERE id = $1", [account.rows[0].id, hashPassword(password)]);
+          return { ok: true };
+        }
+        await client.query(
+          `INSERT INTO accounts (username, email, password_hash)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, username = EXCLUDED.username, updated_at = now()`,
+          [accountName, email, hashPassword(password)]
+        );
+        return { ok: true };
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.warn("PostgreSQL auth failed. Falling back to memory auth.", error);
+      const existing = memoryAuth.get(email);
+      if (existing) return { ok: verifyPassword(password, existing) };
+      memoryAuth.set(email, hashPassword(password));
+      return { ok: true };
+    }
+  }
 
   async load(email: string, accountName: string): Promise<SavedPlayer> {
     if (!this.pool) return this.loadMemory(email, accountName);
@@ -215,4 +257,18 @@ async function insertItem(client: pg.PoolClient, characterId: string, item: Item
 
 function estimateLegacyValue(stats: any): number {
   return Math.max(10, Math.round((stats?.attack ?? 0) * 16 + (stats?.defense ?? 0) * 14 + (stats?.maxHp ?? 0) * 0.8));
+}
+
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const derived = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derived}`;
+}
+
+function verifyPassword(password: string, stored: string): boolean {
+  const [salt, key] = stored.split(":");
+  if (!salt || !key) return false;
+  const derived = scryptSync(password, salt, 64);
+  const keyBuffer = Buffer.from(key, "hex");
+  return keyBuffer.length === derived.length && timingSafeEqual(keyBuffer, derived);
 }
