@@ -53,6 +53,8 @@ const AUTO_RETARGET_RANGE = 260;
 const BAG_FULL_MESSAGE = "Túi đồ đã đầy.";
 const ELITE_CHANCE = 0.15;
 const ELITE_REWARD_MULTIPLIER = 2.5;
+const WORLD_BOSS_RESPAWN_MS = 4 * 60 * 1000;
+const WORLD_BOSS_REWARD_MULTIPLIER = 8;
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -490,12 +492,12 @@ export class GameWorld {
   }
 
   private killMonster(player: PlayerState, monster: MonsterState, now: number): void {
-    monster.respawnsAt = now + 6500 + monster.level * 900;
+    monster.respawnsAt = now + monster.respawnDurationMs;
     monster.velocity = { x: 0, y: 0 };
     monster.targetPlayerId = undefined;
     this.returningToSpawn.delete(monster.id);
 
-    const exp = Math.floor((28 + monster.level * 18) * (monster.elite ? ELITE_REWARD_MULTIPLIER : 1));
+    const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
     const gold = goldForMonster(monster);
     const leveled = grantExp(player.stats, exp);
     player.stats = leveled.stats;
@@ -504,7 +506,7 @@ export class GameWorld {
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
     if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
 
-    const lootItem = createLoot(monster.level, monster.type, monster.elite);
+    const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
     let collectedItem: Item | undefined;
     if (lootItem) {
       if (isBagFull(player)) {
@@ -522,6 +524,9 @@ export class GameWorld {
         }
       }
     }
+    if (monster.boss) {
+      this.io.emit("bossAnnounce", { kind: "defeat", bossName: monster.name, accountName: player.accountName });
+    }
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });
     this.tryAutoRetarget(player);
 
@@ -536,7 +541,12 @@ export class GameWorld {
       monster.position = { ...monster.spawn };
       monster.respawnsAt = undefined;
       this.returningToSpawn.delete(monster.id);
-      rerollMonsterRank(monster);
+      if (monster.boss) {
+        resetBoss(monster);
+        this.io.emit("bossAnnounce", { kind: "spawn", bossName: monster.name });
+      } else {
+        rerollMonsterRank(monster);
+      }
     }
   }
 
@@ -671,7 +681,7 @@ function createMonsterSpawns(): MonsterState[] {
     ["elderHydra", 45, 29]
   ] as const;
 
-  return spawns.map(([type, tx, ty], index) => {
+  const monsters: MonsterState[] = spawns.map(([type, tx, ty], index) => {
     const definition = getMonsterDefinition(type);
     const elite = rollElite();
     const maxHp = monsterMaxHp(definition, elite);
@@ -680,6 +690,7 @@ function createMonsterSpawns(): MonsterState[] {
       type,
       name: definition.name,
       elite,
+      boss: false,
       level: definition.level,
       position: { x: tx * TILE_SIZE, y: ty * TILE_SIZE },
       spawn: { x: tx * TILE_SIZE, y: ty * TILE_SIZE },
@@ -690,9 +701,12 @@ function createMonsterSpawns(): MonsterState[] {
       defense: monsterDefense(definition, elite),
       aggroRadius: 135 + definition.level * 8,
       leashRadius: 220 + definition.level * 10,
+      respawnDurationMs: normalRespawnDurationMs(definition.level),
       lastAttackAt: 0
     };
   });
+  monsters.push(createWorldBoss());
+  return monsters;
 }
 
 function rerollMonsterRank(monster: MonsterState): void {
@@ -702,6 +716,44 @@ function rerollMonsterRank(monster: MonsterState): void {
   monster.hp = monster.maxHp;
   monster.attack = monsterAttack(definition, monster.elite);
   monster.defense = monsterDefense(definition, monster.elite);
+}
+
+function createWorldBoss(): MonsterState {
+  const definition = getMonsterDefinition("eternalWarden");
+  const maxHp = monsterMaxHp(definition);
+  return {
+    id: "world-boss-eternal-warden",
+    type: definition.type,
+    name: definition.name,
+    elite: false,
+    boss: true,
+    level: definition.level,
+    position: { x: 44 * TILE_SIZE, y: 25 * TILE_SIZE },
+    spawn: { x: 44 * TILE_SIZE, y: 25 * TILE_SIZE },
+    velocity: { x: 0, y: 0 },
+    maxHp,
+    hp: 0,
+    attack: monsterAttack(definition),
+    defense: monsterDefense(definition),
+    aggroRadius: 220,
+    leashRadius: 280,
+    respawnsAt: Date.now() + WORLD_BOSS_RESPAWN_MS,
+    respawnDurationMs: WORLD_BOSS_RESPAWN_MS,
+    lastAttackAt: 0
+  };
+}
+
+function resetBoss(monster: MonsterState): void {
+  const definition = getMonsterDefinition(monster.type);
+  monster.elite = false;
+  monster.maxHp = monsterMaxHp(definition);
+  monster.hp = monster.maxHp;
+  monster.attack = monsterAttack(definition);
+  monster.defense = monsterDefense(definition);
+}
+
+function normalRespawnDurationMs(level: number): number {
+  return 6500 + level * 900;
 }
 
 function rollElite(): boolean {
@@ -768,11 +820,16 @@ function goldForMonster(monster: MonsterState): number {
   const base = 6 + monster.level * 6;
   const toughness = definition.hpMultiplier + definition.attackMultiplier + definition.defenseMultiplier;
   const gold = Math.max(3, Math.floor(base * toughness * 0.55 + Math.random() * (monster.level * 8 + 8)));
-  return monster.elite ? Math.floor(gold * ELITE_REWARD_MULTIPLIER) : gold;
+  return Math.floor(gold * rewardMultiplier(monster));
 }
 
 function sellValue(value: number): number {
   return Math.max(1, Math.floor(value * SELL_VALUE_RATE));
+}
+
+function rewardMultiplier(monster: MonsterState): number {
+  if (monster.boss) return WORLD_BOSS_REWARD_MULTIPLIER;
+  return monster.elite ? ELITE_REWARD_MULTIPLIER : 1;
 }
 
 function isBagFull(player: PlayerState): boolean {

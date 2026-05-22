@@ -222,6 +222,19 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     dropRate: 0.7,
     preferredSlots: ["weapon", "armor", "ring"],
     lootTheme: "Hydra"
+  },
+  eternalWarden: {
+    type: "eternalWarden",
+    name: "Eternal Warden",
+    level: 12,
+    tint: 0xffd36b,
+    scale: 5.2,
+    hpMultiplier: 3.2,
+    attackMultiplier: 2.1,
+    defenseMultiplier: 2,
+    dropRate: 1,
+    preferredSlots: ["weapon", "armor", "ring"],
+    lootTheme: "Warden"
   }
 };
 

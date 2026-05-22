@@ -70,6 +70,7 @@ export interface MonsterState {
   type: string;
   name: string;
   elite: boolean;
+  boss: boolean;
   position: Vec2;
   velocity: Vec2;
   spawn: Vec2;
@@ -82,6 +83,7 @@ export interface MonsterState {
   leashRadius: number;
   targetPlayerId?: string;
   respawnsAt?: number;
+  respawnDurationMs: number;
   lastAttackAt: number;
 }
 
@@ -162,6 +164,7 @@ export interface ServerToClientEvents {
   floatingText: (event: FloatingTextEvent) => void;
   loot: (event: LootEvent) => void;
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
+  bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
   chatHistory: (messages: ChatMessage[]) => void;
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;

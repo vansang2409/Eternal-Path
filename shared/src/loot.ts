@@ -22,12 +22,12 @@ export function rollRarity(): Rarity {
   return "common";
 }
 
-export function createLoot(monsterLevel: number, monsterType = "forestSlime", elite = false): Item | undefined {
+export function createLoot(monsterLevel: number, monsterType = "forestSlime", elite = false, guaranteed = false): Item | undefined {
   const monster = getMonsterDefinition(monsterType);
   const dropRate = elite ? Math.min(0.95, monster.dropRate + 0.35) : monster.dropRate;
-  if (Math.random() > dropRate) return undefined;
+  if (!guaranteed && Math.random() > dropRate) return undefined;
 
-  const rarity = elite ? rollEliteRarity() : rollRarity();
+  const rarity = elite || guaranteed ? rollEliteRarity() : rollRarity();
   const slotPool = Math.random() < 0.72 ? monster.preferredSlots : slots;
   const slot = slotPool[Math.floor(Math.random() * slotPool.length)];
   const power = rarity === "epic" ? 3 : rarity === "rare" ? 2 : 1;
