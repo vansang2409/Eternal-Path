@@ -13,6 +13,17 @@
 - Reviewed by manager against Task 1.1 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 1 · Task 1.2 — Selected-target panel + auto-retarget
+
+- Added a "Selected Target" HUD panel showing target name, level, and live HP bar; hides when no living target
+- Added an "Auto-retarget" toggle (default OFF) wired to a new `setAutoRetarget` socket event
+- Server picks the nearest living monster within 260px when the current target dies and auto-retarget is on; clears target if none in range
+- Refactored target selection so a target stays selected out of range (panel persists) but attacks only fire within range
+- PvP targeting remains manual; auto-retarget never targets players
+- Reviewed by manager against Task 1.2 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+- Note: target panel currently displays monster targets only; PvP targets do not populate the panel (acceptable for now)
+
 ## 2026-05-21
 
 ### Initial Prototype
