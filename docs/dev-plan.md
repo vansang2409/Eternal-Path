@@ -239,6 +239,22 @@ Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyê
 
 ---
 
+## 4e. SPRINT 5 — "Nền tảng"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1–4 đã xong. Codex tạm hết token nên các task sprint này do quản lý tự code, vẫn theo brief + acceptance.
+
+Bối cảnh: theo lựa chọn của chủ dự án — củng cố nền tảng trước khi cho người ngoài chơi. Xử lý các mục trong watchlist.
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 5.1 | `task-5.1-save-position.md` | Lưu & khôi phục vị trí nhân vật (cột pos_x/pos_y + repository + login) |
+| 5.2 | `task-5.2-password-session.md` | Mật khẩu (hash bằng node:crypto) + session token tự đăng nhập lại |
+| 5.3 | `task-5.3-reduce-db-churn.md` | Đánh dấu dirty + flush định kỳ thay vì ghi DB mỗi hành động |
+
+Lưu ý môi trường: server đang chạy in-memory (chưa set DATABASE_URL), nên đường Postgres được đảm bảo qua schema + review, đường in-memory test được qua build + chơi thử.
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
