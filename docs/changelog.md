@@ -23,6 +23,20 @@
 - Minor cosmetic note: before its first timed spawn the boss shows as a faint respawning sprite at its spot (harmless)
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 3 · Task 3.3 — Deep zone + zone labels
+
+- Regrouped monster spawns into difficulty bands: low-level near town, mid in the middle, highest-level + boss in the far "deep" region (stats and spawn count unchanged)
+- Added on-map zone labels (Town / Greenwood / Midlands / Deeplands), localized VI/EN
+- Added a distinct deep-zone ground tile (4th tileset tile, dark-purple) so the region reads as different
+- Initial submission referenced tile index 3 without adding the tile (deep area would render blank); manager flagged it and Codex shipped a follow-up fix (`f4e574f`) extending the tileset to 4 tiles
+- Reviewed by manager against Task 3.3 acceptance criteria: PASS (after fix)
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 3 complete
+
+- All three Sprint 3 tasks (elite monsters, world boss, deep zone + labels) shipped and manager-reviewed PASS
+- World now has progression of place (town -> greenwood -> midlands -> deeplands), elite spikes, and a timed boss with global announcements
+
 ## 2026-05-22 (Sprint 2)
 
 ### Sprint 2 · Task 2.1 — Inventory capacity + sell junk
