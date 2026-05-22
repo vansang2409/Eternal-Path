@@ -65,8 +65,12 @@ const dictionaries = {
     buy: "Mua",
     sell: "Bán",
     drop: "Thả",
+    use: "Dùng",
     price: "Giá",
-    value: "Giá trị"
+    value: "Giá trị",
+    consumable: "Tiêu hao",
+    heals: "Hồi",
+    itemPotion: "BÌNH"
   },
   en: {
     connecting: "Connecting...",
@@ -132,8 +136,12 @@ const dictionaries = {
     buy: "Buy",
     sell: "Sell",
     drop: "Drop",
+    use: "Use",
     price: "Price",
-    value: "Value"
+    value: "Value",
+    consumable: "consumable",
+    heals: "Heals",
+    itemPotion: "POT"
   }
 } as const;
 

@@ -1,6 +1,6 @@
 import type pg from "pg";
 import { baseStatsForLevel } from "@mmorpg/shared";
-import type { InventoryState, PlayerState, Stats } from "@mmorpg/shared";
+import type { EquipmentItem, InventoryState, Item, PlayerState, Stats } from "@mmorpg/shared";
 
 interface SavedPlayer {
   accountName: string;
@@ -47,7 +47,7 @@ export class PlayerRepository {
           [characterId]
         );
         const items = await client.query(
-          `SELECT id, name, rarity, slot, stats, value, equipped
+          `SELECT id, name, rarity, kind, slot, stats, heal, value, equipped
            FROM inventory_items WHERE character_id = $1
            ORDER BY created_at ASC`,
           [characterId]
@@ -60,7 +60,12 @@ export class PlayerRepository {
           stats: normalizeStats(statsRow.rows[0]),
           inventory: {
             items: items.rows.filter((item) => !item.equipped).map(normalizeItem),
-            equipped: Object.fromEntries(items.rows.filter((item) => item.equipped).map((item) => [item.slot, normalizeItem(item)]))
+            equipped: Object.fromEntries(items.rows
+              .filter((item) => item.equipped && normalizeItem(item).kind === "equipment")
+              .map((item) => {
+                const normalized = normalizeItem(item) as EquipmentItem;
+                return [normalized.slot, normalized];
+              }))
           }
         };
       } catch (error) {
@@ -150,22 +155,45 @@ function normalizeStats(row: Stats | undefined): Stats {
   };
 }
 
-function normalizeItem(row: any) {
+function normalizeItem(row: any): Item {
+  const kind = row.kind === "consumable" ? "consumable" : "equipment";
+  if (kind === "consumable") {
+    return {
+      id: row.id,
+      name: row.name,
+      rarity: row.rarity,
+      kind,
+      heal: row.heal ?? row.stats?.heal ?? 0,
+      value: row.value ?? estimateLegacyValue(row.stats)
+    };
+  }
   return {
     id: row.id,
     name: row.name,
     rarity: row.rarity,
+    kind,
     slot: row.slot,
-    stats: row.stats,
+    stats: row.stats ?? {},
     value: row.value ?? estimateLegacyValue(row.stats)
   };
 }
 
-async function insertItem(client: pg.PoolClient, characterId: string, item: any, equipped: boolean): Promise<void> {
+async function insertItem(client: pg.PoolClient, characterId: string, item: Item, equipped: boolean): Promise<void> {
   await client.query(
-    `INSERT INTO inventory_items (id, character_id, name, rarity, slot, stats, value, equipped)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [item.id, characterId, item.name, item.rarity, item.slot, item.stats, item.value ?? estimateLegacyValue(item.stats), equipped]
+    `INSERT INTO inventory_items (id, character_id, name, rarity, kind, slot, stats, heal, value, equipped)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [
+      item.id,
+      characterId,
+      item.name,
+      item.rarity,
+      item.kind,
+      item.kind === "equipment" ? item.slot : null,
+      item.kind === "equipment" ? item.stats : {},
+      item.kind === "consumable" ? item.heal : null,
+      item.value,
+      equipped && item.kind === "equipment"
+    ]
   );
 }
 

@@ -591,6 +591,19 @@ h2 {
   background: #241d09;
 }
 
+.item.consumable,
+.shop-item.consumable {
+  border-color: #4fb7a1;
+  box-shadow:
+    inset 0 0 8px rgba(79, 183, 161, 0.28),
+    inset 2px 2px 5px rgba(0, 0, 0, 0.82);
+}
+
+.item.consumable i,
+.shop-item.consumable i {
+  color: #76ead4;
+}
+
 #inventory-actions {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 52px 42px 42px;

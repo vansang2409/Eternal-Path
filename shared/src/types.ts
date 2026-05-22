@@ -3,6 +3,7 @@ export type Direction = "up" | "down" | "left" | "right";
 export type Rarity = "common" | "rare" | "epic";
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
+export type ItemKind = "equipment" | "consumable";
 
 export interface Vec2 {
   x: number;
@@ -25,18 +26,30 @@ export interface ItemStats {
   maxHp?: number;
 }
 
-export interface Item {
+export interface BaseItem {
   id: string;
   name: string;
   rarity: Rarity;
-  slot: EquipmentSlot;
-  stats: ItemStats;
+  kind: ItemKind;
   value: number;
 }
 
+export interface EquipmentItem extends BaseItem {
+  kind: "equipment";
+  slot: EquipmentSlot;
+  stats: ItemStats;
+}
+
+export interface ConsumableItem extends BaseItem {
+  kind: "consumable";
+  heal: number;
+}
+
+export type Item = EquipmentItem | ConsumableItem;
+
 export interface InventoryState {
   items: Item[];
-  equipped: Partial<Record<EquipmentSlot, Item>>;
+  equipped: Partial<Record<EquipmentSlot, EquipmentItem>>;
 }
 
 export interface PlayerState {
@@ -94,9 +107,7 @@ export interface ChatMessage {
   sentAt: number;
 }
 
-export interface ShopItem extends Item {
-  shopId: string;
-}
+export type ShopItem = Item & { shopId: string };
 
 export interface GroundItem {
   id: string;
@@ -164,6 +175,7 @@ export interface ClientToServerEvents {
   targetMonster: (payload: TargetMonsterPayload) => void;
   targetPlayer: (payload: TargetPlayerPayload) => void;
   buyShopItem: (payload: { shopId: string }) => void;
+  useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;

@@ -20,6 +20,7 @@ export class Hud {
     private readonly onBuy: (shopId: string) => void,
     private readonly onSell: (itemId: string) => void,
     private readonly onDrop: (itemId: string) => void,
+    private readonly onUse: (itemId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void
   ) {
     this.applyLanguage();
@@ -101,9 +102,9 @@ export class Hud {
     root.innerHTML = "";
     for (const item of items) {
       const row = document.createElement("button");
-      row.className = `shop-item ${rarityClass[item.rarity]}`;
+      row.className = `shop-item ${rarityClass[item.rarity]}${item.kind === "consumable" ? " consumable" : ""}`;
       row.title = describeItem(item);
-      row.innerHTML = `<i class="material-symbols-outlined">${materialIcon(item.slot)}</i><strong>${escapeHtml(item.name)}</strong><span>${t("price")}: ${item.value} ${t("gold")}</span><em>${shortStats(item)}</em>`;
+      row.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><strong>${escapeHtml(item.name)}</strong><span>${t("price")}: ${item.value} ${t("gold")}</span><em>${shortStats(item)}</em>`;
       row.addEventListener("click", () => this.onBuy(item.shopId));
       root.append(row);
     }
@@ -153,9 +154,9 @@ export class Hud {
     }
     for (const item of this.player.inventory.items) {
       const button = document.createElement("button");
-      button.className = `item ${rarityClass[item.rarity]}${item.id === this.selectedItemId ? " selected" : ""}`;
+      button.className = `item ${rarityClass[item.rarity]}${item.kind === "consumable" ? " consumable" : ""}${item.id === this.selectedItemId ? " selected" : ""}`;
       button.draggable = true;
-      button.innerHTML = `<i class="material-symbols-outlined">${materialIcon(item.slot)}</i><small>${itemIcon(item)}</small>`;
+      button.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><small>${itemIcon(item)}</small>`;
       button.title = describeItem(item);
       button.dataset.tooltip = describeItem(item);
       button.addEventListener("dragstart", (event) => {
@@ -175,7 +176,7 @@ export class Hud {
         this.selectedItemId = item.id;
         this.renderInventory();
       });
-      button.addEventListener("dblclick", () => this.onEquip(item.id));
+      button.addEventListener("dblclick", () => item.kind === "consumable" ? this.onUse(item.id) : this.onEquip(item.id));
       button.addEventListener("contextmenu", (event) => event.preventDefault());
       root.append(button);
     }
@@ -198,13 +199,16 @@ export class Hud {
       return;
     }
     actions.classList.remove("hidden");
+    const primaryAction = item.kind === "consumable" ? "use" : "equip";
+    const primaryLabel = item.kind === "consumable" ? t("use") : t("equipment");
     actions.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
-      <button type="button" data-action="equip">${t("equipment")}</button>
+      <button type="button" data-action="${primaryAction}">${primaryLabel}</button>
       <button type="button" data-action="sell">${t("sell")}</button>
       <button type="button" data-action="drop">${t("drop")}</button>
     `;
     actions.querySelector('[data-action="equip"]')?.addEventListener("click", () => this.onEquip(item.id));
+    actions.querySelector('[data-action="use"]')?.addEventListener("click", () => this.onUse(item.id));
     actions.querySelector('[data-action="sell"]')?.addEventListener("click", () => this.onSell(item.id));
     actions.querySelector('[data-action="drop"]')?.addEventListener("click", () => this.onDrop(item.id));
   }
@@ -232,15 +236,20 @@ function setBar(fillSelector: string, labelSelector: string, value: number, max:
 }
 
 function describeItem(item: Item): string {
+  if (item.kind === "consumable") {
+    return `${item.name}\n${t(item.rarity)} ${t("consumable")}\n${t("heals")}: ${item.heal} ${t("hp")}\n${t("value")}: ${item.value} ${t("gold")}`;
+  }
   const stats = Object.entries(item.stats).map(([key, value]) => `+${value} ${statLabel(key)}`).join(" ");
   return `${item.name}\n${t(item.rarity)} ${t(item.slot)}\n${stats}\n${t("value")}: ${item.value} ${t("gold")}`;
 }
 
 function shortStats(item: Item): string {
+  if (item.kind === "consumable") return `${t("heals")} ${item.heal} ${t("hp")}`;
   return Object.entries(item.stats).map(([key, value]) => `+${value} ${statLabel(key)}`).join("  ");
 }
 
 function itemIcon(item: Item): string {
+  if (item.kind === "consumable") return t("itemPotion");
   const icons: Record<EquipmentSlot, string> = {
     weapon: t("itemWeapon"),
     helmet: t("itemHelmet"),
@@ -249,6 +258,10 @@ function itemIcon(item: Item): string {
     ring: t("itemRing")
   };
   return icons[item.slot];
+}
+
+function itemMaterialIcon(item: Item): string {
+  return item.kind === "consumable" ? "local_drink" : materialIcon(item.slot);
 }
 
 function materialIcon(slot: EquipmentSlot): string {

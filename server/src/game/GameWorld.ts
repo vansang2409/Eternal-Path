@@ -24,8 +24,10 @@ import type {
   ClientInput,
   ClientToServerEvents,
   Direction,
+  EquipmentItem,
   FloatingTextEvent,
   GroundItem,
+  Item,
   MonsterState,
   PlayerState,
   ChatMessage,
@@ -116,7 +118,12 @@ export class GameWorld {
       if (!player) return;
       const itemIndex = player.inventory.items.findIndex((item) => item.id === itemId);
       if (itemIndex < 0) return;
-      const [item] = player.inventory.items.splice(itemIndex, 1);
+      const item = player.inventory.items[itemIndex];
+      if (item.kind !== "equipment") {
+        socket.emit("system", "Vật phẩm này không thể trang bị.");
+        return;
+      }
+      player.inventory.items.splice(itemIndex, 1);
       const old = player.inventory.equipped[item.slot];
       if (old) {
         removeItemStats(player, old);
@@ -170,17 +177,27 @@ export class GameWorld {
         return;
       }
       player.stats.gold -= offer.value;
-      const item = {
-        id: `${Date.now()}-${Math.random()}`,
-        name: offer.name,
-        rarity: offer.rarity,
-        slot: offer.slot,
-        stats: { ...offer.stats },
-        value: offer.value
-      };
+      const item = cloneShopItem(offer);
       player.inventory.items.push(item);
       socket.emit("player", player);
       socket.emit("system", `Đã mua ${offer.name} với ${offer.value} vàng.`);
+      await this.repository.save(player);
+    });
+
+    socket.on("useItem", async ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const itemIndex = player.inventory.items.findIndex((item) => item.id === itemId);
+      if (itemIndex < 0) return;
+      const item = player.inventory.items[itemIndex];
+      if (item.kind !== "consumable") return;
+      const before = player.stats.hp;
+      player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + item.heal);
+      const healed = player.stats.hp - before;
+      player.inventory.items.splice(itemIndex, 1);
+      socket.emit("player", player);
+      if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
+      socket.emit("system", healed > 0 ? `Đã dùng ${item.name} hồi ${healed} máu.` : "Máu đã đầy.");
       await this.repository.save(player);
     });
 
@@ -610,14 +627,26 @@ function facingFromAxis(axis: { x: number; y: number }, fallback: Direction): Di
   return fallback;
 }
 
-function addItemStats(player: PlayerState, item: { stats: { attack?: number; defense?: number; maxHp?: number } }): void {
+function cloneShopItem(offer: ShopItem): Item {
+  const base = {
+    id: crypto.randomUUID(),
+    name: offer.name,
+    rarity: offer.rarity,
+    value: offer.value
+  };
+  return offer.kind === "consumable"
+    ? { ...base, kind: "consumable", heal: offer.heal }
+    : { ...base, kind: "equipment", slot: offer.slot, stats: { ...offer.stats } };
+}
+
+function addItemStats(player: PlayerState, item: EquipmentItem): void {
   player.stats.attack += item.stats.attack ?? 0;
   player.stats.defense += item.stats.defense ?? 0;
   player.stats.maxHp += item.stats.maxHp ?? 0;
   player.stats.hp = Math.min(player.stats.hp + (item.stats.maxHp ?? 0), player.stats.maxHp);
 }
 
-function removeItemStats(player: PlayerState, item: { stats: { attack?: number; defense?: number; maxHp?: number } }): void {
+function removeItemStats(player: PlayerState, item: EquipmentItem): void {
   player.stats.attack -= item.stats.attack ?? 0;
   player.stats.defense -= item.stats.defense ?? 0;
   player.stats.maxHp = Math.max(1, player.stats.maxHp - (item.stats.maxHp ?? 0));

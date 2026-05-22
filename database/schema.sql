@@ -36,14 +36,19 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   character_id uuid NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
   name varchar(80) NOT NULL,
   rarity varchar(16) NOT NULL CHECK (rarity IN ('common', 'rare', 'epic')),
-  slot varchar(16) NOT NULL CHECK (slot IN ('weapon', 'helmet', 'armor', 'boots', 'ring')),
+  kind varchar(16) NOT NULL DEFAULT 'equipment' CHECK (kind IN ('equipment', 'consumable')),
+  slot varchar(16) CHECK (slot IN ('weapon', 'helmet', 'armor', 'boots', 'ring')),
   stats jsonb NOT NULL DEFAULT '{}',
+  heal integer,
   value integer NOT NULL DEFAULT 0,
   equipped boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS value integer NOT NULL DEFAULT 0;
+ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS kind varchar(16) NOT NULL DEFAULT 'equipment';
+ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS heal integer;
+ALTER TABLE inventory_items ALTER COLUMN slot DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS inventory_items_character_idx ON inventory_items(character_id);
 CREATE UNIQUE INDEX IF NOT EXISTS equipped_slot_unique_idx

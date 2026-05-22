@@ -29,6 +29,7 @@ export function baseStatsForLevel(level: number): Stats {
 export function applyEquipmentStats(stats: Stats, items: Item[]): Stats {
   const boosted = { ...stats };
   for (const item of items) {
+    if (item.kind !== "equipment") continue;
     boosted.attack += item.stats.attack ?? 0;
     boosted.defense += item.stats.defense ?? 0;
     boosted.maxHp += item.stats.maxHp ?? 0;
