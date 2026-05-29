@@ -1,5 +1,18 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 6)
+
+### Sprint 6 · Task 6.1 — Choose an AFK farming zone
+
+- Added shared `AfkZone` type (`greenwood` | `midlands` | `deeplands`) and `afkZone` on `PlayerState`, with `DEFAULT_AFK_ZONE = "greenwood"`
+- Added `AFK_ZONE_DEFINITIONS` (effective level + reward-rate placeholders) and `isAfkZone` guard, used by Task 6.2
+- Server `setAfkZone` handler validates, no-ops if unchanged, otherwise updates and `markDirty`
+- Persistence reuses the existing `characters.map_id` column (idempotent ALTER) plus memory; `loadMemory` normalizes legacy saves
+- HUD AFK panel with 3 buttons localized via existing `zoneGreenwood/Midlands/Deeplands` keys; selected button highlighted
+- Initial submission shipped corrupted-encoded Vietnamese fallback labels in `index.html` and a hardcoded "Vung AFK" title; manager flagged it and Codex shipped a polish fix (`b074db1`) using ASCII fallbacks + a new `afkZone` i18n key
+- Reviewed by manager against Task 6.1 acceptance criteria: PASS (after fix)
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 5)
 
 ### Sprint 5 · Task 5.1 — Save & restore player position
