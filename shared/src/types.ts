@@ -5,6 +5,7 @@ export type Rarity = "common" | "rare" | "epic";
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type ItemKind = "equipment" | "consumable";
 export type SkillId = "powerStrike" | "cleave";
+export type AfkZone = "greenwood" | "midlands" | "deeplands";
 
 export interface Vec2 {
   x: number;
@@ -62,6 +63,7 @@ export interface PlayerState {
   facing: Direction;
   stats: Stats;
   inventory: InventoryState;
+  afkZone: AfkZone;
   lastAttackAt: number;
   skillCooldowns: Record<SkillId, number>;
   targetId?: string;
@@ -218,6 +220,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   login: (payload: LoginPayload) => void;
   input: (input: ClientInput) => void;
+  setAfkZone: (payload: { zone: AfkZone }) => void;
   setAutoRetarget: (payload: { enabled: boolean }) => void;
   acceptQuest: (payload: { questId: string }) => void;
   claimQuest: (payload: { questId: string }) => void;

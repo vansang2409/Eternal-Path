@@ -1,4 +1,4 @@
-import type { Item, Stats } from "./types.js";
+import type { AfkZone, Item, Stats } from "./types.js";
 
 export const TILE_SIZE = 32;
 export const WORLD_WIDTH = 48;
@@ -15,6 +15,17 @@ export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;
 export const CLEAVE_DAMAGE_MULTIPLIER = 1.3;
 export const CLEAVE_RADIUS = 90;
+export const DEFAULT_AFK_ZONE: AfkZone = "greenwood";
+export const AFK_ZONE_DEFINITIONS: Array<{ id: AfkZone; effectiveLevel: number; expRate: number; goldRate: number }> = [
+  { id: "greenwood", effectiveLevel: 2, expRate: 1, goldRate: 1 },
+  { id: "midlands", effectiveLevel: 4, expRate: 1.7, goldRate: 1.55 },
+  { id: "deeplands", effectiveLevel: 7, expRate: 2.8, goldRate: 2.35 }
+];
+const AFK_ZONE_IDS = new Set<AfkZone>(AFK_ZONE_DEFINITIONS.map((zone) => zone.id));
+
+export function isAfkZone(value: unknown): value is AfkZone {
+  return typeof value === "string" && AFK_ZONE_IDS.has(value as AfkZone);
+}
 
 export function expToNextLevel(level: number): number {
   return Math.floor(60 + level * level * 38);

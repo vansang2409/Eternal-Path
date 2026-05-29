@@ -1,13 +1,14 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type pg from "pg";
-import { baseStatsForLevel } from "@mmorpg/shared";
-import type { EquipmentItem, InventoryState, Item, PlayerState, Stats, Vec2 } from "@mmorpg/shared";
+import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone } from "@mmorpg/shared";
+import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerState, Stats, Vec2 } from "@mmorpg/shared";
 
 interface SavedPlayer {
   accountName: string;
   email: string;
   stats: Stats;
   inventory: InventoryState;
+  afkZone: AfkZone;
   position?: Vec2;
 }
 
@@ -84,9 +85,10 @@ export class PlayerRepository {
           [accountId]
         )).rows[0].id;
 
-        const statsRow = await client.query<Stats & { posX: number | null; posY: number | null }>(
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
+        const statsRow = await client.query<Stats & { posX: number | null; posY: number | null; afkZone: string | null }>(
           `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold,
-                  position_x AS "posX", position_y AS "posY"
+                  position_x AS "posX", position_y AS "posY", map_id AS "afkZone"
            FROM characters WHERE id = $1`,
           [characterId]
         );
@@ -103,6 +105,7 @@ export class PlayerRepository {
           accountName,
           email,
           stats: normalizeStats(characterRow),
+          afkZone: normalizeAfkZone(characterRow?.afkZone),
           position: characterRow && characterRow.posX != null && characterRow.posY != null
             ? { x: characterRow.posX, y: characterRow.posY }
             : undefined,
@@ -134,6 +137,7 @@ export class PlayerRepository {
       email: player.email,
       stats: player.stats,
       inventory: player.inventory,
+      afkZone: player.afkZone,
       position: { x: player.position.x, y: player.position.y }
     };
     memorySaves.set(player.email, saved);
@@ -150,10 +154,11 @@ export class PlayerRepository {
         if (!character.rows[0]) return;
         const characterId = character.rows[0].id;
 
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
         await client.query(
           `UPDATE characters
            SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8,
-               position_x = $9, position_y = $10, updated_at = now()
+               position_x = $9, position_y = $10, map_id = $11, updated_at = now()
            WHERE id = $1`,
           [
             characterId,
@@ -165,7 +170,8 @@ export class PlayerRepository {
             player.stats.defense,
             player.stats.gold,
             Math.round(player.position.x),
-            Math.round(player.position.y)
+            Math.round(player.position.y),
+            player.afkZone
           ]
         );
         await client.query("DELETE FROM inventory_items WHERE character_id = $1", [characterId]);
@@ -189,14 +195,23 @@ export class PlayerRepository {
 
   private loadMemory(email: string, accountName: string): SavedPlayer {
     const saved = memorySaves.get(email);
-    if (saved) return structuredClone(saved);
+    if (saved) {
+      const cloned = structuredClone(saved);
+      cloned.afkZone = normalizeAfkZone(cloned.afkZone);
+      return cloned;
+    }
     return {
       accountName,
       email,
       stats: baseStatsForLevel(1),
+      afkZone: DEFAULT_AFK_ZONE,
       inventory: { items: [], equipped: {} }
     };
   }
+}
+
+function normalizeAfkZone(value: unknown): AfkZone {
+  return isAfkZone(value) ? value : DEFAULT_AFK_ZONE;
 }
 
 function normalizeStats(row: Partial<Stats> | undefined): Stats {

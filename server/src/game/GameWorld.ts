@@ -3,6 +3,7 @@ import {
   CLEAVE_COOLDOWN_MS,
   CLEAVE_DAMAGE_MULTIPLIER,
   CLEAVE_RADIUS,
+  DEFAULT_AFK_ZONE,
   INVENTORY_CAPACITY,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
@@ -21,6 +22,7 @@ import {
   distance,
   getMonsterDefinition,
   grantExp,
+  isAfkZone,
   monsterAttack,
   monsterDefense,
   monsterMaxHp,
@@ -214,6 +216,7 @@ export class GameWorld {
         facing: "down",
         stats: saved.stats,
         inventory: saved.inventory,
+        afkZone: saved.afkZone ?? DEFAULT_AFK_ZONE,
         lastAttackAt: 0,
         skillCooldowns: createSkillCooldowns()
       };
@@ -237,6 +240,18 @@ export class GameWorld {
 
     socket.on("setAutoRetarget", ({ enabled }) => {
       if (this.players.has(socket.id)) this.autoRetarget.set(socket.id, enabled);
+    });
+
+    socket.on("setAfkZone", ({ zone }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !isAfkZone(zone)) return;
+      if (player.afkZone === zone) {
+        socket.emit("player", player);
+        return;
+      }
+      player.afkZone = zone;
+      socket.emit("player", player);
+      this.markDirty(player);
     });
 
     socket.on("acceptQuest", ({ questId }) => {

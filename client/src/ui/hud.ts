@@ -1,5 +1,5 @@
-import { INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { ChatMessage, EquipmentSlot, Item, MonsterState, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
+import type { AfkZone, ChatMessage, EquipmentSlot, Item, MonsterState, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -29,6 +29,7 @@ export class Hud {
     private readonly onAcceptQuest: (questId: string) => void,
     private readonly onClaimQuest: (questId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void,
+    private readonly onAfkZone: (zone: AfkZone) => void,
     private readonly onInviteParty: () => void,
     private readonly onAcceptParty: (partyId: string) => void,
     private readonly onLeaveParty: () => void
@@ -42,6 +43,10 @@ export class Hud {
     document.querySelectorAll<HTMLButtonElement>(".skill-button").forEach((button) => {
       const skillId = button.dataset.skill as SkillId;
       button.addEventListener("click", () => this.onSkill(skillId));
+    });
+    document.querySelectorAll<HTMLButtonElement>(".afk-zone-button").forEach((button) => {
+      const zone = button.dataset.afkZone;
+      if (isAfkZone(zone)) button.addEventListener("click", () => this.onAfkZone(zone));
     });
     window.setInterval(() => this.renderSkillCooldowns(), 100);
     (document.querySelector("#party-invite-button") as HTMLButtonElement).addEventListener("click", () => this.onInviteParty());
@@ -79,6 +84,7 @@ export class Hud {
     `;
     this.renderEquipment();
     this.renderInventory();
+    this.renderAfkZone();
     this.skillCooldowns = player.skillCooldowns;
     this.renderSkillCooldowns();
   }
@@ -328,12 +334,16 @@ export class Hud {
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
     document.querySelector("#skills-title")!.textContent = t("skills");
+    document.querySelector("#afk-title")!.textContent = getLanguage() === "en" ? "AFK Zone" : "Vung AFK";
     document.querySelector("#quests-title")!.textContent = t("quests");
     document.querySelector("#party-title")!.textContent = t("party");
     document.querySelector("#party-invite-button")!.textContent = t("partyInviteTarget");
     document.querySelector("#party-leave-button")!.textContent = t("partyLeave");
     document.querySelector("#skill-power-strike")!.textContent = t("powerStrike");
     document.querySelector("#skill-cleave")!.textContent = t("cleave");
+    for (const zone of AFK_ZONE_DEFINITIONS) {
+      document.querySelector(`[data-afk-zone="${zone.id}"]`)!.textContent = t(afkZoneLabelKey(zone.id));
+    }
     document.querySelector("#target-title")!.textContent = t("selectedTarget");
     document.querySelector("#auto-retarget-label")!.textContent = t("autoRetarget");
     document.querySelector("#inventory-title")!.textContent = t("inventory");
@@ -358,6 +368,18 @@ export class Hud {
     }
   }
 
+  private renderAfkZone(): void {
+    if (!this.player) return;
+    for (const zone of AFK_ZONE_DEFINITIONS) {
+      const button = document.querySelector(`[data-afk-zone="${zone.id}"]`) as HTMLButtonElement | null;
+      if (!button) continue;
+      const selected = this.player.afkZone === zone.id;
+      button.classList.toggle("selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+      button.title = `${t(afkZoneLabelKey(zone.id))} - ${t("levelShort")} ${zone.effectiveLevel}`;
+    }
+  }
+
   private renderQuest(quest: QuestView, mode: "available" | "active"): HTMLElement {
     const row = document.createElement("div");
     row.className = `quest-card${quest.completed ? " complete" : ""}`;
@@ -379,6 +401,16 @@ export class Hud {
     }
     return row;
   }
+}
+
+function isAfkZone(value: unknown): value is AfkZone {
+  return AFK_ZONE_DEFINITIONS.some((zone) => zone.id === value);
+}
+
+function afkZoneLabelKey(zone: AfkZone): "zoneGreenwood" | "zoneMidlands" | "zoneDeeplands" {
+  if (zone === "midlands") return "zoneMidlands";
+  if (zone === "deeplands") return "zoneDeeplands";
+  return "zoneGreenwood";
 }
 
 function sectionTitle(label: string): HTMLElement {
