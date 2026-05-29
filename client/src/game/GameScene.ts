@@ -86,8 +86,6 @@ export class GameScene extends Phaser.Scene {
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
-    this.applyPixelPerfectZoom();
-    this.scale.on("resize", () => this.applyPixelPerfectZoom());
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
       if (!pointer.rightButtonDown() || objects.length > 0) return;
@@ -135,25 +133,13 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  private applyPixelPerfectZoom(): void {
-    const worldW = WORLD_WIDTH * TILE_SIZE;
-    const worldH = WORLD_HEIGHT * TILE_SIZE;
-    // Largest integer scale that still keeps the world visible on the smaller axis.
-    // Integer zoom keeps pixel art crisp (no fractional scaling artefacts).
-    const fitX = this.scale.width / worldW;
-    const fitY = this.scale.height / worldH;
-    const need = Math.max(fitX, fitY); // fill the viewport
-    const zoom = Math.max(1, Math.ceil(need));
-    this.cameras.main.setZoom(zoom);
-  }
-
   private createMap(): void {
     const data: number[][] = [];
     for (let y = 0; y < WORLD_HEIGHT; y += 1) {
       const row: number[] = [];
       for (let x = 0; x < WORLD_WIDTH; x += 1) {
         const town = x < 11 && y < 11;
-        const road = x === 10 || y === 10 || (x > 18 && x < 42 && y === 22);
+        const road = x === 10 || y === 10 || (x > 18 && x < 58 && y === 22);
         const deep = x >= 36 && y >= 12;
         row.push(town ? 1 : road ? 2 : deep ? 3 : 0);
       }
@@ -168,7 +154,8 @@ export class GameScene extends Phaser.Scene {
     this.addZoneLabel(7 * TILE_SIZE, 9 * TILE_SIZE, t("town"), 18, "#f3e7bf");
     this.addZoneLabel(19 * TILE_SIZE, 12 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
     this.addZoneLabel(31.5 * TILE_SIZE, 20.5 * TILE_SIZE, t("zoneMidlands"), 15, "#d8d6c2");
-    this.addZoneLabel(42 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
+    this.addZoneLabel(45 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
+    this.addZoneLabel(56 * TILE_SIZE, 32 * TILE_SIZE, t("zoneDeeplands"), 14, "#c79bff");
   }
 
   private addZoneLabel(x: number, y: number, label: string, fontSize: number, color: string): void {
