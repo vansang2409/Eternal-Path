@@ -1,20 +1,18 @@
 import type { Server, Socket } from "socket.io";
 import {
-  CLEAVE_COOLDOWN_MS,
-  CLEAVE_DAMAGE_MULTIPLIER,
-  CLEAVE_RADIUS,
   DEFAULT_AFK_ZONE,
+  DEFAULT_EQUIPPED_SKILLS,
   INVENTORY_CAPACITY,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
   OFFLINE_REWARD_MAX_MS,
   OFFLINE_REWARD_MIN_MS,
-  POWER_STRIKE_COOLDOWN_MS,
-  POWER_STRIKE_DAMAGE_MULTIPLIER,
   PLAYER_ATTACK_COOLDOWN_MS,
   PLAYER_ATTACK_RANGE,
   PLAYER_SPEED,
+  SKILL_CATALOG,
+  SKILL_LOADOUT_SIZE,
   TILE_SIZE,
   WORLD_HEIGHT,
   WORLD_WIDTH,
@@ -26,6 +24,7 @@ import {
   getMonsterDefinition,
   grantExp,
   isAfkZone,
+  isSkillId,
   monsterAttack,
   monsterDefense,
   monsterMaxHp,
@@ -255,7 +254,8 @@ export class GameWorld {
         afkZone: saved.afkZone ?? DEFAULT_AFK_ZONE,
         achievements: saved.achievements ?? [],
         lastAttackAt: 0,
-        skillCooldowns: createSkillCooldowns()
+        skillCooldowns: createSkillCooldowns(),
+        equippedSkills: sanitizeEquippedSkills(saved.equippedSkills)
       };
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
@@ -525,8 +525,35 @@ export class GameWorld {
 
     socket.on("useSkill", ({ skillId }) => {
       const player = this.players.get(socket.id);
-      if (!player) return;
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
       this.useSkill(player, skillId, Date.now());
+    });
+
+    socket.on("equipSkill", ({ slot, skillId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
+      if (!Number.isInteger(slot) || slot < 0 || slot >= SKILL_LOADOUT_SIZE) {
+        socket.emit("system", "Ô kỹ năng không hợp lệ.");
+        return;
+      }
+      if (!isSkillId(skillId)) {
+        socket.emit("system", "Kỹ năng không tồn tại.");
+        return;
+      }
+      const existingIndex = player.equippedSkills.indexOf(skillId);
+      if (existingIndex === slot) return;
+      const current = player.equippedSkills[slot];
+      player.equippedSkills[slot] = skillId;
+      if (existingIndex >= 0) player.equippedSkills[existingIndex] = current;
+      this.markDirty(player);
+      socket.emit("player", player);
+      socket.emit("system", `Đã gắn ${skillLabel(skillId)} vào ô ${slot + 1}.`);
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -825,30 +852,54 @@ export class GameWorld {
   }
 
   private useSkill(player: PlayerState, skillId: SkillId, now: number): void {
+    if (!isSkillId(skillId)) return;
+    if (!player.equippedSkills.includes(skillId)) {
+      this.sockets.get(player.id)?.emit("system", "Kỹ năng này chưa được gắn vào ô.");
+      return;
+    }
     if (now < player.skillCooldowns[skillId]) {
       this.sockets.get(player.id)?.emit("system", "Kỹ năng đang hồi.");
       return;
     }
+    const info = SKILL_CATALOG[skillId];
+    const label = skillLabel(skillId);
 
-    if (skillId === "powerStrike") {
-      const target = this.selectedLivingMonster(player);
-      if (!target || distance(player.position, target.position) > PLAYER_ATTACK_RANGE) {
-        this.sockets.get(player.id)?.emit("system", "Cần chọn quái trong tầm để dùng Power Strike.");
+    if (info.effect === "healSelf") {
+      if (player.stats.hp >= player.stats.maxHp) {
+        this.sockets.get(player.id)?.emit("system", "Máu đã đầy.");
         return;
       }
-      player.skillCooldowns.powerStrike = now + POWER_STRIKE_COOLDOWN_MS;
-      this.damageMonster(player, target, POWER_STRIKE_DAMAGE_MULTIPLIER, now, "Power");
+      const healAmount = Math.ceil(player.stats.maxHp * (info.healPercent ?? 0));
+      const before = player.stats.hp;
+      player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + healAmount);
+      const healed = player.stats.hp - before;
+      player.skillCooldowns[skillId] = now + info.cooldownMs;
+      this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
 
-    const targets = this.monsters.filter((monster) => !monster.respawnsAt && monster.hp > 0 && distance(player.position, monster.position) <= CLEAVE_RADIUS);
-    if (targets.length === 0) {
-      this.sockets.get(player.id)?.emit("system", "Không có quái nào trong tầm Cleave.");
+    if (info.effect === "damageSingle") {
+      const target = this.selectedLivingMonster(player);
+      if (!target || distance(player.position, target.position) > PLAYER_ATTACK_RANGE) {
+        this.sockets.get(player.id)?.emit("system", `Cần chọn quái trong tầm để dùng ${label}.`);
+        return;
+      }
+      player.skillCooldowns[skillId] = now + info.cooldownMs;
+      this.damageMonster(player, target, info.damageMultiplier ?? 1, now, label);
+      this.sockets.get(player.id)?.emit("player", player);
       return;
     }
-    player.skillCooldowns.cleave = now + CLEAVE_COOLDOWN_MS;
-    for (const monster of targets) this.damageMonster(player, monster, CLEAVE_DAMAGE_MULTIPLIER, now, "Cleave");
+
+    // damageAoe
+    const radius = info.aoeRadius ?? 100;
+    const targets = this.monsters.filter((monster) => !monster.respawnsAt && monster.hp > 0 && distance(player.position, monster.position) <= radius);
+    if (targets.length === 0) {
+      this.sockets.get(player.id)?.emit("system", `Không có quái nào trong tầm ${label}.`);
+      return;
+    }
+    player.skillCooldowns[skillId] = now + info.cooldownMs;
+    for (const monster of targets) this.damageMonster(player, monster, info.damageMultiplier ?? 1, now, label);
     this.sockets.get(player.id)?.emit("player", player);
   }
 
@@ -1261,8 +1312,46 @@ function rollElite(): boolean {
 function createSkillCooldowns(): Record<SkillId, number> {
   return {
     powerStrike: 0,
-    cleave: 0
+    cleave: 0,
+    swiftStrike: 0,
+    heal: 0,
+    piercingStrike: 0,
+    whirlwind: 0
   };
+}
+
+function sanitizeEquippedSkills(input: SkillId[] | undefined): SkillId[] {
+  const seen = new Set<SkillId>();
+  const result: SkillId[] = [];
+  if (Array.isArray(input)) {
+    for (const id of input) {
+      if (isSkillId(id) && !seen.has(id)) {
+        seen.add(id);
+        result.push(id);
+        if (result.length >= SKILL_LOADOUT_SIZE) break;
+      }
+    }
+  }
+  for (const id of DEFAULT_EQUIPPED_SKILLS) {
+    if (result.length >= SKILL_LOADOUT_SIZE) break;
+    if (!seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  return result;
+}
+
+function skillLabel(id: SkillId): string {
+  const labels: Record<SkillId, string> = {
+    powerStrike: "Power",
+    cleave: "Cleave",
+    swiftStrike: "Swift",
+    heal: "Heal",
+    piercingStrike: "Pierce",
+    whirlwind: "Whirl"
+  };
+  return labels[id];
 }
 
 function questById(questId: string): QuestTemplate | undefined {

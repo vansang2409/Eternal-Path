@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -12,7 +12,7 @@ export class Hud {
   private player?: PlayerState;
   private selectedItemId?: string;
   private autoRetargetEnabled = false;
-  private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0 };
+  private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0, swiftStrike: 0, heal: 0, piercingStrike: 0, whirlwind: 0 };
   private party: PartyView | null = null;
   private pendingInvitePartyId?: string;
   private offlineRewardsOpen = false;
@@ -27,6 +27,7 @@ export class Hud {
     private readonly onUse: (itemId: string) => void,
     private readonly onSellJunk: () => void,
     private readonly onSkill: (skillId: SkillId) => void,
+    private readonly onEquipSkill: (slot: number, skillId: SkillId) => void,
     private readonly onAcceptQuest: (questId: string) => void,
     private readonly onClaimQuest: (questId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void,
@@ -48,10 +49,6 @@ export class Hud {
     muteButton.addEventListener("click", () => {
       this.onToggleMuted();
       this.renderSoundToggle();
-    });
-    document.querySelectorAll<HTMLButtonElement>(".skill-button").forEach((button) => {
-      const skillId = button.dataset.skill as SkillId;
-      button.addEventListener("click", () => this.onSkill(skillId));
     });
     document.querySelectorAll<HTMLButtonElement>(".afk-zone-button").forEach((button) => {
       const zone = button.dataset.afkZone;
@@ -109,7 +106,65 @@ export class Hud {
     this.renderAfkZone();
     this.renderAchievements();
     this.skillCooldowns = player.skillCooldowns;
+    this.renderSkillBar();
+    this.renderSkillPicker();
     this.renderSkillCooldowns();
+  }
+
+  private renderSkillBar(): void {
+    if (!this.player) return;
+    const root = document.querySelector("#skill-bar")!;
+    root.innerHTML = "";
+    for (let slot = 0; slot < SKILL_LOADOUT_SIZE; slot++) {
+      const skillId = this.player.equippedSkills[slot];
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "skill-button";
+      if (skillId) {
+        button.dataset.skill = skillId;
+        const name = t(skillNameKey(skillId));
+        const info = SKILL_CATALOG[skillId];
+        button.title = `${name} - CD ${(info.cooldownMs / 1000).toFixed(1)}s`;
+        button.innerHTML = `<kbd>${slot + 1}</kbd><strong>${escapeHtml(name)}</strong><span data-cooldown="${skillId}"></span>`;
+        button.addEventListener("click", () => this.onSkill(skillId));
+      } else {
+        button.classList.add("empty");
+        button.disabled = true;
+        button.innerHTML = `<kbd>${slot + 1}</kbd><strong>—</strong>`;
+      }
+      root.append(button);
+    }
+  }
+
+  private renderSkillPicker(): void {
+    if (!this.player) return;
+    const root = document.querySelector("#skill-picker")!;
+    root.innerHTML = "";
+    for (const id of SKILL_IDS) {
+      const equippedSlot = this.player.equippedSkills.indexOf(id);
+      const info = SKILL_CATALOG[id];
+      const card = document.createElement("div");
+      card.className = `skill-card${equippedSlot >= 0 ? " equipped" : ""}`;
+      card.innerHTML = `
+        <div class="skill-card-head">
+          <strong>${escapeHtml(t(skillNameKey(id)))}</strong>
+          ${equippedSlot >= 0 ? `<span class="slot-tag">${t("slot")} ${equippedSlot + 1}</span>` : ""}
+        </div>
+        <p>${escapeHtml(t(skillDescKey(id)))}</p>
+        <em>CD ${(info.cooldownMs / 1000).toFixed(1)}s</em>
+        <div class="slot-buttons">
+          ${Array.from({ length: SKILL_LOADOUT_SIZE }, (_, slot) => {
+            const cls = this.player!.equippedSkills[slot] === id ? "active" : "";
+            return `<button type="button" data-slot="${slot}" class="${cls}">${slot + 1}</button>`;
+          }).join("")}
+        </div>
+      `;
+      card.querySelectorAll<HTMLButtonElement>(".slot-buttons button").forEach((btn) => {
+        const slot = Number(btn.dataset.slot);
+        btn.addEventListener("click", () => this.onEquipSkill(slot, id));
+      });
+      root.append(card);
+    }
   }
 
   setTarget(monster?: MonsterState): void {
@@ -404,8 +459,7 @@ export class Hud {
     document.querySelector("#party-title")!.textContent = t("party");
     document.querySelector("#party-invite-button")!.textContent = t("partyInviteTarget");
     document.querySelector("#party-leave-button")!.textContent = t("partyLeave");
-    document.querySelector("#skill-power-strike")!.textContent = t("powerStrike");
-    document.querySelector("#skill-cleave")!.textContent = t("cleave");
+    document.querySelector("#skill-picker-title")!.textContent = t("learnSkills");
     for (const zone of AFK_ZONE_DEFINITIONS) {
       document.querySelector(`[data-afk-zone="${zone.id}"]`)!.textContent = t(afkZoneLabelKey(zone.id));
     }
@@ -434,8 +488,10 @@ export class Hud {
   }
 
   private renderSkillCooldowns(): void {
+    if (!this.player) return;
     const now = Date.now();
-    for (const skillId of ["powerStrike", "cleave"] as const) {
+    for (const skillId of this.player.equippedSkills) {
+      if (!skillId) continue;
       const remaining = Math.max(0, this.skillCooldowns[skillId] - now);
       const button = document.querySelector(`[data-skill="${skillId}"]`) as HTMLButtonElement | null;
       const label = document.querySelector(`[data-cooldown="${skillId}"]`) as HTMLElement | null;
@@ -540,6 +596,35 @@ function statCard(stat: AllocatableStat, className: string, icon: string, label:
 
 function isAllocatableStat(value: unknown): value is AllocatableStat {
   return value === "attack" || value === "defense" || value === "maxHp";
+}
+
+type SkillNameKey = "skillPowerStrike" | "skillCleave" | "skillSwiftStrike" | "skillHeal" | "skillPiercingStrike" | "skillWhirlwind";
+type SkillDescKey = "skillPowerStrikeDesc" | "skillCleaveDesc" | "skillSwiftStrikeDesc" | "skillHealDesc" | "skillPiercingStrikeDesc" | "skillWhirlwindDesc";
+
+const SKILL_NAME_KEYS: Record<SkillId, SkillNameKey> = {
+  powerStrike: "skillPowerStrike",
+  cleave: "skillCleave",
+  swiftStrike: "skillSwiftStrike",
+  heal: "skillHeal",
+  piercingStrike: "skillPiercingStrike",
+  whirlwind: "skillWhirlwind"
+};
+
+const SKILL_DESC_KEYS: Record<SkillId, SkillDescKey> = {
+  powerStrike: "skillPowerStrikeDesc",
+  cleave: "skillCleaveDesc",
+  swiftStrike: "skillSwiftStrikeDesc",
+  heal: "skillHealDesc",
+  piercingStrike: "skillPiercingStrikeDesc",
+  whirlwind: "skillWhirlwindDesc"
+};
+
+function skillNameKey(id: SkillId): SkillNameKey {
+  return SKILL_NAME_KEYS[id];
+}
+
+function skillDescKey(id: SkillId): SkillDescKey {
+  return SKILL_DESC_KEYS[id];
 }
 
 function formatElapsed(elapsedMs: number): string {

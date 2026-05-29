@@ -4,7 +4,13 @@ export type Rarity = "common" | "rare" | "epic";
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type ItemKind = "equipment" | "consumable";
-export type SkillId = "powerStrike" | "cleave";
+export type SkillId =
+  | "powerStrike"
+  | "cleave"
+  | "swiftStrike"
+  | "heal"
+  | "piercingStrike"
+  | "whirlwind";
 export type AfkZone = "greenwood" | "midlands" | "deeplands";
 export type AllocatableStat = "attack" | "defense" | "maxHp";
 
@@ -75,6 +81,7 @@ export interface PlayerState {
   achievements: string[];
   lastAttackAt: number;
   skillCooldowns: Record<SkillId, number>;
+  equippedSkills: SkillId[];
   targetId?: string;
 }
 
@@ -252,6 +259,7 @@ export interface ClientToServerEvents {
   targetPlayer: (payload: TargetPlayerPayload) => void;
   buyShopItem: (payload: { shopId: string }) => void;
   useSkill: (payload: { skillId: SkillId }) => void;
+  equipSkill: (payload: { slot: number; skillId: SkillId }) => void;
   useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;

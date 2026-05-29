@@ -1,4 +1,4 @@
-import type { AfkZone, Item, Stats } from "./types.js";
+import type { AfkZone, Item, SkillId, Stats } from "./types.js";
 
 export const TILE_SIZE = 32;
 export const WORLD_WIDTH = 48;
@@ -15,6 +15,42 @@ export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;
 export const CLEAVE_DAMAGE_MULTIPLIER = 1.3;
 export const CLEAVE_RADIUS = 90;
+export const SWIFT_STRIKE_COOLDOWN_MS = 2000;
+export const SWIFT_STRIKE_DAMAGE_MULTIPLIER = 1.0;
+export const HEAL_COOLDOWN_MS = 12000;
+export const HEAL_PERCENT = 0.30;
+export const PIERCING_STRIKE_COOLDOWN_MS = 5000;
+export const PIERCING_STRIKE_DAMAGE_MULTIPLIER = 1.7;
+export const WHIRLWIND_COOLDOWN_MS = 10000;
+export const WHIRLWIND_DAMAGE_MULTIPLIER = 1.0;
+export const WHIRLWIND_RADIUS = 130;
+export const SKILL_LOADOUT_SIZE = 4;
+export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike", "heal"];
+
+export interface SkillInfo {
+  id: SkillId;
+  cooldownMs: number;
+  effect: "damageSingle" | "damageAoe" | "healSelf";
+  damageMultiplier?: number;
+  aoeRadius?: number;
+  healPercent?: number;
+}
+
+export const SKILL_CATALOG: Record<SkillId, SkillInfo> = {
+  powerStrike: { id: "powerStrike", cooldownMs: POWER_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: POWER_STRIKE_DAMAGE_MULTIPLIER },
+  cleave: { id: "cleave", cooldownMs: CLEAVE_COOLDOWN_MS, effect: "damageAoe", damageMultiplier: CLEAVE_DAMAGE_MULTIPLIER, aoeRadius: CLEAVE_RADIUS },
+  swiftStrike: { id: "swiftStrike", cooldownMs: SWIFT_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: SWIFT_STRIKE_DAMAGE_MULTIPLIER },
+  heal: { id: "heal", cooldownMs: HEAL_COOLDOWN_MS, effect: "healSelf", healPercent: HEAL_PERCENT },
+  piercingStrike: { id: "piercingStrike", cooldownMs: PIERCING_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: PIERCING_STRIKE_DAMAGE_MULTIPLIER },
+  whirlwind: { id: "whirlwind", cooldownMs: WHIRLWIND_COOLDOWN_MS, effect: "damageAoe", damageMultiplier: WHIRLWIND_DAMAGE_MULTIPLIER, aoeRadius: WHIRLWIND_RADIUS }
+};
+
+export const SKILL_IDS = Object.keys(SKILL_CATALOG) as SkillId[];
+
+export function isSkillId(value: unknown): value is SkillId {
+  return typeof value === "string" && value in SKILL_CATALOG;
+}
+
 export const DEFAULT_AFK_ZONE: AfkZone = "greenwood";
 export const OFFLINE_REWARD_MIN_MS = 5 * 60 * 1000;
 export const OFFLINE_REWARD_MAX_MS = 8 * 60 * 60 * 1000;

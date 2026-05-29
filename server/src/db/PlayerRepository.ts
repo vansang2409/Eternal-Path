@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type pg from "pg";
-import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone } from "@mmorpg/shared";
-import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerState, Stats, Vec2 } from "@mmorpg/shared";
+import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone, isSkillId } from "@mmorpg/shared";
+import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerState, SkillId, Stats, Vec2 } from "@mmorpg/shared";
 
 interface SavedPlayer {
   accountName: string;
@@ -11,6 +11,7 @@ interface SavedPlayer {
   inventory: InventoryState;
   afkZone: AfkZone;
   achievements: string[];
+  equippedSkills?: SkillId[];
   lastSeenAt?: number;
   position?: Vec2;
 }
@@ -92,11 +93,13 @@ export class PlayerRepository {
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS achievements jsonb NOT NULL DEFAULT '[]'::jsonb");
-        const statsRow = await client.query<Stats & { unspentPoints: number | null; posX: number | null; posY: number | null; afkZone: string | null; achievements: unknown; lastSeenAt: Date | string | number | null }>(
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS equipped_skills jsonb NOT NULL DEFAULT '[]'::jsonb");
+        const statsRow = await client.query<Stats & { unspentPoints: number | null; posX: number | null; posY: number | null; afkZone: string | null; achievements: unknown; equippedSkills: unknown; lastSeenAt: Date | string | number | null }>(
           `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold,
                   unspent_points AS "unspentPoints",
                   position_x AS "posX", position_y AS "posY", map_id AS "afkZone",
                   achievements,
+                  equipped_skills AS "equippedSkills",
                   last_seen_at AS "lastSeenAt"
            FROM characters WHERE id = $1`,
           [characterId]
@@ -117,6 +120,7 @@ export class PlayerRepository {
           unspentPoints: Math.max(0, characterRow?.unspentPoints ?? 0),
           afkZone: normalizeAfkZone(characterRow?.afkZone),
           achievements: normalizeAchievements(characterRow?.achievements),
+          equippedSkills: normalizeEquippedSkills(characterRow?.equippedSkills),
           lastSeenAt: normalizeLastSeenAt(characterRow?.lastSeenAt),
           position: characterRow && characterRow.posX != null && characterRow.posY != null
             ? { x: characterRow.posX, y: characterRow.posY }
@@ -152,6 +156,7 @@ export class PlayerRepository {
       inventory: player.inventory,
       afkZone: player.afkZone,
       achievements: [...player.achievements],
+      equippedSkills: [...player.equippedSkills],
       lastSeenAt: Date.now(),
       position: { x: player.position.x, y: player.position.y }
     };
@@ -173,11 +178,13 @@ export class PlayerRepository {
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS achievements jsonb NOT NULL DEFAULT '[]'::jsonb");
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS equipped_skills jsonb NOT NULL DEFAULT '[]'::jsonb");
         await client.query(
           `UPDATE characters
            SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8,
                position_x = $9, position_y = $10, map_id = $11, unspent_points = $12,
-               achievements = $13::jsonb, last_seen_at = now(), updated_at = now()
+               achievements = $13::jsonb, equipped_skills = $14::jsonb,
+               last_seen_at = now(), updated_at = now()
            WHERE id = $1`,
           [
             characterId,
@@ -192,7 +199,8 @@ export class PlayerRepository {
             Math.round(player.position.y),
             player.afkZone,
             player.unspentPoints,
-            JSON.stringify(player.achievements)
+            JSON.stringify(player.achievements),
+            JSON.stringify(player.equippedSkills)
           ]
         );
         await client.query("DELETE FROM inventory_items WHERE character_id = $1", [characterId]);
@@ -239,6 +247,15 @@ export class PlayerRepository {
 function normalizeAchievements(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.filter((id): id is string => typeof id === "string"))];
+}
+
+function normalizeEquippedSkills(value: unknown): SkillId[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const result: SkillId[] = [];
+  for (const id of value) {
+    if (isSkillId(id) && !result.includes(id)) result.push(id);
+  }
+  return result.length > 0 ? result : undefined;
 }
 
 function normalizeAfkZone(value: unknown): AfkZone {
