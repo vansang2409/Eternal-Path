@@ -23,7 +23,7 @@ export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
   private hud!: Hud;
   private selfId = "";
-  private cursors!: Record<"Q" | "ONE" | "TWO" | "THREE" | "FOUR", Phaser.Input.Keyboard.Key>;
+  private cursors!: Record<"F" | "Q" | "W" | "E" | "R", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
   private names = new Map<string, Phaser.GameObjects.Text>();
@@ -67,6 +67,7 @@ export class GameScene extends Phaser.Scene {
         this.socket.emit("useSkill", { skillId });
       },
       (slot, skillId) => this.socket.emit("equipSkill", { slot, skillId }),
+      (skillId) => this.socket.emit("learnSkill", { skillId }),
       (questId) => this.socket.emit("acceptQuest", { questId }),
       (questId) => this.socket.emit("claimQuest", { questId }),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled }),
@@ -81,7 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.socket = createSocket();
     this.registerSocketEvents();
 
-    this.cursors = this.input.keyboard!.addKeys("Q,ONE,TWO,THREE,FOUR") as Record<"Q" | "ONE" | "TWO" | "THREE" | "FOUR", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R") as Record<"F" | "Q" | "W" | "E" | "R", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
@@ -111,11 +112,11 @@ export class GameScene extends Phaser.Scene {
       right: false,
       moveTarget: this.moveTarget ? { x: this.moveTarget.x, y: this.moveTarget.y } : undefined
     };
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useFirstPotion();
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.ONE)) this.useSkillSlot(0);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.TWO)) this.useSkillSlot(1);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.THREE)) this.useSkillSlot(2);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.FOUR)) this.useSkillSlot(3);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.F)) this.useFirstPotion();
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useSkillSlot(0);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.W)) this.useSkillSlot(1);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) this.useSkillSlot(2);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.R)) this.useSkillSlot(3);
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
@@ -333,7 +334,7 @@ export class GameScene extends Phaser.Scene {
   private enableGameKeyboard(): void {
     if (!this.input.keyboard) return;
     this.input.keyboard.enabled = true;
-    this.cursors = this.input.keyboard.addKeys("Q,ONE,TWO,THREE,FOUR") as Record<"Q" | "ONE" | "TWO" | "THREE" | "FOUR", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard.addKeys("F,Q,W,E,R") as Record<"F" | "Q" | "W" | "E" | "R", Phaser.Input.Keyboard.Key>;
   }
 
   private captureFormEvents(overlay: HTMLElement): void {

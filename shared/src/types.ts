@@ -10,7 +10,17 @@ export type SkillId =
   | "swiftStrike"
   | "heal"
   | "piercingStrike"
-  | "whirlwind";
+  | "whirlwind"
+  | "swiftBlade"
+  | "greaterHeal"
+  | "lifedrain"
+  | "flameBurst"
+  | "thunderStrike"
+  | "icicleStorm"
+  | "shadowAssault"
+  | "healingWave"
+  | "divineLight"
+  | "voidNova";
 export type AfkZone = "greenwood" | "midlands" | "deeplands";
 export type AllocatableStat = "attack" | "defense" | "maxHp";
 
@@ -82,6 +92,7 @@ export interface PlayerState {
   lastAttackAt: number;
   skillCooldowns: Record<SkillId, number>;
   equippedSkills: SkillId[];
+  learnedSkills: SkillId[];
   targetId?: string;
 }
 
@@ -260,6 +271,7 @@ export interface ClientToServerEvents {
   buyShopItem: (payload: { shopId: string }) => void;
   useSkill: (payload: { skillId: SkillId }) => void;
   equipSkill: (payload: { slot: number; skillId: SkillId }) => void;
+  learnSkill: (payload: { skillId: SkillId }) => void;
   useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;

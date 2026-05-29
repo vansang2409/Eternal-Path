@@ -12,7 +12,7 @@ export class Hud {
   private player?: PlayerState;
   private selectedItemId?: string;
   private autoRetargetEnabled = false;
-  private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0, swiftStrike: 0, heal: 0, piercingStrike: 0, whirlwind: 0 };
+  private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0, swiftStrike: 0, heal: 0, piercingStrike: 0, whirlwind: 0, swiftBlade: 0, greaterHeal: 0, lifedrain: 0, flameBurst: 0, thunderStrike: 0, icicleStorm: 0, shadowAssault: 0, healingWave: 0, divineLight: 0, voidNova: 0 };
   private party: PartyView | null = null;
   private pendingInvitePartyId?: string;
   private offlineRewardsOpen = false;
@@ -28,6 +28,7 @@ export class Hud {
     private readonly onSellJunk: () => void,
     private readonly onSkill: (skillId: SkillId) => void,
     private readonly onEquipSkill: (slot: number, skillId: SkillId) => void,
+    private readonly onLearnSkill: (skillId: SkillId) => void,
     private readonly onAcceptQuest: (questId: string) => void,
     private readonly onClaimQuest: (questId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void,
@@ -115,6 +116,7 @@ export class Hud {
     if (!this.player) return;
     const root = document.querySelector("#skill-bar")!;
     root.innerHTML = "";
+    const keys = ["Q", "W", "E", "R"];
     for (let slot = 0; slot < SKILL_LOADOUT_SIZE; slot++) {
       const skillId = this.player.equippedSkills[slot];
       const button = document.createElement("button");
@@ -125,12 +127,12 @@ export class Hud {
         const name = t(skillNameKey(skillId));
         const info = SKILL_CATALOG[skillId];
         button.title = `${name} - CD ${(info.cooldownMs / 1000).toFixed(1)}s`;
-        button.innerHTML = `<kbd>${slot + 1}</kbd><strong>${escapeHtml(name)}</strong><span data-cooldown="${skillId}"></span>`;
+        button.innerHTML = `<kbd>${keys[slot]}</kbd><strong>${escapeHtml(name)}</strong><span data-cooldown="${skillId}"></span>`;
         button.addEventListener("click", () => this.onSkill(skillId));
       } else {
         button.classList.add("empty");
         button.disabled = true;
-        button.innerHTML = `<kbd>${slot + 1}</kbd><strong>—</strong>`;
+        button.innerHTML = `<kbd>${keys[slot]}</kbd><strong>—</strong>`;
       }
       root.append(button);
     }
@@ -140,29 +142,45 @@ export class Hud {
     if (!this.player) return;
     const root = document.querySelector("#skill-picker")!;
     root.innerHTML = "";
+    const keys = ["Q", "W", "E", "R"];
+    const learnedSet = new Set(this.player.learnedSkills);
+    const playerLevel = this.player.stats.level;
     for (const id of SKILL_IDS) {
-      const equippedSlot = this.player.equippedSkills.indexOf(id);
       const info = SKILL_CATALOG[id];
+      const learned = learnedSet.has(id);
+      const meetsLevel = playerLevel >= info.requiredLevel;
+      const equippedSlot = this.player.equippedSkills.indexOf(id);
+      const status = learned ? "learned" : meetsLevel ? "learnable" : "locked";
       const card = document.createElement("div");
-      card.className = `skill-card${equippedSlot >= 0 ? " equipped" : ""}`;
+      card.className = `skill-card ${status}${equippedSlot >= 0 ? " equipped" : ""}`;
+      let actionHtml = "";
+      if (!learned && !meetsLevel) {
+        actionHtml = `<div class="skill-locked">${t("requireLevel", { level: info.requiredLevel })}</div>`;
+      } else if (!learned && meetsLevel) {
+        actionHtml = `<button type="button" class="learn-button" data-action="learn">${t("learn")}</button>`;
+      } else {
+        actionHtml = `<div class="slot-buttons">${keys.map((key, slot) => {
+          const cls = this.player!.equippedSkills[slot] === id ? "active" : "";
+          return `<button type="button" data-slot="${slot}" class="${cls}">${key}</button>`;
+        }).join("")}</div>`;
+      }
       card.innerHTML = `
         <div class="skill-card-head">
           <strong>${escapeHtml(t(skillNameKey(id)))}</strong>
-          ${equippedSlot >= 0 ? `<span class="slot-tag">${t("slot")} ${equippedSlot + 1}</span>` : ""}
+          ${equippedSlot >= 0 ? `<span class="slot-tag">${keys[equippedSlot]}</span>` : ""}
         </div>
         <p>${escapeHtml(t(skillDescKey(id)))}</p>
-        <em>CD ${(info.cooldownMs / 1000).toFixed(1)}s</em>
-        <div class="slot-buttons">
-          ${Array.from({ length: SKILL_LOADOUT_SIZE }, (_, slot) => {
-            const cls = this.player!.equippedSkills[slot] === id ? "active" : "";
-            return `<button type="button" data-slot="${slot}" class="${cls}">${slot + 1}</button>`;
-          }).join("")}
-        </div>
+        <em>${t("levelShort")} ${info.requiredLevel} · CD ${(info.cooldownMs / 1000).toFixed(1)}s</em>
+        ${actionHtml}
       `;
-      card.querySelectorAll<HTMLButtonElement>(".slot-buttons button").forEach((btn) => {
-        const slot = Number(btn.dataset.slot);
-        btn.addEventListener("click", () => this.onEquipSkill(slot, id));
-      });
+      if (!learned && meetsLevel) {
+        card.querySelector('[data-action="learn"]')!.addEventListener("click", () => this.onLearnSkill(id));
+      } else if (learned) {
+        card.querySelectorAll<HTMLButtonElement>(".slot-buttons button").forEach((btn) => {
+          const slot = Number(btn.dataset.slot);
+          btn.addEventListener("click", () => this.onEquipSkill(slot, id));
+        });
+      }
       root.append(card);
     }
   }
@@ -598,8 +616,8 @@ function isAllocatableStat(value: unknown): value is AllocatableStat {
   return value === "attack" || value === "defense" || value === "maxHp";
 }
 
-type SkillNameKey = "skillPowerStrike" | "skillCleave" | "skillSwiftStrike" | "skillHeal" | "skillPiercingStrike" | "skillWhirlwind";
-type SkillDescKey = "skillPowerStrikeDesc" | "skillCleaveDesc" | "skillSwiftStrikeDesc" | "skillHealDesc" | "skillPiercingStrikeDesc" | "skillWhirlwindDesc";
+type SkillNameKey = "skillPowerStrike" | "skillCleave" | "skillSwiftStrike" | "skillHeal" | "skillPiercingStrike" | "skillWhirlwind" | "skillSwiftBlade" | "skillGreaterHeal" | "skillLifedrain" | "skillFlameBurst" | "skillThunderStrike" | "skillIcicleStorm" | "skillShadowAssault" | "skillHealingWave" | "skillDivineLight" | "skillVoidNova";
+type SkillDescKey = "skillPowerStrikeDesc" | "skillCleaveDesc" | "skillSwiftStrikeDesc" | "skillHealDesc" | "skillPiercingStrikeDesc" | "skillWhirlwindDesc" | "skillSwiftBladeDesc" | "skillGreaterHealDesc" | "skillLifedrainDesc" | "skillFlameBurstDesc" | "skillThunderStrikeDesc" | "skillIcicleStormDesc" | "skillShadowAssaultDesc" | "skillHealingWaveDesc" | "skillDivineLightDesc" | "skillVoidNovaDesc";
 
 const SKILL_NAME_KEYS: Record<SkillId, SkillNameKey> = {
   powerStrike: "skillPowerStrike",
@@ -607,7 +625,17 @@ const SKILL_NAME_KEYS: Record<SkillId, SkillNameKey> = {
   swiftStrike: "skillSwiftStrike",
   heal: "skillHeal",
   piercingStrike: "skillPiercingStrike",
-  whirlwind: "skillWhirlwind"
+  whirlwind: "skillWhirlwind",
+  swiftBlade: "skillSwiftBlade",
+  greaterHeal: "skillGreaterHeal",
+  lifedrain: "skillLifedrain",
+  flameBurst: "skillFlameBurst",
+  thunderStrike: "skillThunderStrike",
+  icicleStorm: "skillIcicleStorm",
+  shadowAssault: "skillShadowAssault",
+  healingWave: "skillHealingWave",
+  divineLight: "skillDivineLight",
+  voidNova: "skillVoidNova"
 };
 
 const SKILL_DESC_KEYS: Record<SkillId, SkillDescKey> = {
@@ -616,7 +644,17 @@ const SKILL_DESC_KEYS: Record<SkillId, SkillDescKey> = {
   swiftStrike: "skillSwiftStrikeDesc",
   heal: "skillHealDesc",
   piercingStrike: "skillPiercingStrikeDesc",
-  whirlwind: "skillWhirlwindDesc"
+  whirlwind: "skillWhirlwindDesc",
+  swiftBlade: "skillSwiftBladeDesc",
+  greaterHeal: "skillGreaterHealDesc",
+  lifedrain: "skillLifedrainDesc",
+  flameBurst: "skillFlameBurstDesc",
+  thunderStrike: "skillThunderStrikeDesc",
+  icicleStorm: "skillIcicleStormDesc",
+  shadowAssault: "skillShadowAssaultDesc",
+  healingWave: "skillHealingWaveDesc",
+  divineLight: "skillDivineLightDesc",
+  voidNova: "skillVoidNovaDesc"
 };
 
 function skillNameKey(id: SkillId): SkillNameKey {

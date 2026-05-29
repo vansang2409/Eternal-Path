@@ -25,24 +25,37 @@ export const WHIRLWIND_COOLDOWN_MS = 10000;
 export const WHIRLWIND_DAMAGE_MULTIPLIER = 1.0;
 export const WHIRLWIND_RADIUS = 130;
 export const SKILL_LOADOUT_SIZE = 4;
-export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike", "heal"];
+export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
+export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 
 export interface SkillInfo {
   id: SkillId;
   cooldownMs: number;
-  effect: "damageSingle" | "damageAoe" | "healSelf";
+  effect: "damageSingle" | "damageAoe" | "healSelf" | "lifestealSingle";
   damageMultiplier?: number;
   aoeRadius?: number;
   healPercent?: number;
+  lifestealPercent?: number;
+  requiredLevel: number;
 }
 
 export const SKILL_CATALOG: Record<SkillId, SkillInfo> = {
-  powerStrike: { id: "powerStrike", cooldownMs: POWER_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: POWER_STRIKE_DAMAGE_MULTIPLIER },
-  cleave: { id: "cleave", cooldownMs: CLEAVE_COOLDOWN_MS, effect: "damageAoe", damageMultiplier: CLEAVE_DAMAGE_MULTIPLIER, aoeRadius: CLEAVE_RADIUS },
-  swiftStrike: { id: "swiftStrike", cooldownMs: SWIFT_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: SWIFT_STRIKE_DAMAGE_MULTIPLIER },
-  heal: { id: "heal", cooldownMs: HEAL_COOLDOWN_MS, effect: "healSelf", healPercent: HEAL_PERCENT },
-  piercingStrike: { id: "piercingStrike", cooldownMs: PIERCING_STRIKE_COOLDOWN_MS, effect: "damageSingle", damageMultiplier: PIERCING_STRIKE_DAMAGE_MULTIPLIER },
-  whirlwind: { id: "whirlwind", cooldownMs: WHIRLWIND_COOLDOWN_MS, effect: "damageAoe", damageMultiplier: WHIRLWIND_DAMAGE_MULTIPLIER, aoeRadius: WHIRLWIND_RADIUS }
+  powerStrike: { id: "powerStrike", cooldownMs: 4000, effect: "damageSingle", damageMultiplier: 2.2, requiredLevel: 1 },
+  cleave: { id: "cleave", cooldownMs: 8000, effect: "damageAoe", damageMultiplier: 1.3, aoeRadius: 90, requiredLevel: 1 },
+  swiftStrike: { id: "swiftStrike", cooldownMs: 2000, effect: "damageSingle", damageMultiplier: 1.0, requiredLevel: 1 },
+  heal: { id: "heal", cooldownMs: 12000, effect: "healSelf", healPercent: 0.30, requiredLevel: 2 },
+  piercingStrike: { id: "piercingStrike", cooldownMs: 5000, effect: "damageSingle", damageMultiplier: 1.7, requiredLevel: 3 },
+  whirlwind: { id: "whirlwind", cooldownMs: 10000, effect: "damageAoe", damageMultiplier: 1.0, aoeRadius: 130, requiredLevel: 4 },
+  swiftBlade: { id: "swiftBlade", cooldownMs: 2500, effect: "damageSingle", damageMultiplier: 1.2, requiredLevel: 4 },
+  greaterHeal: { id: "greaterHeal", cooldownMs: 25000, effect: "healSelf", healPercent: 0.50, requiredLevel: 5 },
+  lifedrain: { id: "lifedrain", cooldownMs: 8000, effect: "lifestealSingle", damageMultiplier: 1.4, lifestealPercent: 0.50, requiredLevel: 5 },
+  flameBurst: { id: "flameBurst", cooldownMs: 9000, effect: "damageAoe", damageMultiplier: 1.6, aoeRadius: 100, requiredLevel: 6 },
+  thunderStrike: { id: "thunderStrike", cooldownMs: 12000, effect: "damageSingle", damageMultiplier: 2.5, requiredLevel: 6 },
+  icicleStorm: { id: "icicleStorm", cooldownMs: 11000, effect: "damageAoe", damageMultiplier: 1.2, aoeRadius: 140, requiredLevel: 7 },
+  shadowAssault: { id: "shadowAssault", cooldownMs: 7000, effect: "damageSingle", damageMultiplier: 2.3, requiredLevel: 8 },
+  healingWave: { id: "healingWave", cooldownMs: 18000, effect: "healSelf", healPercent: 0.40, requiredLevel: 8 },
+  divineLight: { id: "divineLight", cooldownMs: 15000, effect: "damageSingle", damageMultiplier: 3.0, requiredLevel: 10 },
+  voidNova: { id: "voidNova", cooldownMs: 14000, effect: "damageAoe", damageMultiplier: 1.5, aoeRadius: 160, requiredLevel: 12 }
 };
 
 export const SKILL_IDS = Object.keys(SKILL_CATALOG) as SkillId[];

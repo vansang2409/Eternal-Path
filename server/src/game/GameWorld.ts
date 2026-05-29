@@ -2,6 +2,7 @@ import type { Server, Socket } from "socket.io";
 import {
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
+  DEFAULT_LEARNED_SKILLS,
   INVENTORY_CAPACITY,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
@@ -255,8 +256,10 @@ export class GameWorld {
         achievements: saved.achievements ?? [],
         lastAttackAt: 0,
         skillCooldowns: createSkillCooldowns(),
-        equippedSkills: sanitizeEquippedSkills(saved.equippedSkills)
+        learnedSkills: sanitizeLearnedSkills(saved.learnedSkills),
+        equippedSkills: []
       };
+      player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
@@ -546,14 +549,44 @@ export class GameWorld {
         socket.emit("system", "Kỹ năng không tồn tại.");
         return;
       }
+      if (!player.learnedSkills.includes(skillId)) {
+        socket.emit("system", "Phải học kỹ năng trước khi gắn.");
+        return;
+      }
       const existingIndex = player.equippedSkills.indexOf(skillId);
       if (existingIndex === slot) return;
       const current = player.equippedSkills[slot];
       player.equippedSkills[slot] = skillId;
-      if (existingIndex >= 0) player.equippedSkills[existingIndex] = current;
+      if (existingIndex >= 0 && current) player.equippedSkills[existingIndex] = current;
+      else if (existingIndex >= 0) player.equippedSkills.splice(existingIndex, 1);
       this.markDirty(player);
       socket.emit("player", player);
       socket.emit("system", `Đã gắn ${skillLabel(skillId)} vào ô ${slot + 1}.`);
+    });
+
+    socket.on("learnSkill", ({ skillId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
+      if (!isSkillId(skillId)) {
+        socket.emit("system", "Kỹ năng không tồn tại.");
+        return;
+      }
+      if (player.learnedSkills.includes(skillId)) {
+        socket.emit("system", "Đã học kỹ năng này rồi.");
+        return;
+      }
+      const required = SKILL_CATALOG[skillId].requiredLevel;
+      if (player.stats.level < required) {
+        socket.emit("system", `Cần đạt cấp ${required} để học ${skillLabel(skillId)}.`);
+        return;
+      }
+      player.learnedSkills.push(skillId);
+      this.markDirty(player);
+      socket.emit("player", player);
+      socket.emit("system", `Đã học ${skillLabel(skillId)}.`);
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -879,14 +912,23 @@ export class GameWorld {
       return;
     }
 
-    if (info.effect === "damageSingle") {
+    if (info.effect === "damageSingle" || info.effect === "lifestealSingle") {
       const target = this.selectedLivingMonster(player);
       if (!target || distance(player.position, target.position) > PLAYER_ATTACK_RANGE) {
         this.sockets.get(player.id)?.emit("system", `Cần chọn quái trong tầm để dùng ${label}.`);
         return;
       }
       player.skillCooldowns[skillId] = now + info.cooldownMs;
+      const hpBeforeMonster = target.hp;
       this.damageMonster(player, target, info.damageMultiplier ?? 1, now, label);
+      if (info.effect === "lifestealSingle") {
+        const damageDealt = hpBeforeMonster - target.hp;
+        const drain = Math.max(1, Math.floor(damageDealt * (info.lifestealPercent ?? 0)));
+        const before = player.stats.hp;
+        player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + drain);
+        const healed = player.stats.hp - before;
+        if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
+      }
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -1316,16 +1358,27 @@ function createSkillCooldowns(): Record<SkillId, number> {
     swiftStrike: 0,
     heal: 0,
     piercingStrike: 0,
-    whirlwind: 0
+    whirlwind: 0,
+    swiftBlade: 0,
+    greaterHeal: 0,
+    lifedrain: 0,
+    flameBurst: 0,
+    thunderStrike: 0,
+    icicleStorm: 0,
+    shadowAssault: 0,
+    healingWave: 0,
+    divineLight: 0,
+    voidNova: 0
   };
 }
 
-function sanitizeEquippedSkills(input: SkillId[] | undefined): SkillId[] {
+function sanitizeEquippedSkills(input: SkillId[] | undefined, learned: SkillId[]): SkillId[] {
+  const learnedSet = new Set(learned);
   const seen = new Set<SkillId>();
   const result: SkillId[] = [];
   if (Array.isArray(input)) {
     for (const id of input) {
-      if (isSkillId(id) && !seen.has(id)) {
+      if (isSkillId(id) && learnedSet.has(id) && !seen.has(id)) {
         seen.add(id);
         result.push(id);
         if (result.length >= SKILL_LOADOUT_SIZE) break;
@@ -1334,9 +1387,37 @@ function sanitizeEquippedSkills(input: SkillId[] | undefined): SkillId[] {
   }
   for (const id of DEFAULT_EQUIPPED_SKILLS) {
     if (result.length >= SKILL_LOADOUT_SIZE) break;
+    if (learnedSet.has(id) && !seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  // Fill remaining slots with any learned skill so player always has options.
+  for (const id of learned) {
+    if (result.length >= SKILL_LOADOUT_SIZE) break;
     if (!seen.has(id)) {
       seen.add(id);
       result.push(id);
+    }
+  }
+  return result;
+}
+
+function sanitizeLearnedSkills(input: SkillId[] | undefined): SkillId[] {
+  const seen = new Set<SkillId>();
+  const result: SkillId[] = [];
+  for (const id of DEFAULT_LEARNED_SKILLS) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    }
+  }
+  if (Array.isArray(input)) {
+    for (const id of input) {
+      if (isSkillId(id) && !seen.has(id)) {
+        seen.add(id);
+        result.push(id);
+      }
     }
   }
   return result;
@@ -1349,7 +1430,17 @@ function skillLabel(id: SkillId): string {
     swiftStrike: "Swift",
     heal: "Heal",
     piercingStrike: "Pierce",
-    whirlwind: "Whirl"
+    whirlwind: "Whirl",
+    swiftBlade: "Swift Blade",
+    greaterHeal: "Great Heal",
+    lifedrain: "Drain",
+    flameBurst: "Flame",
+    thunderStrike: "Thunder",
+    icicleStorm: "Icicle",
+    shadowAssault: "Shadow",
+    healingWave: "Wave",
+    divineLight: "Divine",
+    voidNova: "Void Nova"
   };
   return labels[id];
 }
