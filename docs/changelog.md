@@ -13,6 +13,17 @@
 - Reviewed by manager against Task 6.1 acceptance criteria: PASS (after fix)
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 6 · Task 6.2 — Offline rewards on login
+
+- Added `last_seen_at` to the `characters` schema (idempotent ALTER) and a `lastSeenAt?: number` to memory `SavedPlayer`; both refreshed on every save via the existing flush path
+- Added `OFFLINE_REWARD_MIN_MS` (5 min) / `OFFLINE_REWARD_MAX_MS` (8 h) and per-zone `expPerHour`/`goldPerHour` (120/240/420 EXP and 50/100/175 gold for Greenwood/Midlands/Deeplands)
+- On login (password and token paths) the server computes elapsed time, caps it at 8h, skips quick reconnects (<5 min), grants EXP via `grantExp` + gold + `markDirty`, and emits a new `offlineRewards` event with `{ elapsedMs, exp, gold, cappedAtMax }`
+- Brand-new characters (no saved `lastSeenAt`) do not receive rewards on first login
+- No item drops yet (as scoped)
+- Client shows a lightweight summary line in the log on receipt (a richer modal will land in Task 6.3)
+- Reviewed by manager against Task 6.2 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 5)
 
 ### Sprint 5 · Task 5.1 — Save & restore player position
