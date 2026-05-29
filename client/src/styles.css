@@ -833,8 +833,12 @@ h2 {
   place-items: center;
   color: #f3e7bf;
   font-size: 12px;
-  background: rgba(0, 0, 0, 0.58);
+  background: transparent;
   pointer-events: none;
+}
+
+.skill-button.cooling span {
+  background: rgba(0, 0, 0, 0.58);
 }
 
 #quests {
