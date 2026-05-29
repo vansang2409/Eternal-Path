@@ -159,7 +159,7 @@ body {
 #top-left-hud > .panel {
   pointer-events: auto;
   padding: 10px 12px;
-  background: rgba(18, 18, 18, 0.92);
+  background: rgba(18, 18, 18, 0.78);
   border: 1px solid rgba(142, 145, 146, 0.32);
   border-radius: 5px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);

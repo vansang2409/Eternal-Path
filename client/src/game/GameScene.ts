@@ -160,9 +160,9 @@ export class GameScene extends Phaser.Scene {
     const tiles = map.addTilesetImage("tiles", "tiles", TILE_SIZE, TILE_SIZE);
     map.createLayer(0, tiles!, 0, 0);
 
-    this.add.rectangle(6 * TILE_SIZE, 5 * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
-    this.addZoneLabel(6 * TILE_SIZE, 4.6 * TILE_SIZE, t("town"), 18, "#f3e7bf");
-    this.addZoneLabel(19 * TILE_SIZE, 8.2 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
+    this.add.rectangle(6 * TILE_SIZE, 8 * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
+    this.addZoneLabel(7 * TILE_SIZE, 9 * TILE_SIZE, t("town"), 18, "#f3e7bf");
+    this.addZoneLabel(19 * TILE_SIZE, 12 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
     this.addZoneLabel(31.5 * TILE_SIZE, 20.5 * TILE_SIZE, t("zoneMidlands"), 15, "#d8d6c2");
     this.addZoneLabel(42 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
   }
