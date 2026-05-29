@@ -46,6 +46,21 @@
         </div>
       </div>
       <div id="bottom-left-hud">
+        <div class="panel log-panel">
+          <h2 id="world-title">Thế giới</h2>
+          <div id="log"></div>
+        </div>
+        <div class="panel chat-panel">
+          <h2 id="chat-title">Trò chuyện</h2>
+          <div id="chat-messages"></div>
+          <form id="chat-form">
+            <input id="chat-input" maxlength="160" autocomplete="off" placeholder="Nhập tin nhắn..." />
+            <button id="chat-send" type="submit">Gửi</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="bottom-side-hud">
         <div class="panel player-panel">
           <div class="name" id="player-name">Đang kết nối...</div>
           <div class="bar hp"><span id="hp-fill"></span><label id="hp-label">HP</label></div>
@@ -74,18 +89,6 @@
             <button id="party-invite-button" type="button">Mời mục tiêu</button>
             <button id="party-leave-button" type="button" class="hidden">Rời đội</button>
           </div>
-        </div>
-        <div class="panel log-panel">
-          <h2 id="world-title">Thế giới</h2>
-          <div id="log"></div>
-        </div>
-        <div class="panel chat-panel">
-          <h2 id="chat-title">Trò chuyện</h2>
-          <div id="chat-messages"></div>
-          <form id="chat-form">
-            <input id="chat-input" maxlength="160" autocomplete="off" placeholder="Nhập tin nhắn..." />
-            <button id="chat-send" type="submit">Gửi</button>
-          </form>
         </div>
       </div>
 
