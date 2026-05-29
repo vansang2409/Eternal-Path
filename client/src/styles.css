@@ -116,6 +116,106 @@ body {
   display: none;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.modal-backdrop.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: min(420px, calc(100vw - 40px));
+  padding: 30px 28px 26px;
+  color: var(--text);
+  background: #242424;
+  border: 2px solid rgba(233, 195, 73, 0.58);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 0 14px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 18px 48px rgba(0, 0, 0, 0.62);
+}
+
+.modal-card h1 {
+  margin: 0 0 20px;
+  color: var(--gold);
+  font-family: Literata, Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.85);
+}
+
+.reward-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  min-height: 42px;
+  padding: 0 4px;
+  border-bottom: 1px solid rgba(68, 71, 72, 0.72);
+}
+
+.reward-summary-row span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.reward-summary-row strong {
+  color: var(--gold-bright);
+  font-size: 18px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.reward-cap {
+  min-height: 20px;
+  margin: 14px 0 0;
+  color: var(--outline);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.reward-cap.hidden {
+  display: none;
+}
+
+#offline-rewards-close {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 20px;
+  color: #1d1500;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  background: linear-gradient(to bottom, var(--gold-bright), #d7b328 42%, var(--gold-dark));
+  border: 1px solid var(--gold-bright);
+  border-radius: 3px;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(60, 47, 0, 0.64);
+}
+
+#offline-rewards-close:focus {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
 .login-box {
   position: relative;
   width: min(480px, calc(100vw - 40px));

@@ -25,6 +25,25 @@
           </form>
         </div>
       </div>
+      <div id="offline-rewards-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="offline-rewards-title">
+        <div class="modal-card">
+          <h1 id="offline-rewards-title">AFK Rewards</h1>
+          <div class="reward-summary-row">
+            <span id="offline-rewards-time-label">Time away</span>
+            <strong id="offline-rewards-time">0h 0m</strong>
+          </div>
+          <div class="reward-summary-row">
+            <span>EXP</span>
+            <strong id="offline-rewards-exp">+0 EXP</strong>
+          </div>
+          <div class="reward-summary-row">
+            <span id="offline-rewards-gold-label">Gold</span>
+            <strong id="offline-rewards-gold">+0 gold</strong>
+          </div>
+          <p id="offline-rewards-cap" class="reward-cap hidden"></p>
+          <button id="offline-rewards-close" type="button">Close</button>
+        </div>
+      </div>
       <aside id="hud">
         <div class="panel player-panel">
           <div class="language-row">

@@ -1,5 +1,5 @@
 import { AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { AfkZone, ChatMessage, EquipmentSlot, Item, MonsterState, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { AfkZone, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -15,6 +15,7 @@ export class Hud {
   private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0 };
   private party: PartyView | null = null;
   private pendingInvitePartyId?: string;
+  private offlineRewardsOpen = false;
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -48,6 +49,11 @@ export class Hud {
       const zone = button.dataset.afkZone;
       if (isAfkZone(zone)) button.addEventListener("click", () => this.onAfkZone(zone));
     });
+    const offlineRewardsModal = document.querySelector("#offline-rewards-modal") as HTMLElement;
+    const offlineRewardsClose = document.querySelector("#offline-rewards-close") as HTMLButtonElement;
+    offlineRewardsClose.addEventListener("click", () => this.hideOfflineRewards());
+    offlineRewardsModal.addEventListener("pointerdown", (event) => event.stopPropagation());
+    offlineRewardsModal.addEventListener("keydown", (event) => event.stopPropagation());
     window.setInterval(() => this.renderSkillCooldowns(), 100);
     (document.querySelector("#party-invite-button") as HTMLButtonElement).addEventListener("click", () => this.onInviteParty());
     (document.querySelector("#party-leave-button") as HTMLButtonElement).addEventListener("click", () => this.onLeaveParty());
@@ -128,6 +134,27 @@ export class Hud {
     root.append(line);
     while (root.childElementCount > 50) root.firstElementChild?.remove();
     root.scrollTop = root.scrollHeight;
+  }
+
+  showOfflineRewards(payload: OfflineRewardsEvent): void {
+    const modal = document.querySelector("#offline-rewards-modal") as HTMLElement;
+    const cap = document.querySelector("#offline-rewards-cap") as HTMLElement;
+    document.querySelector("#offline-rewards-title")!.textContent = t("offlineRewardsTitle");
+    document.querySelector("#offline-rewards-time-label")!.textContent = t("offlineRewardsElapsed");
+    document.querySelector("#offline-rewards-time")!.textContent = formatElapsed(payload.elapsedMs);
+    document.querySelector("#offline-rewards-exp")!.textContent = t("offlineRewardsExp", { exp: payload.exp });
+    document.querySelector("#offline-rewards-gold-label")!.textContent = t("gold");
+    document.querySelector("#offline-rewards-gold")!.textContent = t("offlineRewardsGold", { gold: payload.gold });
+    document.querySelector("#offline-rewards-close")!.textContent = t("close");
+    cap.textContent = payload.cappedAtMax ? t("offlineRewardsCapNotice") : "";
+    cap.classList.toggle("hidden", !payload.cappedAtMax);
+    this.offlineRewardsOpen = true;
+    modal.classList.remove("hidden");
+    (document.querySelector("#offline-rewards-close") as HTMLButtonElement).focus();
+  }
+
+  isOfflineRewardsOpen(): boolean {
+    return this.offlineRewardsOpen;
   }
 
   setShopStock(items: ShopItem[]): void {
@@ -223,6 +250,11 @@ export class Hud {
     const banner = document.querySelector("#party-invite") as HTMLElement;
     banner.classList.add("hidden");
     banner.innerHTML = "";
+  }
+
+  private hideOfflineRewards(): void {
+    this.offlineRewardsOpen = false;
+    document.querySelector("#offline-rewards-modal")?.classList.add("hidden");
   }
 
   private renderEquipment(): void {
@@ -424,6 +456,13 @@ function setBar(fillSelector: string, labelSelector: string, value: number, max:
   const pct = Math.max(0, Math.min(1, value / max));
   (document.querySelector(fillSelector) as HTMLElement).style.width = `${pct * 100}%`;
   document.querySelector(labelSelector)!.textContent = `${label} ${Math.floor(value)} / ${max}`;
+}
+
+function formatElapsed(elapsedMs: number): string {
+  const totalMinutes = Math.max(0, Math.floor(elapsedMs / (60 * 1000)));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${hours}h ${minutes}m`;
 }
 
 function describeItem(item: Item): string {

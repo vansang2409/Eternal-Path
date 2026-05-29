@@ -86,7 +86,7 @@ export class GameScene extends Phaser.Scene {
 
   update(time: number, delta: number): void {
     if (!this.socket?.connected || !this.loggedIn) return;
-    if (isEditableFocused()) {
+    if (isEditableFocused() || this.hud.isOfflineRewardsOpen()) {
       const input = this.neutralInput();
       this.clearMoveTarget();
       this.socket.emit("input", input);
@@ -207,14 +207,7 @@ export class GameScene extends Phaser.Scene {
         item ? `loot-line rarity-${item.rarity}` : "loot-line"
       );
     });
-    this.socket.on("offlineRewards", ({ elapsedMs, exp, gold, cappedAtMax }) => {
-      this.hud.log(t("offlineRewards", {
-        hours: (elapsedMs / (60 * 60 * 1000)).toFixed(1),
-        exp,
-        gold,
-        cap: cappedAtMax ? t("offlineRewardsCapped") : ""
-      }), "loot-line");
-    });
+    this.socket.on("offlineRewards", (payload) => this.hud.showOfflineRewards(payload));
     this.socket.on("announce", ({ accountName, itemName, rarity }) => {
       this.hud.announceDrop(accountName, itemName, rarity);
     });
