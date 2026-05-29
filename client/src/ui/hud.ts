@@ -1,5 +1,5 @@
-import { AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -107,6 +107,7 @@ export class Hud {
     this.renderEquipment();
     this.renderInventory();
     this.renderAfkZone();
+    this.renderAchievements();
     this.skillCooldowns = player.skillCooldowns;
     this.renderSkillCooldowns();
   }
@@ -167,6 +168,21 @@ export class Hud {
     this.offlineRewardsOpen = true;
     modal.classList.remove("hidden");
     (document.querySelector("#offline-rewards-close") as HTMLButtonElement).focus();
+  }
+
+  showAchievementToast(achievement: Achievement): void {
+    const root = document.querySelector("#achievement-toasts") as HTMLElement;
+    const toast = document.createElement("div");
+    const text = localizedAchievement(achievement);
+    toast.className = "achievement-toast";
+    toast.innerHTML = `
+      <span>${escapeHtml(t("achievementUnlocked"))}</span>
+      <strong>${escapeHtml(text.title)}</strong>
+      <p>${escapeHtml(text.description)}</p>
+    `;
+    root.append(toast);
+    window.setTimeout(() => toast.classList.add("closing"), 3200);
+    window.setTimeout(() => toast.remove(), 3900);
   }
 
   isOfflineRewardsOpen(): boolean {
@@ -384,6 +400,7 @@ export class Hud {
     document.querySelector("#skills-title")!.textContent = t("skills");
     document.querySelector("#afk-title")!.textContent = t("afkZone");
     document.querySelector("#quests-title")!.textContent = t("quests");
+    document.querySelector("#achievements-title")!.textContent = t("achievements");
     document.querySelector("#party-title")!.textContent = t("party");
     document.querySelector("#party-invite-button")!.textContent = t("partyInviteTarget");
     document.querySelector("#party-leave-button")!.textContent = t("partyLeave");
@@ -437,6 +454,28 @@ export class Hud {
       button.classList.toggle("selected", selected);
       button.setAttribute("aria-pressed", String(selected));
       button.title = `${t(afkZoneLabelKey(zone.id))} - ${t("levelShort")} ${zone.effectiveLevel}`;
+    }
+  }
+
+  private renderAchievements(): void {
+    if (!this.player) return;
+    const earned = new Set(this.player.achievements);
+    const root = document.querySelector("#achievements")!;
+    root.innerHTML = "";
+    for (const achievement of ACHIEVEMENTS) {
+      const unlocked = earned.has(achievement.id);
+      const text = localizedAchievement(achievement);
+      const row = document.createElement("div");
+      row.className = `achievement-card${unlocked ? " earned" : " locked"}`;
+      row.innerHTML = `
+        <i class="material-symbols-outlined">${unlocked ? "workspace_premium" : "lock"}</i>
+        <div>
+          <strong>${escapeHtml(text.title)}</strong>
+          <p>${escapeHtml(text.description)}</p>
+        </div>
+        <span>${unlocked ? t("earned") : t("locked")}</span>
+      `;
+      root.append(row);
     }
   }
 
@@ -555,6 +594,29 @@ function statLabel(stat: string): string {
   if (stat === "attack") return t("attack");
   if (stat === "defense") return t("defense");
   return stat;
+}
+
+function localizedAchievement(achievement: Achievement): Achievement {
+  switch (achievement.id) {
+    case "first-blood":
+      return { ...achievement, title: t("achievementFirstBloodTitle"), description: t("achievementFirstBloodDescription") };
+    case "reach-level-5":
+      return { ...achievement, title: t("achievementReachLevel5Title"), description: t("achievementReachLevel5Description") };
+    case "reach-level-10":
+      return { ...achievement, title: t("achievementReachLevel10Title"), description: t("achievementReachLevel10Description") };
+    case "slay-elite":
+      return { ...achievement, title: t("achievementSlayEliteTitle"), description: t("achievementSlayEliteDescription") };
+    case "slay-boss":
+      return { ...achievement, title: t("achievementSlayBossTitle"), description: t("achievementSlayBossDescription") };
+    case "epic-find":
+      return { ...achievement, title: t("achievementEpicFindTitle"), description: t("achievementEpicFindDescription") };
+    case "idler":
+      return { ...achievement, title: t("achievementIdlerTitle"), description: t("achievementIdlerDescription") };
+    case "socialite":
+      return { ...achievement, title: t("achievementSocialiteTitle"), description: t("achievementSocialiteDescription") };
+    default:
+      return achievement;
+  }
 }
 
 function escapeHtml(value: string): string {

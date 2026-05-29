@@ -18,6 +18,7 @@ import {
   TILE_SIZE,
   WORLD_HEIGHT,
   WORLD_WIDTH,
+  achievementById,
   clampToWorld,
   createLoot,
   createShopStock,
@@ -196,6 +197,8 @@ export class GameWorld {
     const leveled = this.grantExpAndStatPoints(player, rewards.exp);
     player.stats.gold += rewards.gold;
     if (leveled) this.updateReachLevelQuests(player);
+    this.unlockAchievement(player, "idler");
+    if (leveled) this.checkLevelAchievements(player);
     this.markDirty(player);
 
     return {
@@ -250,13 +253,14 @@ export class GameWorld {
         unspentPoints: saved.unspentPoints ?? 0,
         inventory: saved.inventory,
         afkZone: saved.afkZone ?? DEFAULT_AFK_ZONE,
+        achievements: saved.achievements ?? [],
         lastAttackAt: 0,
         skillCooldowns: createSkillCooldowns()
       };
-      const offlineRewards = this.applyOfflineRewards(player, saved.lastSeenAt, Date.now());
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
+      const offlineRewards = this.applyOfflineRewards(player, saved.lastSeenAt, Date.now());
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
@@ -349,6 +353,7 @@ export class GameWorld {
       this.emitFloating(player.id, player.position, template.rewardExp, "exp", `+${template.rewardExp} exp`);
       this.emitFloating(player.id, player.position, template.rewardGold, "loot", `+${template.rewardGold} gold`);
       if (leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
+      if (leveled) this.checkLevelAchievements(player);
       this.updateReachLevelQuests(player);
       socket.emit("player", player);
       socket.emit("system", `Quest complete: ${template.title}.`);
@@ -377,6 +382,8 @@ export class GameWorld {
         party = { id: `party-${Date.now()}-${Math.random().toString(36).slice(2)}`, leaderId: inviter.id, memberIds: [inviter.id] };
         this.parties.set(party.id, party);
         this.playerParty.set(inviter.id, party.id);
+        this.unlockAchievement(inviter, "socialite");
+        socket.emit("player", inviter);
         this.emitPartyUpdate(party);
       }
       this.pendingInvites.set(target.id, party.id);
@@ -405,9 +412,11 @@ export class GameWorld {
       this.pendingInvites.delete(player.id);
       party.memberIds.push(player.id);
       this.playerParty.set(player.id, party.id);
+      this.unlockAchievement(player, "socialite");
       for (const memberId of party.memberIds) {
         this.sockets.get(memberId)?.emit("system", `${player.accountName} đã vào tổ đội.`);
       }
+      socket.emit("player", player);
       this.emitPartyUpdate(party);
     });
 
@@ -833,6 +842,21 @@ export class GameWorld {
     return levelsGained > 0;
   }
 
+  private checkLevelAchievements(player: PlayerState): void {
+    if (player.stats.level >= 5) this.unlockAchievement(player, "reach-level-5");
+    if (player.stats.level >= 10) this.unlockAchievement(player, "reach-level-10");
+  }
+
+  private unlockAchievement(player: PlayerState, achievementId: string): boolean {
+    if (player.achievements.includes(achievementId)) return false;
+    const achievement = achievementById(achievementId);
+    if (!achievement) return false;
+    player.achievements.push(achievement.id);
+    this.sockets.get(player.id)?.emit("achievementUnlocked", achievement);
+    this.markDirty(player);
+    return true;
+  }
+
   private damageMonster(player: PlayerState, monster: MonsterState, attackMultiplier: number, now: number, label?: string): void {
     const result = rollDamage(player.stats.attack * attackMultiplier, monster.defense, player.stats.level - monster.level);
     monster.hp = Math.max(0, monster.hp - result.damage);
@@ -853,6 +877,7 @@ export class GameWorld {
     for (const recipient of this.expRecipientsFor(player)) {
       const leveled = this.grantExpAndStatPoints(recipient, exp);
       if (leveled) this.updateReachLevelQuests(recipient);
+      if (leveled) this.checkLevelAchievements(recipient);
       this.emitFloating(recipient.id, recipient.position, exp, "exp", `+${exp} exp`);
       if (leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
       if (recipient.id !== player.id) {
@@ -861,6 +886,9 @@ export class GameWorld {
       }
     }
     this.updateQuestProgressForKill(player, monster);
+    this.unlockAchievement(player, "first-blood");
+    if (monster.elite) this.unlockAchievement(player, "slay-elite");
+    if (monster.boss) this.unlockAchievement(player, "slay-boss");
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
 
     const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
@@ -879,6 +907,7 @@ export class GameWorld {
             rarity: lootItem.rarity
           });
         }
+        if (lootItem.rarity === "epic") this.unlockAchievement(player, "epic-find");
       }
     }
     if (monster.boss) {

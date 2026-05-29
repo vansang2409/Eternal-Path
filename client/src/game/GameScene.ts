@@ -232,6 +232,9 @@ export class GameScene extends Phaser.Scene {
       this.hud.showOfflineRewards(payload);
       soundManager.play("modalOpen");
     });
+    this.socket.on("achievementUnlocked", (achievement) => {
+      this.hud.showAchievementToast(achievement);
+    });
     this.socket.on("announce", ({ accountName, itemName, rarity }) => {
       this.hud.announceDrop(accountName, itemName, rarity);
     });

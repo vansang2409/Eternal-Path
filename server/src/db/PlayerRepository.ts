@@ -10,6 +10,7 @@ interface SavedPlayer {
   unspentPoints: number;
   inventory: InventoryState;
   afkZone: AfkZone;
+  achievements: string[];
   lastSeenAt?: number;
   position?: Vec2;
 }
@@ -90,10 +91,12 @@ export class PlayerRepository {
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
-        const statsRow = await client.query<Stats & { unspentPoints: number | null; posX: number | null; posY: number | null; afkZone: string | null; lastSeenAt: Date | string | number | null }>(
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS achievements jsonb NOT NULL DEFAULT '[]'::jsonb");
+        const statsRow = await client.query<Stats & { unspentPoints: number | null; posX: number | null; posY: number | null; afkZone: string | null; achievements: unknown; lastSeenAt: Date | string | number | null }>(
           `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold,
                   unspent_points AS "unspentPoints",
                   position_x AS "posX", position_y AS "posY", map_id AS "afkZone",
+                  achievements,
                   last_seen_at AS "lastSeenAt"
            FROM characters WHERE id = $1`,
           [characterId]
@@ -113,6 +116,7 @@ export class PlayerRepository {
           stats: normalizeStats(characterRow),
           unspentPoints: Math.max(0, characterRow?.unspentPoints ?? 0),
           afkZone: normalizeAfkZone(characterRow?.afkZone),
+          achievements: normalizeAchievements(characterRow?.achievements),
           lastSeenAt: normalizeLastSeenAt(characterRow?.lastSeenAt),
           position: characterRow && characterRow.posX != null && characterRow.posY != null
             ? { x: characterRow.posX, y: characterRow.posY }
@@ -147,6 +151,7 @@ export class PlayerRepository {
       unspentPoints: player.unspentPoints,
       inventory: player.inventory,
       afkZone: player.afkZone,
+      achievements: [...player.achievements],
       lastSeenAt: Date.now(),
       position: { x: player.position.x, y: player.position.y }
     };
@@ -167,10 +172,12 @@ export class PlayerRepository {
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS achievements jsonb NOT NULL DEFAULT '[]'::jsonb");
         await client.query(
           `UPDATE characters
            SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8,
-               position_x = $9, position_y = $10, map_id = $11, unspent_points = $12, last_seen_at = now(), updated_at = now()
+               position_x = $9, position_y = $10, map_id = $11, unspent_points = $12,
+               achievements = $13::jsonb, last_seen_at = now(), updated_at = now()
            WHERE id = $1`,
           [
             characterId,
@@ -184,7 +191,8 @@ export class PlayerRepository {
             Math.round(player.position.x),
             Math.round(player.position.y),
             player.afkZone,
-            player.unspentPoints
+            player.unspentPoints,
+            JSON.stringify(player.achievements)
           ]
         );
         await client.query("DELETE FROM inventory_items WHERE character_id = $1", [characterId]);
@@ -213,6 +221,7 @@ export class PlayerRepository {
       cloned.afkZone = normalizeAfkZone(cloned.afkZone);
       cloned.lastSeenAt = normalizeLastSeenAt(cloned.lastSeenAt);
       cloned.unspentPoints = Math.max(0, cloned.unspentPoints ?? 0);
+      cloned.achievements = normalizeAchievements(cloned.achievements);
       return cloned;
     }
     return {
@@ -221,9 +230,15 @@ export class PlayerRepository {
       stats: baseStatsForLevel(1),
       unspentPoints: 0,
       afkZone: DEFAULT_AFK_ZONE,
+      achievements: [],
       inventory: { items: [], equipped: {} }
     };
   }
+}
+
+function normalizeAchievements(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((id): id is string => typeof id === "string"))];
 }
 
 function normalizeAfkZone(value: unknown): AfkZone {

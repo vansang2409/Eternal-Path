@@ -8,6 +8,12 @@ export type SkillId = "powerStrike" | "cleave";
 export type AfkZone = "greenwood" | "midlands" | "deeplands";
 export type AllocatableStat = "attack" | "defense" | "maxHp";
 
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface Vec2 {
   x: number;
   y: number;
@@ -66,6 +72,7 @@ export interface PlayerState {
   unspentPoints: number;
   inventory: InventoryState;
   afkZone: AfkZone;
+  achievements: string[];
   lastAttackAt: number;
   skillCooldowns: Record<SkillId, number>;
   targetId?: string;
@@ -216,6 +223,7 @@ export interface ServerToClientEvents {
   floatingText: (event: FloatingTextEvent) => void;
   loot: (event: LootEvent) => void;
   offlineRewards: (event: OfflineRewardsEvent) => void;
+  achievementUnlocked: (payload: Achievement) => void;
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
   questList: (payload: QuestListPayload) => void;

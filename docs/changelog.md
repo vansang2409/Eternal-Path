@@ -23,6 +23,14 @@
 - Reviewed by manager against Task 7.2 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 7 · Task 7.3 — Achievements / milestones
+
+- Added shared fixed achievement definitions and typed `achievementUnlocked` event
+- Persisted earned achievement ids on `PlayerState` via memory and PostgreSQL `characters.achievements`
+- Server unlocks milestones authoritatively from kills, level gains, boss/elite kills, Epic loot, offline rewards, and first party join
+- HUD now lists earned vs locked achievements and shows a transient localized unlock toast
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 6)
 
 ### Sprint 6 · Task 6.1 — Choose an AFK farming zone
