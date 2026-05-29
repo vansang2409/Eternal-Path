@@ -86,8 +86,6 @@ export class GameScene extends Phaser.Scene {
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
-    this.fitCameraToViewport();
-    this.scale.on("resize", () => this.fitCameraToViewport());
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
       if (!pointer.rightButtonDown() || objects.length > 0) return;
@@ -96,14 +94,6 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private fitCameraToViewport(): void {
-    const worldWidth = WORLD_WIDTH * TILE_SIZE;
-    const worldHeight = WORLD_HEIGHT * TILE_SIZE;
-    // Pick the larger ratio so the world fully covers the viewport without
-    // any background bleed (ENVELOP-style behaviour at the camera level).
-    const zoom = Math.max(this.scale.width / worldWidth, this.scale.height / worldHeight);
-    this.cameras.main.setZoom(zoom);
-  }
 
   update(time: number, delta: number): void {
     if (!this.socket?.connected || !this.loggedIn) return;
