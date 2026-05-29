@@ -12,6 +12,17 @@
 - Reviewed by manager against Task 7.1 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 7 · Task 7.2 — Stat points on level up
+
+- Implemented by Codex via auto-loop (76k tokens)
+- Added `AllocatableStat` and `unspentPoints` to `PlayerState`; new typed `allocateStat` event
+- Auto level-up growth reduced to `+12 HP / +2 ATK / +1 DEF`; each level also grants 3 unspent points (via monster kills, quest claims, and offline rewards)
+- Server `allocateStat` handler validates `unspentPoints > 0`, applies `+1 ATK / +1 DEF / +6 HP` per point, marks dirty
+- `characters.unspent_points` column added (idempotent ALTER) + memory persistence
+- HUD shows points-left counter and a `+` button next to ATK/DEF/HP when points are available
+- Reviewed by manager against Task 7.2 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 6)
 
 ### Sprint 6 · Task 6.1 — Choose an AFK farming zone
