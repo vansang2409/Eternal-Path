@@ -334,7 +334,7 @@ export class Hud {
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
     document.querySelector("#skills-title")!.textContent = t("skills");
-    document.querySelector("#afk-title")!.textContent = getLanguage() === "en" ? "AFK Zone" : "Vung AFK";
+    document.querySelector("#afk-title")!.textContent = t("afkZone");
     document.querySelector("#quests-title")!.textContent = t("quests");
     document.querySelector("#party-title")!.textContent = t("party");
     document.querySelector("#party-invite-button")!.textContent = t("partyInviteTarget");
