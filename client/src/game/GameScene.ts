@@ -86,6 +86,8 @@ export class GameScene extends Phaser.Scene {
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
+    this.applyPixelPerfectZoom();
+    this.scale.on("resize", () => this.applyPixelPerfectZoom());
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
       if (!pointer.rightButtonDown() || objects.length > 0) return;
@@ -131,6 +133,18 @@ export class GameScene extends Phaser.Scene {
       left: false,
       right: false
     };
+  }
+
+  private applyPixelPerfectZoom(): void {
+    const worldW = WORLD_WIDTH * TILE_SIZE;
+    const worldH = WORLD_HEIGHT * TILE_SIZE;
+    // Largest integer scale that still keeps the world visible on the smaller axis.
+    // Integer zoom keeps pixel art crisp (no fractional scaling artefacts).
+    const fitX = this.scale.width / worldW;
+    const fitY = this.scale.height / worldH;
+    const need = Math.max(fitX, fitY); // fill the viewport
+    const zoom = Math.max(1, Math.ceil(need));
+    this.cameras.main.setZoom(zoom);
   }
 
   private createMap(): void {
