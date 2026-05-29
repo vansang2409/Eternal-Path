@@ -489,9 +489,22 @@ h2 {
 
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-top: 20px;
+}
+
+.stat-points-left {
+  grid-column: 1 / -1;
+  padding: 4px 6px;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+  background: rgba(201, 154, 75, 0.11);
+  border: 1px solid rgba(201, 154, 75, 0.32);
+  border-radius: 3px;
 }
 
 .stat-card {
@@ -525,6 +538,32 @@ h2 {
   letter-spacing: 0.05em;
 }
 
+.stat-value-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 22px;
+}
+
+.stat-allocate-button {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: #16120a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 18px;
+  background: var(--gold);
+  border: 1px solid #ffe0a3;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.stat-allocate-button:hover {
+  filter: brightness(1.12);
+}
+
 .stat-atk strong {
   color: #ffb4ac;
 }
@@ -539,6 +578,14 @@ h2 {
 
 .stat-def i {
   color: #8ab8ff;
+}
+
+.stat-hp strong {
+  color: #f29a91;
+}
+
+.stat-hp i {
+  color: #df6f72;
 }
 
 .stat-gold strong {

@@ -35,6 +35,7 @@ import type {
   ClientInput,
   ClientToServerEvents,
   Direction,
+  AllocatableStat,
   EquipmentItem,
   FloatingTextEvent,
   GroundItem,
@@ -74,6 +75,12 @@ const PARTY_MAX_SIZE = 4;
 const PARTY_INVITE_RANGE = 600;
 const PARTY_SHARE_RANGE = 360;
 const SAVE_FLUSH_MS = 9000;
+const STAT_POINTS_PER_LEVEL = 3;
+const STAT_POINT_GAINS: Record<AllocatableStat, number> = {
+  attack: 1,
+  defense: 1,
+  maxHp: 6
+};
 
 interface Party {
   id: string;
@@ -186,10 +193,9 @@ export class GameWorld {
     const rewards = offlineRewardsFor(player.afkZone, elapsedMs);
     if (rewards.exp <= 0 && rewards.gold <= 0) return undefined;
 
-    const leveled = grantExp(player.stats, rewards.exp);
-    player.stats = leveled.stats;
+    const leveled = this.grantExpAndStatPoints(player, rewards.exp);
     player.stats.gold += rewards.gold;
-    if (leveled.leveled) this.updateReachLevelQuests(player);
+    if (leveled) this.updateReachLevelQuests(player);
     this.markDirty(player);
 
     return {
@@ -241,6 +247,7 @@ export class GameWorld {
         velocity: { x: 0, y: 0 },
         facing: "down",
         stats: saved.stats,
+        unspentPoints: saved.unspentPoints ?? 0,
         inventory: saved.inventory,
         afkZone: saved.afkZone ?? DEFAULT_AFK_ZONE,
         lastAttackAt: 0,
@@ -282,6 +289,27 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    socket.on("allocateStat", ({ stat }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !isAllocatableStat(stat)) return;
+      if (player.unspentPoints <= 0) {
+        socket.emit("system", "Không còn điểm cộng.");
+        socket.emit("player", player);
+        return;
+      }
+      if (stat === "maxHp") {
+        player.stats.maxHp += STAT_POINT_GAINS.maxHp;
+        player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + STAT_POINT_GAINS.maxHp);
+      } else if (stat === "attack") {
+        player.stats.attack += STAT_POINT_GAINS.attack;
+      } else {
+        player.stats.defense += STAT_POINT_GAINS.defense;
+      }
+      player.unspentPoints -= 1;
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
     socket.on("acceptQuest", ({ questId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -317,11 +345,10 @@ export class GameWorld {
       }
       active.splice(index, 1);
       player.stats.gold += template.rewardGold;
-      const leveled = grantExp(player.stats, template.rewardExp);
-      player.stats = leveled.stats;
+      const leveled = this.grantExpAndStatPoints(player, template.rewardExp);
       this.emitFloating(player.id, player.position, template.rewardExp, "exp", `+${template.rewardExp} exp`);
       this.emitFloating(player.id, player.position, template.rewardGold, "loot", `+${template.rewardGold} gold`);
-      if (leveled.leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
+      if (leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
       this.updateReachLevelQuests(player);
       socket.emit("player", player);
       socket.emit("system", `Quest complete: ${template.title}.`);
@@ -797,6 +824,15 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
   }
 
+  private grantExpAndStatPoints(player: PlayerState, exp: number): boolean {
+    const previousLevel = player.stats.level;
+    const result = grantExp(player.stats, exp);
+    player.stats = result.stats;
+    const levelsGained = Math.max(0, player.stats.level - previousLevel);
+    if (levelsGained > 0) player.unspentPoints += levelsGained * STAT_POINTS_PER_LEVEL;
+    return levelsGained > 0;
+  }
+
   private damageMonster(player: PlayerState, monster: MonsterState, attackMultiplier: number, now: number, label?: string): void {
     const result = rollDamage(player.stats.attack * attackMultiplier, monster.defense, player.stats.level - monster.level);
     monster.hp = Math.max(0, monster.hp - result.damage);
@@ -815,11 +851,10 @@ export class GameWorld {
     const gold = goldForMonster(monster);
     player.stats.gold += gold;
     for (const recipient of this.expRecipientsFor(player)) {
-      const leveled = grantExp(recipient.stats, exp);
-      recipient.stats = leveled.stats;
-      if (leveled.leveled) this.updateReachLevelQuests(recipient);
+      const leveled = this.grantExpAndStatPoints(recipient, exp);
+      if (leveled) this.updateReachLevelQuests(recipient);
       this.emitFloating(recipient.id, recipient.position, exp, "exp", `+${exp} exp`);
-      if (leveled.leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
+      if (leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
       if (recipient.id !== player.id) {
         this.sockets.get(recipient.id)?.emit("player", recipient);
         this.markDirty(recipient);
@@ -1245,6 +1280,10 @@ function velocityToward(from: { x: number; y: number }, to: { x: number; y: numb
   const len = Math.hypot(dx, dy);
   if (len <= 1) return { x: 0, y: 0 };
   return { x: (dx / len) * speed, y: (dy / len) * speed };
+}
+
+function isAllocatableStat(value: unknown): value is AllocatableStat {
+  return value === "attack" || value === "defense" || value === "maxHp";
 }
 
 function cloneShopItem(offer: ShopItem): Item {

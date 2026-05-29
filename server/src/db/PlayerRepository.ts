@@ -7,6 +7,7 @@ interface SavedPlayer {
   accountName: string;
   email: string;
   stats: Stats;
+  unspentPoints: number;
   inventory: InventoryState;
   afkZone: AfkZone;
   lastSeenAt?: number;
@@ -88,8 +89,10 @@ export class PlayerRepository {
 
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
-        const statsRow = await client.query<Stats & { posX: number | null; posY: number | null; afkZone: string | null; lastSeenAt: Date | string | number | null }>(
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
+        const statsRow = await client.query<Stats & { unspentPoints: number | null; posX: number | null; posY: number | null; afkZone: string | null; lastSeenAt: Date | string | number | null }>(
           `SELECT level, exp, hp, max_hp AS "maxHp", attack, defense, gold,
+                  unspent_points AS "unspentPoints",
                   position_x AS "posX", position_y AS "posY", map_id AS "afkZone",
                   last_seen_at AS "lastSeenAt"
            FROM characters WHERE id = $1`,
@@ -108,6 +111,7 @@ export class PlayerRepository {
           accountName,
           email,
           stats: normalizeStats(characterRow),
+          unspentPoints: Math.max(0, characterRow?.unspentPoints ?? 0),
           afkZone: normalizeAfkZone(characterRow?.afkZone),
           lastSeenAt: normalizeLastSeenAt(characterRow?.lastSeenAt),
           position: characterRow && characterRow.posX != null && characterRow.posY != null
@@ -140,6 +144,7 @@ export class PlayerRepository {
       accountName: player.accountName,
       email: player.email,
       stats: player.stats,
+      unspentPoints: player.unspentPoints,
       inventory: player.inventory,
       afkZone: player.afkZone,
       lastSeenAt: Date.now(),
@@ -161,10 +166,11 @@ export class PlayerRepository {
 
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS map_id varchar(64) NOT NULL DEFAULT 'greenwood'");
         await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz");
+        await client.query("ALTER TABLE characters ADD COLUMN IF NOT EXISTS unspent_points integer NOT NULL DEFAULT 0");
         await client.query(
           `UPDATE characters
            SET level = $2, exp = $3, hp = $4, max_hp = $5, attack = $6, defense = $7, gold = $8,
-               position_x = $9, position_y = $10, map_id = $11, last_seen_at = now(), updated_at = now()
+               position_x = $9, position_y = $10, map_id = $11, unspent_points = $12, last_seen_at = now(), updated_at = now()
            WHERE id = $1`,
           [
             characterId,
@@ -177,7 +183,8 @@ export class PlayerRepository {
             player.stats.gold,
             Math.round(player.position.x),
             Math.round(player.position.y),
-            player.afkZone
+            player.afkZone,
+            player.unspentPoints
           ]
         );
         await client.query("DELETE FROM inventory_items WHERE character_id = $1", [characterId]);
@@ -205,12 +212,14 @@ export class PlayerRepository {
       const cloned = structuredClone(saved);
       cloned.afkZone = normalizeAfkZone(cloned.afkZone);
       cloned.lastSeenAt = normalizeLastSeenAt(cloned.lastSeenAt);
+      cloned.unspentPoints = Math.max(0, cloned.unspentPoints ?? 0);
       return cloned;
     }
     return {
       accountName,
       email,
       stats: baseStatsForLevel(1),
+      unspentPoints: 0,
       afkZone: DEFAULT_AFK_ZONE,
       inventory: { items: [], equipped: {} }
     };

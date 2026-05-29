@@ -88,9 +88,11 @@ export function grantExp(stats: Stats, amount: number): { stats: Stats; leveled:
   while (next.exp >= expToNextLevel(next.level)) {
     next.exp -= expToNextLevel(next.level);
     next.level += 1;
-    next.maxHp += 24;
-    next.attack += 4;
-    next.defense += 2;
+    // Level-up auto growth is intentionally modest now that players assign
+    // three stat points per level on the authoritative server.
+    next.maxHp += 12;
+    next.attack += 2;
+    next.defense += 1;
     next.hp = next.maxHp;
     leveled = true;
   }

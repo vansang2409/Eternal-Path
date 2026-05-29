@@ -6,6 +6,7 @@ export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
 export type ItemKind = "equipment" | "consumable";
 export type SkillId = "powerStrike" | "cleave";
 export type AfkZone = "greenwood" | "midlands" | "deeplands";
+export type AllocatableStat = "attack" | "defense" | "maxHp";
 
 export interface Vec2 {
   x: number;
@@ -62,6 +63,7 @@ export interface PlayerState {
   velocity: Vec2;
   facing: Direction;
   stats: Stats;
+  unspentPoints: number;
   inventory: InventoryState;
   afkZone: AfkZone;
   lastAttackAt: number;
@@ -230,6 +232,7 @@ export interface ClientToServerEvents {
   input: (input: ClientInput) => void;
   setAfkZone: (payload: { zone: AfkZone }) => void;
   setAutoRetarget: (payload: { enabled: boolean }) => void;
+  allocateStat: (payload: { stat: AllocatableStat }) => void;
   acceptQuest: (payload: { questId: string }) => void;
   claimQuest: (payload: { questId: string }) => void;
   inviteParty: (payload: { playerId: string }) => void;

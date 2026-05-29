@@ -1,5 +1,5 @@
 import { AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, expToNextLevel } from "@mmorpg/shared";
-import type { AfkZone, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -31,6 +31,7 @@ export class Hud {
     private readonly onClaimQuest: (questId: string) => void,
     private readonly onAutoRetarget: (enabled: boolean) => void,
     private readonly onAfkZone: (zone: AfkZone) => void,
+    private readonly onAllocateStat: (stat: AllocatableStat) => void,
     private readonly onInviteParty: () => void,
     private readonly onAcceptParty: (partyId: string) => void,
     private readonly onLeaveParty: () => void,
@@ -91,11 +92,18 @@ export class Hud {
     document.querySelector("#player-name")!.textContent = `${player.accountName} - ${t("levelShort")} ${player.stats.level}`;
     setBar("#hp-fill", "#hp-label", player.stats.hp, player.stats.maxHp, t("hp"));
     setBar("#exp-fill", "#exp-label", player.stats.exp, expToNextLevel(player.stats.level), t("exp"));
+    const canAllocate = player.unspentPoints > 0;
     document.querySelector("#stats")!.innerHTML = `
-      <div class="stat-card stat-atk"><i class="material-symbols-outlined">swords</i><span>${t("atk")}</span><strong>${player.stats.attack}</strong></div>
-      <div class="stat-card stat-def"><i class="material-symbols-outlined">shield</i><span>${t("def")}</span><strong>${player.stats.defense}</strong></div>
+      ${canAllocate ? `<div class="stat-points-left">${t("statPointsLeft", { points: player.unspentPoints })}</div>` : ""}
+      ${statCard("attack", "stat-atk", "swords", t("atk"), player.stats.attack, canAllocate)}
+      ${statCard("defense", "stat-def", "shield", t("def"), player.stats.defense, canAllocate)}
+      ${statCard("maxHp", "stat-hp", "favorite", t("hp"), player.stats.maxHp, canAllocate)}
       <div class="stat-card stat-gold"><i class="material-symbols-outlined">monetization_on</i><span>${t("gold")}</span><strong>${player.stats.gold}</strong></div>
     `;
+    document.querySelectorAll<HTMLButtonElement>("#stats [data-stat]").forEach((button) => {
+      const stat = button.dataset.stat;
+      if (isAllocatableStat(stat)) button.addEventListener("click", () => this.onAllocateStat(stat));
+    });
     this.renderEquipment();
     this.renderInventory();
     this.renderAfkZone();
@@ -476,6 +484,23 @@ function setBar(fillSelector: string, labelSelector: string, value: number, max:
   const pct = Math.max(0, Math.min(1, value / max));
   (document.querySelector(fillSelector) as HTMLElement).style.width = `${pct * 100}%`;
   document.querySelector(labelSelector)!.textContent = `${label} ${Math.floor(value)} / ${max}`;
+}
+
+function statCard(stat: AllocatableStat, className: string, icon: string, label: string, value: number, canAllocate: boolean): string {
+  return `
+    <div class="stat-card ${className}">
+      <i class="material-symbols-outlined">${icon}</i>
+      <span>${label}</span>
+      <div class="stat-value-row">
+        <strong>${value}</strong>
+        ${canAllocate ? `<button type="button" class="stat-allocate-button" data-stat="${stat}" title="${t("allocateStat")}">+</button>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function isAllocatableStat(value: unknown): value is AllocatableStat {
+  return value === "attack" || value === "defense" || value === "maxHp";
 }
 
 function formatElapsed(elapsedMs: number): string {

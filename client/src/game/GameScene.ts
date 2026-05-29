@@ -70,6 +70,7 @@ export class GameScene extends Phaser.Scene {
       (questId) => this.socket.emit("claimQuest", { questId }),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled }),
       (zone) => this.socket.emit("setAfkZone", { zone }),
+      (stat) => this.socket.emit("allocateStat", { stat }),
       () => this.inviteCurrentTarget(),
       (partyId) => this.socket.emit("acceptParty", { partyId }),
       () => this.socket.emit("leaveParty"),
