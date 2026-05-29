@@ -1,13 +1,16 @@
 import Phaser from "phaser";
 import {
+  BIOME_INFO,
   PLAYER_SPEED,
   TILE_SIZE,
+  TileId,
   WORLD_HEIGHT,
   WORLD_WIDTH,
   clampToWorld,
-  getMonsterDefinition
+  getMonsterDefinition,
+  isWalkableTile
 } from "@mmorpg/shared";
-import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, Vec2, WorldSnapshot } from "@mmorpg/shared";
+import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
 import { createPixelArt } from "./assets";
@@ -45,12 +48,15 @@ export class GameScene extends Phaser.Scene {
   private authoritativeSelfPosition?: Vec2;
   private loggedIn = false;
   private formCaptureHandlers: Array<{ type: string; handler: EventListener }> = [];
+  private worldMap?: WorldMapPayload;
+  private mapBuilt = false;
 
   preload(): void {}
 
   create(): void {
     createPixelArt(this);
-    this.createMap();
+    // createMap is now deferred until the init event delivers the world tile
+    // grid from the server.
 
     this.hud = new Hud(
       (itemId) => this.socket.emit("equipItem", { itemId }),
@@ -133,35 +139,132 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
-  private createMap(): void {
-    const data: number[][] = [];
-    for (let y = 0; y < WORLD_HEIGHT; y += 1) {
-      const row: number[] = [];
-      for (let x = 0; x < WORLD_WIDTH; x += 1) {
-        const town = x < 11 && y < 11;
-        const road =
-          x === 10 ||
-          y === 10 ||
-          (x > 18 && x < 122 && y === 22) ||
-          (y > 22 && y < 78 && x === 64) ||
-          (x > 64 && x < 122 && y === 50);
-        const deep = (x >= 36 && y >= 12) || (x >= 70 && y >= 30) || (y >= 56);
-        row.push(town ? 1 : road ? 2 : deep ? 3 : 0);
-      }
-      data.push(row);
-    }
+  private buildMapFromServer(worldMap: WorldMapPayload): void {
+    if (this.mapBuilt) return;
+    this.mapBuilt = true;
+    this.worldMap = worldMap;
 
-    const map = this.make.tilemap({ data, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
+    const map = this.make.tilemap({
+      data: worldMap.tiles,
+      tileWidth: TILE_SIZE,
+      tileHeight: TILE_SIZE
+    });
     const tiles = map.addTilesetImage("tiles", "tiles", TILE_SIZE, TILE_SIZE);
     map.createLayer(0, tiles!, 0, 0);
 
-    this.add.rectangle(6 * TILE_SIZE, 8 * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
-    this.addZoneLabel(7 * TILE_SIZE, 9 * TILE_SIZE, t("town"), 18, "#f3e7bf");
-    this.addZoneLabel(19 * TILE_SIZE, 12 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
-    this.addZoneLabel(31.5 * TILE_SIZE, 20.5 * TILE_SIZE, t("zoneMidlands"), 15, "#d8d6c2");
-    this.addZoneLabel(45 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
-    this.addZoneLabel(80 * TILE_SIZE, 40 * TILE_SIZE, t("zoneDeeplands"), 18, "#c79bff");
-    this.addZoneLabel(110 * TILE_SIZE, 68 * TILE_SIZE, t("zoneDeeplands"), 20, "#a070ff");
+    // Update camera bounds for the (possibly larger) world.
+    this.cameras.main.setBounds(0, 0, worldMap.width * TILE_SIZE, worldMap.height * TILE_SIZE);
+
+    // Town label rectangle backdrop.
+    const town = worldMap.landmarks.town;
+    this.add.rectangle(town.x * TILE_SIZE, (town.y + 1) * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
+    this.addZoneLabel((town.x + 0.5) * TILE_SIZE, (town.y + 1.5) * TILE_SIZE, t("town"), 18, "#f3e7bf");
+
+    // Auto-place zone labels at the centroid of the largest cluster per biome.
+    const clusters = this.findBiomeClusters(worldMap);
+    const labeled = new Set<number>();
+    for (const c of clusters) {
+      if (labeled.size >= 6) break;
+      if (labeled.has(c.biome)) continue;
+      if (c.biome === TileId.Road || c.biome === TileId.TownStone) continue;
+      labeled.add(c.biome);
+      const info = BIOME_INFO[c.biome as TileId];
+      const label = this.biomeLabel(c.biome as TileId);
+      if (!label) continue;
+      this.addZoneLabel(
+        (c.centroid.x + 0.5) * TILE_SIZE,
+        (c.centroid.y + 0.5) * TILE_SIZE,
+        label,
+        14,
+        info?.labelColor ?? "#ffffff"
+      );
+    }
+
+    // Dungeon entrance markers.
+    for (const d of worldMap.landmarks.dungeons) {
+      this.addZoneLabel(
+        (d.x + 0.5) * TILE_SIZE,
+        (d.y - 0.5) * TILE_SIZE,
+        "Hầm Bí Ẩn",
+        13,
+        "#c79bff"
+      );
+    }
+  }
+
+  private biomeLabel(biome: TileId): string | undefined {
+    switch (biome) {
+      case TileId.Forest: return "Rừng Xanh";
+      case TileId.Grass: return "Đồng Cỏ";
+      case TileId.Sand: return "Sa Mạc";
+      case TileId.Snow: return "Tuyết Trắng";
+      case TileId.Swamp: return "Đầm Lầy";
+      case TileId.Rock: return "Núi Đá";
+      case TileId.Water: return undefined;
+      case TileId.Deep: return "Vực Sâu";
+      case TileId.DungeonFloor: return "Hầm Mộ";
+      default: return undefined;
+    }
+  }
+
+  // Flood-fill biome clusters to find the centroid of each large region.
+  private findBiomeClusters(worldMap: WorldMapPayload): { biome: number; centroid: { x: number; y: number }; size: number }[] {
+    const W = worldMap.width;
+    const H = worldMap.height;
+    const seen = new Uint8Array(W * H);
+    const out: { biome: number; centroid: { x: number; y: number }; size: number }[] = [];
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const idx = y * W + x;
+        if (seen[idx]) continue;
+        const target = worldMap.tiles[y][x];
+        if (target === TileId.Road || target === TileId.TownStone || target === TileId.Water) {
+          seen[idx] = 1;
+          continue;
+        }
+        let sumX = 0;
+        let sumY = 0;
+        let count = 0;
+        const queue: number[] = [idx];
+        seen[idx] = 1;
+        while (queue.length) {
+          const cur = queue.shift()!;
+          const px = cur % W;
+          const py = Math.floor(cur / W);
+          sumX += px;
+          sumY += py;
+          count += 1;
+          for (const [dx, dy] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1]
+          ] as const) {
+            const nx = px + dx;
+            const ny = py + dy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            const nidx = ny * W + nx;
+            if (seen[nidx]) continue;
+            if (worldMap.tiles[ny][nx] !== target) continue;
+            seen[nidx] = 1;
+            queue.push(nidx);
+          }
+        }
+        if (count >= 80) {
+          out.push({ biome: target, centroid: { x: Math.round(sumX / count), y: Math.round(sumY / count) }, size: count });
+        }
+      }
+    }
+    out.sort((a, b) => b.size - a.size);
+    return out;
+  }
+
+  private isClientTileWalkable(position: Vec2): boolean {
+    if (!this.worldMap) return true;
+    const tx = Math.floor(position.x / TILE_SIZE);
+    const ty = Math.floor(position.y / TILE_SIZE);
+    if (tx < 0 || ty < 0 || tx >= this.worldMap.width || ty >= this.worldMap.height) return false;
+    return isWalkableTile(this.worldMap.tiles[ty][tx] as TileId);
   }
 
   private addZoneLabel(x: number, y: number, label: string, fontSize: number, color: string): void {
@@ -175,11 +278,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private registerSocketEvents(): void {
-    this.socket.on("init", ({ selfId, snapshot }) => {
+    this.socket.on("init", ({ selfId, snapshot, worldMap }) => {
       this.selfId = selfId;
       this.loggedIn = true;
       this.enableGameKeyboard();
       document.querySelector("#login-overlay")?.classList.add("hidden");
+      if (worldMap) this.buildMapFromServer(worldMap);
       this.applySnapshot(snapshot);
     });
 

@@ -3,3 +3,5 @@ export * from "./formulas.js";
 export * from "./loot.js";
 export * from "./monsters.js";
 export * from "./achievements.js";
+export * from "./world/biomes.js";
+export * from "./world/mapGen.js";

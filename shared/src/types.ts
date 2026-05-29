@@ -201,6 +201,20 @@ export interface WorldSnapshot {
   groundItems: GroundItem[];
 }
 
+// Lightweight payload for the init handshake. We only send the tile grid;
+// the client derives walkability via BIOME_INFO so we don't ship a full
+// boolean array.
+export interface WorldMapPayload {
+  width: number;
+  height: number;
+  seed: number;
+  tiles: number[][];
+  landmarks: {
+    town: Vec2;
+    dungeons: Vec2[];
+  };
+}
+
 export interface ClientInput {
   seq: number;
   up: boolean;
@@ -234,7 +248,7 @@ export interface ChatPayload {
 }
 
 export interface ServerToClientEvents {
-  init: (data: { selfId: string; snapshot: WorldSnapshot }) => void;
+  init: (data: { selfId: string; snapshot: WorldSnapshot; worldMap: WorldMapPayload }) => void;
   session: (payload: { token: string }) => void;
   snapshot: (snapshot: WorldSnapshot) => void;
   player: (player: PlayerState) => void;

@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import {
+  BIOME_INFO,
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
@@ -15,17 +16,22 @@ import {
   SKILL_CATALOG,
   SKILL_LOADOUT_SIZE,
   TILE_SIZE,
+  TileId,
   WORLD_HEIGHT,
+  WORLD_SEED,
   WORLD_WIDTH,
   achievementById,
   clampToWorld,
   createLoot,
   createShopStock,
   distance,
+  gatherSpawnHints,
+  generateWorld,
   getMonsterDefinition,
   grantExp,
   isAfkZone,
   isSkillId,
+  isWalkableTile,
   monsterAttack,
   monsterDefense,
   monsterMaxHp,
@@ -50,6 +56,9 @@ import type {
   ShopItem,
   ServerToClientEvents,
   SkillId,
+  Vec2,
+  WorldMap,
+  WorldMapPayload,
   WorldSnapshot
 } from "@mmorpg/shared";
 import type { PlayerRepository } from "../db/PlayerRepository.js";
@@ -152,6 +161,8 @@ export class GameWorld {
   private readonly groundItems = new Map<string, GroundItem>();
   private readonly returningToSpawn = new Set<string>();
   private monsters: MonsterState[] = [];
+  private readonly worldMap: WorldMap;
+  private readonly worldMapPayload: WorldMapPayload;
   private tickTimer?: NodeJS.Timeout;
   private snapshotTimer?: NodeJS.Timeout;
 
@@ -159,7 +170,34 @@ export class GameWorld {
     private readonly io: GameServerSocket,
     private readonly repository: PlayerRepository
   ) {
-    this.monsters = createMonsterSpawns();
+    this.worldMap = generateWorld(WORLD_SEED, WORLD_WIDTH, WORLD_HEIGHT);
+    this.worldMapPayload = {
+      width: this.worldMap.width,
+      height: this.worldMap.height,
+      seed: this.worldMap.seed,
+      tiles: this.worldMap.tiles,
+      landmarks: this.worldMap.landmarks
+    };
+    this.monsters = createMonsterSpawns(this.worldMap);
+  }
+
+  // Pixel position -> tile walkability lookup.
+  private isPositionWalkable(position: Vec2): boolean {
+    const tx = Math.floor(position.x / TILE_SIZE);
+    const ty = Math.floor(position.y / TILE_SIZE);
+    if (tx < 0 || ty < 0 || tx >= this.worldMap.width || ty >= this.worldMap.height) return false;
+    return isWalkableTile(this.worldMap.tiles[ty][tx]);
+  }
+
+  // Sliding collision: try moving in X and Y separately so a player can
+  // slide along walls instead of getting stuck on a corner.
+  private resolveMovement(from: Vec2, to: Vec2): Vec2 {
+    if (this.isPositionWalkable(to)) return clampToWorld(to);
+    const slideX = { x: to.x, y: from.y };
+    if (slideX.x !== from.x && this.isPositionWalkable(slideX)) return clampToWorld(slideX);
+    const slideY = { x: from.x, y: to.y };
+    if (slideY.y !== from.y && this.isPositionWalkable(slideY)) return clampToWorld(slideY);
+    return clampToWorld(from);
   }
 
   start(): void {
@@ -242,11 +280,14 @@ export class GameWorld {
       }
 
       const saved = await this.repository.load(resolvedEmail, resolvedName);
+      // Guard against saved positions on tiles that became unwalkable after
+      // a world regen: snap them back to town spawn.
+      const initialPosition = saved.position && this.isPositionWalkable(saved.position) ? { ...saved.position } : { ...townSpawn };
       const player: PlayerState = {
         id: socket.id,
         email: resolvedEmail,
         accountName: resolvedName,
-        position: saved.position ? { ...saved.position } : { ...townSpawn },
+        position: initialPosition,
         velocity: { x: 0, y: 0 },
         facing: "down",
         stats: saved.stats,
@@ -267,7 +308,7 @@ export class GameWorld {
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
-      socket.emit("init", { selfId: socket.id, snapshot: this.snapshot() });
+      socket.emit("init", { selfId: socket.id, snapshot: this.snapshot(), worldMap: this.worldMapPayload });
       socket.emit("player", player);
       if (offlineRewards) socket.emit("offlineRewards", offlineRewards);
       this.emitQuestList(player);
@@ -766,10 +807,11 @@ export class GameWorld {
       } else {
         player.velocity = { x: 0, y: 0 };
       }
-      player.position = clampToWorld({
+      const candidate = {
         x: player.position.x + player.velocity.x * dt,
         y: player.position.y + player.velocity.y * dt
-      });
+      };
+      player.position = this.resolveMovement(player.position, candidate);
       player.facing = facingFromAxis(player.velocity, player.facing);
     }
   }
@@ -833,7 +875,7 @@ export class GameWorld {
         y: monster.position.y + monster.velocity.y * dt
       };
       if (distance(monster.spawn, next) < monster.leashRadius) {
-        monster.position = clampToWorld(next);
+        monster.position = this.resolveMovement(monster.position, next);
       } else {
         monster.velocity = { x: 0, y: 0 };
         monster.targetPlayerId = undefined;
@@ -1245,35 +1287,94 @@ export class GameWorld {
   }
 }
 
-function createMonsterSpawns(): MonsterState[] {
-  const spawns = [
-    ["forestSlime", 15, 9],
-    ["forestSlime", 17, 11],
-    ["wildBoar", 19, 9],
-    ["caveBat", 20, 13],
-    ["goblinScout", 23, 14],
-    ["goblinScout", 25, 16],
-    ["direWolf", 29, 17],
-    ["direWolf", 32, 18],
-    ["mossCrawler", 30, 22],
-    ["stoneImp", 34, 20],
-    ["stoneImp", 36, 23],
-    ["emberSprite", 28, 24],
-    ["cursedTreant", 38, 24],
-    ["cursedTreant", 40, 26],
-    ["ashWraith", 43, 17],
-    ["ashWraith", 45, 20],
-    ["frostRevenant", 42, 14],
-    ["crystalGolem", 38, 28],
-    ["crystalGolem", 41, 29],
-    ["bloodHarpy", 44, 12],
-    ["ancientDrake", 43, 26],
-    ["voidKnight", 35, 29],
-    ["elderHydra", 45, 29]
-  ] as const;
+// Map monster level -> biomes the species prefers. Pick from the matched
+// biome pool; fall back to nearest walkable tile if the pool is empty.
+function biomeBucketForLevel(level: number): TileId[] {
+  if (level <= 2) return [TileId.Grass, TileId.Forest];
+  if (level <= 4) return [TileId.Forest, TileId.Swamp, TileId.Sand];
+  if (level <= 6) return [TileId.Swamp, TileId.Snow, TileId.Sand, TileId.Deep];
+  if (level <= 8) return [TileId.Deep, TileId.DungeonFloor];
+  return [TileId.DungeonFloor, TileId.Deep];
+}
 
-  const monsters: MonsterState[] = spawns.map(([type, tx, ty], index) => {
+function collectTilesByBiome(map: WorldMap): Map<TileId, { x: number; y: number }[]> {
+  const out = new Map<TileId, { x: number; y: number }[]>();
+  for (let y = 6; y < map.height - 6; y += 1) {
+    for (let x = 6; x < map.width - 6; x += 1) {
+      const t = map.tiles[y][x];
+      if (!isWalkableTile(t)) continue;
+      if (t === TileId.TownStone || t === TileId.Road) continue;
+      // keep a buffer around the town spawn so low-level mobs don't camp it
+      if (x < 16 && y < 16) continue;
+      const arr = out.get(t);
+      if (!arr) out.set(t, [{ x, y }]);
+      else arr.push({ x, y });
+    }
+  }
+  return out;
+}
+
+function createMonsterSpawns(map: WorldMap): MonsterState[] {
+  // Two copies of each species for variety, total 23 -> spread by level/biome.
+  const species: string[] = [
+    "forestSlime",
+    "forestSlime",
+    "wildBoar",
+    "caveBat",
+    "goblinScout",
+    "goblinScout",
+    "direWolf",
+    "direWolf",
+    "mossCrawler",
+    "stoneImp",
+    "stoneImp",
+    "emberSprite",
+    "cursedTreant",
+    "cursedTreant",
+    "ashWraith",
+    "ashWraith",
+    "frostRevenant",
+    "crystalGolem",
+    "crystalGolem",
+    "bloodHarpy",
+    "ancientDrake",
+    "voidKnight",
+    "elderHydra"
+  ];
+
+  const pools = collectTilesByBiome(map);
+  // Deterministic PRNG so the same seed -> same monster placements.
+  let rngState = (map.seed ^ 0x9e3779b9) >>> 0;
+  const rng = () => {
+    rngState = (rngState + 0x6d2b79f5) | 0;
+    let t = rngState;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const monsters: MonsterState[] = species.map((type, index) => {
     const definition = getMonsterDefinition(type);
+    const candidates = biomeBucketForLevel(definition.level);
+    let pick: { x: number; y: number } | undefined;
+    for (const biome of candidates) {
+      const pool = pools.get(biome);
+      if (!pool || !pool.length) continue;
+      const i = Math.floor(rng() * pool.length);
+      [pick] = pool.splice(i, 1);
+      break;
+    }
+    // Last-resort fallback: any non-empty pool.
+    if (!pick) {
+      for (const pool of pools.values()) {
+        if (!pool.length) continue;
+        const i = Math.floor(rng() * pool.length);
+        [pick] = pool.splice(i, 1);
+        break;
+      }
+    }
+    const tx = pick?.x ?? 18;
+    const ty = pick?.y ?? 14;
     const elite = rollElite();
     const maxHp = monsterMaxHp(definition, elite);
     return {
@@ -1296,7 +1397,7 @@ function createMonsterSpawns(): MonsterState[] {
       lastAttackAt: 0
     };
   });
-  monsters.push(createWorldBoss());
+  monsters.push(createWorldBoss(map));
   return monsters;
 }
 
@@ -1309,9 +1410,12 @@ function rerollMonsterRank(monster: MonsterState): void {
   monster.defense = monsterDefense(definition, monster.elite);
 }
 
-function createWorldBoss(): MonsterState {
+function createWorldBoss(map?: WorldMap): MonsterState {
   const definition = getMonsterDefinition("eternalWarden");
   const maxHp = monsterMaxHp(definition);
+  // Place the boss next to the first dungeon entrance when a world map is
+  // provided. Falls back to the old hardcoded coords for safety.
+  const spawnTile = map?.landmarks.dungeons[0] ?? { x: 45, y: 24 };
   return {
     id: "world-boss-eternal-warden",
     type: definition.type,
@@ -1319,8 +1423,8 @@ function createWorldBoss(): MonsterState {
     elite: false,
     boss: true,
     level: definition.level,
-    position: { x: 45 * TILE_SIZE, y: 24 * TILE_SIZE },
-    spawn: { x: 45 * TILE_SIZE, y: 24 * TILE_SIZE },
+    position: { x: spawnTile.x * TILE_SIZE, y: spawnTile.y * TILE_SIZE },
+    spawn: { x: spawnTile.x * TILE_SIZE, y: spawnTile.y * TILE_SIZE },
     velocity: { x: 0, y: 0 },
     maxHp,
     hp: 0,
