@@ -63,6 +63,33 @@ export class Hud {
     window.setInterval(() => this.renderSkillCooldowns(), 100);
     (document.querySelector("#party-invite-button") as HTMLButtonElement).addEventListener("click", () => this.onInviteParty());
     (document.querySelector("#party-leave-button") as HTMLButtonElement).addEventListener("click", () => this.onLeaveParty());
+    // Potion slot button: use first consumable in inventory.
+    const potionButton = document.querySelector("#potion-slot") as HTMLButtonElement | null;
+    potionButton?.addEventListener("click", () => {
+      const potion = this.player?.inventory.items.find((item) => item.kind === "consumable");
+      if (potion) this.onUse(potion.id);
+    });
+    // Toolbar buttons toggle modals.
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal]").forEach((btn) => {
+      const modalId = btn.dataset.modal!;
+      btn.addEventListener("click", () => {
+        const modal = document.querySelector(`#${modalId}`) as HTMLElement | null;
+        if (modal) modal.classList.toggle("hidden");
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>(".game-modal .modal-close").forEach((btn) => {
+      btn.addEventListener("click", () => btn.closest(".game-modal")?.classList.add("hidden"));
+    });
+    document.querySelectorAll<HTMLElement>(".game-modal").forEach((modal) => {
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) modal.classList.add("hidden");
+      });
+    });
+    window.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        document.querySelectorAll<HTMLElement>(".game-modal:not(.hidden)").forEach((m) => m.classList.add("hidden"));
+      }
+    });
     this.setParty(null);
     this.renderSoundToggle();
     languageSelect.value = getLanguage();
@@ -470,8 +497,11 @@ export class Hud {
     document.documentElement.lang = getLanguage();
     document.querySelector("#language-label")!.textContent = t("language");
     document.querySelector("#equipment-title")!.textContent = t("equipment");
-    document.querySelector("#skills-title")!.textContent = t("skills");
     document.querySelector("#afk-title")!.textContent = t("afkZone");
+    const settingsTitle = document.querySelector("#settings-title");
+    if (settingsTitle) settingsTitle.textContent = t("settings");
+    const potionLabel = document.querySelector("#potion-label");
+    if (potionLabel) potionLabel.textContent = t("potion");
     document.querySelector("#quests-title")!.textContent = t("quests");
     document.querySelector("#achievements-title")!.textContent = t("achievements");
     document.querySelector("#party-title")!.textContent = t("party");

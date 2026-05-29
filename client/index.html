@@ -45,27 +45,12 @@
           <button id="offline-rewards-close" type="button">Close</button>
         </div>
       </div>
-      <aside id="hud">
+      <div id="top-left-hud">
         <div class="panel player-panel">
-          <div class="language-row">
-            <label id="language-label" for="language-select">Ngôn ngữ</label>
-            <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false">
-              <i class="material-symbols-outlined">volume_up</i>
-              <span>Tắt tiếng</span>
-            </button>
-            <select id="language-select">
-              <option value="vi">Tiếng Việt</option>
-              <option value="en">English</option>
-            </select>
-          </div>
           <div class="name" id="player-name">Đang kết nối...</div>
           <div class="bar hp"><span id="hp-fill"></span><label id="hp-label">HP</label></div>
           <div class="bar exp"><span id="exp-fill"></span><label id="exp-label">EXP</label></div>
           <div class="stats" id="stats"></div>
-        </div>
-        <div class="panel equipment-panel">
-          <h2 id="equipment-title">Trang bị</h2>
-          <div id="equipment"></div>
         </div>
         <div class="panel target-panel">
           <div class="target-heading">
@@ -81,22 +66,6 @@
             <div class="bar hp target-hp"><span id="target-hp-fill"></span><label id="target-hp-label">HP</label></div>
           </div>
         </div>
-        <div class="panel skills-panel">
-          <h2 id="skills-title">Kỹ năng</h2>
-          <div id="skill-bar"></div>
-        </div>
-        <div class="panel skill-picker-panel">
-          <h2 id="skill-picker-title">Học kỹ năng</h2>
-          <div id="skill-picker"></div>
-        </div>
-        <div class="panel afk-panel">
-          <h2 id="afk-title">AFK</h2>
-          <div id="afk-zones">
-            <button class="afk-zone-button" type="button" data-afk-zone="greenwood">Greenwood</button>
-            <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
-            <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
-          </div>
-        </div>
         <div class="panel party-panel">
           <h2 id="party-title">Tổ đội</h2>
           <div id="party-invite" class="party-invite hidden"></div>
@@ -106,26 +75,9 @@
             <button id="party-leave-button" type="button" class="hidden">Rời đội</button>
           </div>
         </div>
-        <div class="panel quest-panel">
-          <h2 id="quests-title">Nhiệm vụ</h2>
-          <div id="quests"></div>
-        </div>
-        <div class="panel achievements-panel">
-          <h2 id="achievements-title">Thành tựu</h2>
-          <div id="achievements"></div>
-        </div>
-        <div class="panel inventory-panel">
-          <div class="inventory-heading">
-            <h2 id="inventory-title">Túi đồ</h2>
-            <span id="inventory-count">0 / 30</span>
-          </div>
-          <div id="inventory"></div>
-          <button id="sell-junk-button" type="button">Bán đồ thường</button>
-        </div>
-        <div class="panel shop-panel">
-          <h2 id="shop-title">Cửa hàng</h2>
-          <div id="shop"></div>
-        </div>
+      </div>
+
+      <div id="bottom-left-hud">
         <div class="panel log-panel">
           <h2 id="world-title">Thế giới</h2>
           <div id="log"></div>
@@ -138,7 +90,90 @@
             <button id="chat-send" type="submit">Gửi</button>
           </form>
         </div>
-      </aside>
+      </div>
+
+      <div id="action-bar">
+        <button id="potion-slot" class="action-slot" type="button" title="Dùng bình máu (F)">
+          <kbd>F</kbd>
+          <strong id="potion-label">Bình</strong>
+        </button>
+        <div id="skill-bar"></div>
+      </div>
+
+      <div id="hud-toolbar">
+        <button class="toolbar-btn" type="button" data-modal="inventory-modal" title="Túi đồ" aria-label="Túi đồ"><i class="material-symbols-outlined">backpack</i></button>
+        <button class="toolbar-btn" type="button" data-modal="equipment-modal" title="Trang bị" aria-label="Trang bị"><i class="material-symbols-outlined">shield</i></button>
+        <button class="toolbar-btn" type="button" data-modal="skills-modal" title="Kỹ năng" aria-label="Kỹ năng"><i class="material-symbols-outlined">auto_awesome</i></button>
+        <button class="toolbar-btn" type="button" data-modal="quests-modal" title="Nhiệm vụ" aria-label="Nhiệm vụ"><i class="material-symbols-outlined">checklist</i></button>
+        <button class="toolbar-btn" type="button" data-modal="achievements-modal" title="Thành tựu" aria-label="Thành tựu"><i class="material-symbols-outlined">emoji_events</i></button>
+        <button class="toolbar-btn" type="button" data-modal="shop-modal" title="Cửa hàng" aria-label="Cửa hàng"><i class="material-symbols-outlined">store</i></button>
+        <button class="toolbar-btn" type="button" data-modal="afk-modal" title="AFK" aria-label="AFK"><i class="material-symbols-outlined">hotel</i></button>
+        <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
+      </div>
+
+      <div id="inventory-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header><h2 id="inventory-title">Túi đồ</h2><span id="inventory-count">0 / 30</span><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body">
+            <div id="inventory"></div>
+            <button id="sell-junk-button" type="button">Bán đồ thường</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="equipment-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header><h2 id="equipment-title">Trang bị</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body"><div id="equipment"></div></div>
+        </div>
+      </div>
+
+      <div id="skills-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header><h2 id="skill-picker-title">Học kỹ năng</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body"><div id="skill-picker"></div></div>
+        </div>
+      </div>
+
+      <div id="quests-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card"><header><h2 id="quests-title">Nhiệm vụ</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header><div class="game-modal-body"><div id="quests"></div></div></div>
+      </div>
+
+      <div id="achievements-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card"><header><h2 id="achievements-title">Thành tựu</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header><div class="game-modal-body"><div id="achievements"></div></div></div>
+      </div>
+
+      <div id="shop-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card"><header><h2 id="shop-title">Cửa hàng</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header><div class="game-modal-body"><div id="shop"></div></div></div>
+      </div>
+
+      <div id="afk-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header><h2 id="afk-title">Vùng AFK</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body">
+            <div id="afk-zones">
+              <button class="afk-zone-button" type="button" data-afk-zone="greenwood">Greenwood</button>
+              <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
+              <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="settings-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header><h2 id="settings-title">Cài đặt</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body">
+            <div class="settings-row">
+              <label id="language-label" for="language-select">Ngôn ngữ</label>
+              <select id="language-select"><option value="vi">Tiếng Việt</option><option value="en">English</option></select>
+            </div>
+            <div class="settings-row">
+              <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="false"><i class="material-symbols-outlined">volume_up</i><span>Tắt tiếng</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
