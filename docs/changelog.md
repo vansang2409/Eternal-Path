@@ -24,6 +24,21 @@
 - Reviewed by manager against Task 6.2 acceptance criteria: PASS
 - `npm run typecheck` and `npm run build` passed
 
+### Sprint 6 · Task 6.3 — Offline reward summary modal
+
+- Implemented by Codex via the new `codex exec` autonomous loop (first run of the auto-loop, 129k tokens)
+- Added a hidden modal in `index.html` showing the elapsed time, EXP, gold, and an optional 8-hour cap notice; localized strings added VI/EN
+- `Hud.showOfflineRewards` populates and reveals the modal on the `offlineRewards` event; the existing log-line stub is replaced by the modal call
+- While the modal is open, game input is suppressed (mirroring the chat-focus guard) and the close button refocuses gameplay when dismissed
+- Reviewed by manager against Task 6.3 acceptance criteria: PASS
+- Note: Codex tried to commit but its sandbox blocks writes to `.git`; the manager handles the commit as usual
+- `npm run typecheck` and `npm run build` passed
+
+### Sprint 6 complete
+
+- All three Sprint 6 tasks (AFK zone, offline rewards, summary modal) shipped and reviewed PASS
+- The "idle MMO nhẹ" layer is now wired end-to-end: pick a zone, log off, log back in, see a summary, keep playing
+
 ## 2026-05-22 (Sprint 5)
 
 ### Sprint 5 · Task 5.1 — Save & restore player position
