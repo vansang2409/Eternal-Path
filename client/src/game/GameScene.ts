@@ -12,6 +12,7 @@ import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
 import { createPixelArt } from "./assets";
 import { t, translateMonsterName } from "../i18n";
+import { soundManager } from "../sound";
 
 const INTERPOLATION_DELAY_MS = 100;
 const MAX_SNAPSHOT_BUFFER = 8;
@@ -60,14 +61,20 @@ export class GameScene extends Phaser.Scene {
       (itemId) => this.socket.emit("dropItem", { itemId }),
       (itemId) => this.socket.emit("useItem", { itemId }),
       () => this.socket.emit("sellJunk"),
-      (skillId) => this.socket.emit("useSkill", { skillId }),
+      (skillId) => {
+        soundManager.markUserGesture();
+        soundManager.play("skill");
+        this.socket.emit("useSkill", { skillId });
+      },
       (questId) => this.socket.emit("acceptQuest", { questId }),
       (questId) => this.socket.emit("claimQuest", { questId }),
       (enabled) => this.socket.emit("setAutoRetarget", { enabled }),
       (zone) => this.socket.emit("setAfkZone", { zone }),
       () => this.inviteCurrentTarget(),
       (partyId) => this.socket.emit("acceptParty", { partyId }),
-      () => this.socket.emit("leaveParty")
+      () => this.socket.emit("leaveParty"),
+      () => soundManager.toggleMuted(),
+      () => soundManager.isMuted()
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -104,8 +111,16 @@ export class GameScene extends Phaser.Scene {
     };
     if (input.up || input.down || input.left || input.right) this.clearMoveTarget();
     if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useFirstPotion();
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) this.socket.emit("useSkill", { skillId: "powerStrike" });
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.R)) this.socket.emit("useSkill", { skillId: "cleave" });
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) {
+      soundManager.markUserGesture();
+      soundManager.play("skill");
+      this.socket.emit("useSkill", { skillId: "powerStrike" });
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.R)) {
+      soundManager.markUserGesture();
+      soundManager.play("skill");
+      this.socket.emit("useSkill", { skillId: "cleave" });
+    }
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
@@ -196,10 +211,15 @@ export class GameScene extends Phaser.Scene {
         duration: 900,
         onComplete: () => text.destroy()
       });
-      if (event.kind === "damage") this.playHitEffect(event.entityId, event.position);
+      if (event.kind === "damage") {
+        if (this.monsters.has(event.entityId)) soundManager.play("hit");
+        this.playHitEffect(event.entityId, event.position);
+      }
+      if (event.kind === "level") soundManager.play("levelUp");
     });
 
     this.socket.on("loot", ({ item, gold }) => {
+      if (item) soundManager.play("loot");
       this.hud.log(
         item
           ? t("lootedGoldItem", { gold, rarity: t(item.rarity), item: item.name })
@@ -207,7 +227,10 @@ export class GameScene extends Phaser.Scene {
         item ? `loot-line rarity-${item.rarity}` : "loot-line"
       );
     });
-    this.socket.on("offlineRewards", (payload) => this.hud.showOfflineRewards(payload));
+    this.socket.on("offlineRewards", (payload) => {
+      this.hud.showOfflineRewards(payload);
+      soundManager.play("modalOpen");
+    });
     this.socket.on("announce", ({ accountName, itemName, rarity }) => {
       this.hud.announceDrop(accountName, itemName, rarity);
     });
@@ -273,6 +296,7 @@ export class GameScene extends Phaser.Scene {
       error.textContent = "";
       localStorage.setItem("loginEmail", email);
       localStorage.setItem("accountName", accountName);
+      soundManager.markUserGesture();
       this.socket.emit("login", { email, accountName, password });
     });
 

@@ -4,6 +4,8 @@ const dictionaries = {
   vi: {
     connecting: "Đang kết nối...",
     language: "Ngôn ngữ",
+    mute: "Tắt tiếng",
+    unmute: "Bật tiếng",
     equipment: "Trang bị",
     skills: "Kỹ năng",
     afkZone: "Vùng AFK",
@@ -116,6 +118,8 @@ const dictionaries = {
   en: {
     connecting: "Connecting...",
     language: "Language",
+    mute: "Mute",
+    unmute: "Unmute",
     equipment: "Equipment",
     skills: "Skills",
     afkZone: "AFK Zone",

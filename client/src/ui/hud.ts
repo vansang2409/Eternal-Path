@@ -33,14 +33,21 @@ export class Hud {
     private readonly onAfkZone: (zone: AfkZone) => void,
     private readonly onInviteParty: () => void,
     private readonly onAcceptParty: (partyId: string) => void,
-    private readonly onLeaveParty: () => void
+    private readonly onLeaveParty: () => void,
+    private readonly onToggleMuted: () => boolean,
+    private readonly isMuted: () => boolean
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
     const input = document.querySelector("#chat-input") as HTMLInputElement;
     const languageSelect = document.querySelector("#language-select") as HTMLSelectElement;
+    const muteButton = document.querySelector("#sound-toggle") as HTMLButtonElement;
     const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
     sellJunkButton.addEventListener("click", () => this.onSellJunk());
+    muteButton.addEventListener("click", () => {
+      this.onToggleMuted();
+      this.renderSoundToggle();
+    });
     document.querySelectorAll<HTMLButtonElement>(".skill-button").forEach((button) => {
       const skillId = button.dataset.skill as SkillId;
       button.addEventListener("click", () => this.onSkill(skillId));
@@ -58,6 +65,7 @@ export class Hud {
     (document.querySelector("#party-invite-button") as HTMLButtonElement).addEventListener("click", () => this.onInviteParty());
     (document.querySelector("#party-leave-button") as HTMLButtonElement).addEventListener("click", () => this.onLeaveParty());
     this.setParty(null);
+    this.renderSoundToggle();
     languageSelect.value = getLanguage();
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
@@ -386,6 +394,18 @@ export class Hud {
     document.querySelector("#chat-send")!.textContent = t("send");
     (document.querySelector("#chat-input") as HTMLInputElement).placeholder = t("chatPlaceholder");
     document.querySelector("#player-name")!.textContent = t("connecting");
+    this.renderSoundToggle();
+  }
+
+  private renderSoundToggle(): void {
+    const button = document.querySelector("#sound-toggle") as HTMLButtonElement | null;
+    if (!button) return;
+    const muted = this.isMuted();
+    const label = muted ? t("unmute") : t("mute");
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(muted));
+    button.innerHTML = `<i class="material-symbols-outlined">${muted ? "volume_off" : "volume_up"}</i><span>${label}</span>`;
   }
 
   private renderSkillCooldowns(): void {
