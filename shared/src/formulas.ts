@@ -1,8 +1,8 @@
 import type { AfkZone, Item, SkillId, Stats } from "./types.js";
 
 export const TILE_SIZE = 32;
-export const WORLD_WIDTH = 64;
-export const WORLD_HEIGHT = 40;
+export const WORLD_WIDTH = 128;
+export const WORLD_HEIGHT = 80;
 export const PLAYER_SPEED = 165;
 export const MONSTER_SPEED = 70;
 export const PLAYER_ATTACK_RANGE = 42;

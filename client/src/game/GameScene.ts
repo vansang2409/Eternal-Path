@@ -139,8 +139,13 @@ export class GameScene extends Phaser.Scene {
       const row: number[] = [];
       for (let x = 0; x < WORLD_WIDTH; x += 1) {
         const town = x < 11 && y < 11;
-        const road = x === 10 || y === 10 || (x > 18 && x < 58 && y === 22);
-        const deep = x >= 36 && y >= 12;
+        const road =
+          x === 10 ||
+          y === 10 ||
+          (x > 18 && x < 122 && y === 22) ||
+          (y > 22 && y < 78 && x === 64) ||
+          (x > 64 && x < 122 && y === 50);
+        const deep = (x >= 36 && y >= 12) || (x >= 70 && y >= 30) || (y >= 56);
         row.push(town ? 1 : road ? 2 : deep ? 3 : 0);
       }
       data.push(row);
@@ -155,7 +160,8 @@ export class GameScene extends Phaser.Scene {
     this.addZoneLabel(19 * TILE_SIZE, 12 * TILE_SIZE, t("zoneGreenwood"), 15, "#d8e9bf");
     this.addZoneLabel(31.5 * TILE_SIZE, 20.5 * TILE_SIZE, t("zoneMidlands"), 15, "#d8d6c2");
     this.addZoneLabel(45 * TILE_SIZE, 18.5 * TILE_SIZE, t("zoneDeeplands"), 16, "#e5b0ff");
-    this.addZoneLabel(56 * TILE_SIZE, 32 * TILE_SIZE, t("zoneDeeplands"), 14, "#c79bff");
+    this.addZoneLabel(80 * TILE_SIZE, 40 * TILE_SIZE, t("zoneDeeplands"), 18, "#c79bff");
+    this.addZoneLabel(110 * TILE_SIZE, 68 * TILE_SIZE, t("zoneDeeplands"), 20, "#a070ff");
   }
 
   private addZoneLabel(x: number, y: number, label: string, fontSize: number, color: string): void {
