@@ -271,6 +271,22 @@ Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyê
 
 ---
 
+## 4g. SPRINT 7 — "Chiều sâu nhân vật & cảm giác chơi"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1–6 đã xong + đã push GitHub. Sprint 7 chạy qua auto-loop `codex exec`.
+
+Bối cảnh: vòng farm + idle đã đủ → thêm chiều sâu nhân vật và polish "feel": agency khi lên cấp, cột mốc để theo dõi, âm thanh.
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 7.1 | `task-7.1-basic-sound.md` | Âm thanh Web Audio (no deps) cho hit / level / loot / skill / modal + nút tắt tiếng trong HUD |
+| 7.2 | `task-7.2-stat-points.md` | 3 điểm cộng / level vào ATK/DEF/HP, server authoritative, persist |
+| 7.3 | `task-7.3-achievements.md` | Bộ 6–8 thành tựu (first kill / lvl 5 / lvl 10 / elite / boss / epic loot / idler / socialite), toast khi mở khóa, panel danh sách |
+
+Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyên (codex code → mình diff + build + commit).
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
