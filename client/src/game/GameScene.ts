@@ -182,6 +182,27 @@ export class GameScene extends Phaser.Scene {
 
     this.socket.on("session", ({ token }) => localStorage.setItem("sessionToken", token));
 
+    // Auto re-login on (re)connect when a session token is stored. This handles
+    // dev-server hot-reloads / brief network drops without forcing the player
+    // to retype credentials. If the token is no longer valid, the server emits
+    // a system error which falls back to the manual login form.
+    this.socket.on("connect", () => {
+      if (this.loggedIn) return;
+      const savedToken = localStorage.getItem("sessionToken");
+      if (savedToken) this.socket.emit("login", { token: savedToken });
+    });
+
+    // If the server goes away mid-session (eg. dev-server restart), surface
+    // the login overlay again instead of leaving the client silently broken.
+    this.socket.on("disconnect", () => {
+      if (!this.loggedIn) return;
+      this.loggedIn = false;
+      this.disableGameKeyboard();
+      document.querySelector("#login-overlay")?.classList.remove("hidden");
+      const error = document.querySelector("#login-error");
+      if (error) error.textContent = "Mất kết nối với máy chủ, đang thử lại...";
+    });
+
     this.socket.on("snapshot", (snapshot) => this.applySnapshot(snapshot));
 
     this.socket.on("player", (player) => {
@@ -304,8 +325,8 @@ export class GameScene extends Phaser.Scene {
       this.socket.emit("login", { email, accountName, password });
     });
 
-    const savedToken = localStorage.getItem("sessionToken");
-    if (savedToken) this.socket.emit("login", { token: savedToken });
+    // Token-based auto-login is handled by the socket "connect" handler in
+    // registerSocketEvents so it also fires on reconnect, not just first load.
     emailInput.focus();
   }
 

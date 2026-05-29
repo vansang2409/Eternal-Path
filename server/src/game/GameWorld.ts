@@ -316,34 +316,53 @@ export class GameWorld {
 
     socket.on("acceptQuest", ({ questId }) => {
       const player = this.players.get(socket.id);
-      if (!player) return;
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
       const quest = questById(questId);
-      if (!quest) return;
+      if (!quest) {
+        socket.emit("system", "Nhiệm vụ không tồn tại.");
+        return;
+      }
       const active = this.activeQuests.get(socket.id) ?? [];
       if (active.some((entry) => entry.questId === questId)) {
-        socket.emit("system", "Quest already accepted.");
+        socket.emit("system", `Đã nhận trước đó: ${quest.title}.`);
         return;
       }
       if (active.length >= MAX_ACTIVE_QUESTS) {
-        socket.emit("system", "Quest log is full.");
+        socket.emit("system", "Đang làm tối đa 3 nhiệm vụ, hoàn tất hoặc bỏ bớt trước.");
         return;
       }
       active.push({ questId, progress: initialQuestProgress(quest, player) });
       this.activeQuests.set(socket.id, active);
       this.updateReachLevelQuests(player);
       this.emitQuestList(player);
+      socket.emit("system", `Đã nhận nhiệm vụ: ${quest.title}.`);
     });
 
     socket.on("claimQuest", async ({ questId }) => {
       const player = this.players.get(socket.id);
-      if (!player) return;
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
       this.updateReachLevelQuests(player);
       const active = this.activeQuests.get(socket.id) ?? [];
       const index = active.findIndex((entry) => entry.questId === questId);
       const template = questById(questId);
-      if (index < 0 || !template) return;
+      if (!template) {
+        socket.emit("system", "Nhiệm vụ không tồn tại.");
+        this.emitQuestList(player);
+        return;
+      }
+      if (index < 0) {
+        socket.emit("system", `Bạn chưa nhận nhiệm vụ: ${template.title}.`);
+        this.emitQuestList(player);
+        return;
+      }
       if (!isQuestComplete(active[index], template)) {
-        socket.emit("system", "Quest is not complete yet.");
+        socket.emit("system", `Chưa hoàn tất: ${template.title}.`);
         this.emitQuestList(player);
         return;
       }
@@ -356,7 +375,7 @@ export class GameWorld {
       if (leveled) this.checkLevelAchievements(player);
       this.updateReachLevelQuests(player);
       socket.emit("player", player);
-      socket.emit("system", `Quest complete: ${template.title}.`);
+      socket.emit("system", `Hoàn tất nhiệm vụ: ${template.title} (+${template.rewardGold} vàng, +${template.rewardExp} kinh nghiệm).`);
       this.emitQuestList(player);
       this.markDirty(player);
     });
