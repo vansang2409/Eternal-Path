@@ -23,7 +23,7 @@ export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
   private hud!: Hud;
   private selfId = "";
-  private cursors!: Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
+  private cursors!: Record<"Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
   private names = new Map<string, Phaser.GameObjects.Text>();
@@ -80,7 +80,7 @@ export class GameScene extends Phaser.Scene {
     this.socket = createSocket();
     this.registerSocketEvents();
 
-    this.cursors = this.input.keyboard!.addKeys("W,A,S,D,Q,E,R") as Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard!.addKeys("Q,E,R") as Record<"Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
@@ -104,13 +104,12 @@ export class GameScene extends Phaser.Scene {
     }
     const input: ClientInput = {
       seq: this.seq++,
-      up: this.cursors.W.isDown,
-      down: this.cursors.S.isDown,
-      left: this.cursors.A.isDown,
-      right: this.cursors.D.isDown,
+      up: false,
+      down: false,
+      left: false,
+      right: false,
       moveTarget: this.moveTarget ? { x: this.moveTarget.x, y: this.moveTarget.y } : undefined
     };
-    if (input.up || input.down || input.left || input.right) this.clearMoveTarget();
     if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useFirstPotion();
     if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) {
       soundManager.markUserGesture();
@@ -339,7 +338,7 @@ export class GameScene extends Phaser.Scene {
   private enableGameKeyboard(): void {
     if (!this.input.keyboard) return;
     this.input.keyboard.enabled = true;
-    this.cursors = this.input.keyboard.addKeys("W,A,S,D,Q,E,R") as Record<"W" | "A" | "S" | "D" | "Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
+    this.cursors = this.input.keyboard.addKeys("Q,E,R") as Record<"Q" | "E" | "R", Phaser.Input.Keyboard.Key>;
   }
 
   private captureFormEvents(overlay: HTMLElement): void {
