@@ -255,6 +255,22 @@ Lưu ý môi trường: server đang chạy in-memory (chưa set DATABASE_URL), 
 
 ---
 
+## 4f. SPRINT 6 — "Lớp idle/AFK"
+
+Trạng thái: **brief sẵn sàng** trong `docs/codex-tasks/`. Sprint 1–5 đã xong. Codex tiếp tục implement.
+
+Bối cảnh: nền tảng đã chắc (auth, lưu vị trí, batched DB) → đến lúc thêm lớp idle đúng định vị "idle MMO nhẹ": chọn vùng cày, offline cho hệ thống tính thưởng.
+
+| Task | File brief | Tóm tắt |
+|------|-----------|---------|
+| 6.1 | `task-6.1-afk-zone-select.md` | Chọn 1 trong 3 vùng AFK (Greenwood/Midlands/Deeplands); lưu lựa chọn vào nhân vật |
+| 6.2 | `task-6.2-offline-rewards.md` | Theo dõi `last_seen_at`; lúc đăng nhập tính EXP/vàng theo vùng × thời gian offline (cap 8 giờ, không drop đồ) |
+| 6.3 | `task-6.3-reward-summary-modal.md` | Modal tổng kết phần thưởng AFK lúc vào game (giờ offline, EXP, vàng, ghi chú khi cap) |
+
+Acceptance criteria chi tiết trong từng file. Quy trình review giữ nguyên: xem diff → đối chiếu acceptance → typecheck/build → ghi changelog → commit.
+
+---
+
 ## 5. Watchlist nợ kỹ thuật (xử lý ở sprint sau, không quên)
 
 Phát hiện khi review code, chưa cần làm ngay nhưng cần theo dõi:
