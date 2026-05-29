@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS characters (
   defense integer NOT NULL DEFAULT 5,
   gold integer NOT NULL DEFAULT 0,
   map_id varchar(64) NOT NULL DEFAULT 'greenwood',
+  last_seen_at timestamptz,
   position_x integer NOT NULL DEFAULT 224,
   position_y integer NOT NULL DEFAULT 224,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -49,6 +50,7 @@ ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS value integer NOT NULL DEFA
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS kind varchar(16) NOT NULL DEFAULT 'equipment';
 ALTER TABLE inventory_items ADD COLUMN IF NOT EXISTS heal integer;
 ALTER TABLE inventory_items ALTER COLUMN slot DROP NOT NULL;
+ALTER TABLE characters ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 
 CREATE INDEX IF NOT EXISTS inventory_items_character_idx ON inventory_items(character_id);
 CREATE UNIQUE INDEX IF NOT EXISTS equipped_slot_unique_idx

@@ -106,6 +106,13 @@ export interface LootEvent {
   item?: Item;
 }
 
+export interface OfflineRewardsEvent {
+  elapsedMs: number;
+  exp: number;
+  gold: number;
+  cappedAtMax: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   playerId: string;
@@ -206,6 +213,7 @@ export interface ServerToClientEvents {
   player: (player: PlayerState) => void;
   floatingText: (event: FloatingTextEvent) => void;
   loot: (event: LootEvent) => void;
+  offlineRewards: (event: OfflineRewardsEvent) => void;
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
   questList: (payload: QuestListPayload) => void;

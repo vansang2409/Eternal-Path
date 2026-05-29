@@ -16,15 +16,34 @@ export const CLEAVE_COOLDOWN_MS = 8000;
 export const CLEAVE_DAMAGE_MULTIPLIER = 1.3;
 export const CLEAVE_RADIUS = 90;
 export const DEFAULT_AFK_ZONE: AfkZone = "greenwood";
-export const AFK_ZONE_DEFINITIONS: Array<{ id: AfkZone; effectiveLevel: number; expRate: number; goldRate: number }> = [
-  { id: "greenwood", effectiveLevel: 2, expRate: 1, goldRate: 1 },
-  { id: "midlands", effectiveLevel: 4, expRate: 1.7, goldRate: 1.55 },
-  { id: "deeplands", effectiveLevel: 7, expRate: 2.8, goldRate: 2.35 }
+export const OFFLINE_REWARD_MIN_MS = 5 * 60 * 1000;
+export const OFFLINE_REWARD_MAX_MS = 8 * 60 * 60 * 1000;
+
+// Offline rewards are intentionally lower than active farming: about a few
+// kills per hour at the zone's effective level, enough to feel useful without
+// replacing online play.
+export const AFK_ZONE_DEFINITIONS: Array<{ id: AfkZone; effectiveLevel: number; expPerHour: number; goldPerHour: number }> = [
+  { id: "greenwood", effectiveLevel: 2, expPerHour: 120, goldPerHour: 50 },
+  { id: "midlands", effectiveLevel: 4, expPerHour: 240, goldPerHour: 100 },
+  { id: "deeplands", effectiveLevel: 7, expPerHour: 420, goldPerHour: 175 }
 ];
 const AFK_ZONE_IDS = new Set<AfkZone>(AFK_ZONE_DEFINITIONS.map((zone) => zone.id));
 
 export function isAfkZone(value: unknown): value is AfkZone {
   return typeof value === "string" && AFK_ZONE_IDS.has(value as AfkZone);
+}
+
+export function afkZoneDefinition(zone: AfkZone): { id: AfkZone; effectiveLevel: number; expPerHour: number; goldPerHour: number } {
+  return AFK_ZONE_DEFINITIONS.find((definition) => definition.id === zone) ?? AFK_ZONE_DEFINITIONS[0];
+}
+
+export function offlineRewardsFor(zone: AfkZone, elapsedMs: number): { exp: number; gold: number } {
+  const definition = afkZoneDefinition(zone);
+  const hours = Math.max(0, elapsedMs) / (60 * 60 * 1000);
+  return {
+    exp: Math.floor(definition.expPerHour * hours),
+    gold: Math.floor(definition.goldPerHour * hours)
+  };
 }
 
 export function expToNextLevel(level: number): number {

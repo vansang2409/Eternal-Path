@@ -8,6 +8,8 @@ import {
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
+  OFFLINE_REWARD_MAX_MS,
+  OFFLINE_REWARD_MIN_MS,
   POWER_STRIKE_COOLDOWN_MS,
   POWER_STRIKE_DAMAGE_MULTIPLIER,
   PLAYER_ATTACK_COOLDOWN_MS,
@@ -26,6 +28,7 @@ import {
   monsterAttack,
   monsterDefense,
   monsterMaxHp,
+  offlineRewardsFor,
   rollDamage
 } from "@mmorpg/shared";
 import type {
@@ -174,6 +177,29 @@ export class GameWorld {
     return this.repository.save(player);
   }
 
+  private applyOfflineRewards(player: PlayerState, lastSeenAt: number | undefined, now: number): { elapsedMs: number; exp: number; gold: number; cappedAtMax: boolean } | undefined {
+    if (!lastSeenAt) return undefined;
+    const rawElapsedMs = now - lastSeenAt;
+    if (rawElapsedMs < OFFLINE_REWARD_MIN_MS) return undefined;
+
+    const elapsedMs = Math.min(rawElapsedMs, OFFLINE_REWARD_MAX_MS);
+    const rewards = offlineRewardsFor(player.afkZone, elapsedMs);
+    if (rewards.exp <= 0 && rewards.gold <= 0) return undefined;
+
+    const leveled = grantExp(player.stats, rewards.exp);
+    player.stats = leveled.stats;
+    player.stats.gold += rewards.gold;
+    if (leveled.leveled) this.updateReachLevelQuests(player);
+    this.markDirty(player);
+
+    return {
+      elapsedMs,
+      exp: rewards.exp,
+      gold: rewards.gold,
+      cappedAtMax: rawElapsedMs >= OFFLINE_REWARD_MAX_MS
+    };
+  }
+
   connect(socket: GameSocket): void {
     socket.on("login", async ({ email, accountName, password, token }) => {
       let resolvedEmail: string;
@@ -220,6 +246,7 @@ export class GameWorld {
         lastAttackAt: 0,
         skillCooldowns: createSkillCooldowns()
       };
+      const offlineRewards = this.applyOfflineRewards(player, saved.lastSeenAt, Date.now());
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
@@ -228,6 +255,7 @@ export class GameWorld {
       socket.emit("session", { token: sessionToken });
       socket.emit("init", { selfId: socket.id, snapshot: this.snapshot() });
       socket.emit("player", player);
+      if (offlineRewards) socket.emit("offlineRewards", offlineRewards);
       this.emitQuestList(player);
       socket.emit("shopStock", this.shopStock);
       socket.emit("chatHistory", this.chatMessages);

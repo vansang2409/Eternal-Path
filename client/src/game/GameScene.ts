@@ -207,6 +207,14 @@ export class GameScene extends Phaser.Scene {
         item ? `loot-line rarity-${item.rarity}` : "loot-line"
       );
     });
+    this.socket.on("offlineRewards", ({ elapsedMs, exp, gold, cappedAtMax }) => {
+      this.hud.log(t("offlineRewards", {
+        hours: (elapsedMs / (60 * 60 * 1000)).toFixed(1),
+        exp,
+        gold,
+        cap: cappedAtMax ? t("offlineRewardsCapped") : ""
+      }), "loot-line");
+    });
     this.socket.on("announce", ({ accountName, itemName, rarity }) => {
       this.hud.announceDrop(accountName, itemName, rarity);
     });
