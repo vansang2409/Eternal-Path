@@ -134,7 +134,8 @@ export class Hud {
     this.renderAfkZone();
     this.renderAchievements();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
-    this.replaceSkillBarSlots();
+    if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
+    if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
     this.renderSkillBar();
     this.renderSkillPicker();
     this.renderSkillCooldowns();
