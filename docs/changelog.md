@@ -1,5 +1,17 @@
 # Linh Vuc / Eternal Path - Changelog
 
+## 2026-05-22 (Sprint 7)
+
+### Sprint 7 · Task 7.1 — Basic sound effects
+
+- Implemented by Codex via `codex exec` auto-loop (67k tokens)
+- New `client/src/sound.ts`: lazy `AudioContext`, mute persisted to `localStorage`, suspends context when muted, user-gesture unlock
+- 5 short procedural effects (hit / levelUp / loot / skill / modalOpen) using `OscillatorNode` + exponential envelopes; master gain 0.08 to avoid fatigue
+- Wired in `GameScene` from existing client events: monster damage floating text, level floating text, loot event, skill presses, AFK modal open
+- HUD mute/unmute button with VI/EN labels and a visible volume icon; state survives reload
+- Reviewed by manager against Task 7.1 acceptance criteria: PASS
+- `npm run typecheck` and `npm run build` passed
+
 ## 2026-05-22 (Sprint 6)
 
 ### Sprint 6 · Task 6.1 — Choose an AFK farming zone
