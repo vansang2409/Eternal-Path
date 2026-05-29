@@ -133,7 +133,8 @@ export class Hud {
     this.renderInventory();
     this.renderAfkZone();
     this.renderAchievements();
-    this.skillCooldowns = player.skillCooldowns;
+    this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
+    this.replaceSkillBarSlots();
     this.renderSkillBar();
     this.renderSkillPicker();
     this.renderSkillCooldowns();
@@ -144,8 +145,9 @@ export class Hud {
     const root = document.querySelector("#skill-bar")!;
     root.innerHTML = "";
     const keys = ["Q", "W", "E", "R"];
+    const equipped = this.player.equippedSkills ?? [];
     for (let slot = 0; slot < SKILL_LOADOUT_SIZE; slot++) {
-      const skillId = this.player.equippedSkills[slot];
+      const skillId = equipped[slot];
       const button = document.createElement("button");
       button.type = "button";
       button.className = "skill-button";
@@ -170,13 +172,14 @@ export class Hud {
     const root = document.querySelector("#skill-picker")!;
     root.innerHTML = "";
     const keys = ["Q", "W", "E", "R"];
-    const learnedSet = new Set(this.player.learnedSkills);
+    const learnedSet = new Set(this.player.learnedSkills ?? []);
+    const equippedSkills = this.player.equippedSkills ?? [];
     const playerLevel = this.player.stats.level;
     for (const id of SKILL_IDS) {
       const info = SKILL_CATALOG[id];
       const learned = learnedSet.has(id);
       const meetsLevel = playerLevel >= info.requiredLevel;
-      const equippedSlot = this.player.equippedSkills.indexOf(id);
+      const equippedSlot = equippedSkills.indexOf(id);
       const status = learned ? "learned" : meetsLevel ? "learnable" : "locked";
       const card = document.createElement("div");
       card.className = `skill-card ${status}${equippedSlot >= 0 ? " equipped" : ""}`;
@@ -538,7 +541,7 @@ export class Hud {
   private renderSkillCooldowns(): void {
     if (!this.player) return;
     const now = Date.now();
-    for (const skillId of this.player.equippedSkills) {
+    for (const skillId of this.player.equippedSkills ?? []) {
       if (!skillId) continue;
       const remaining = Math.max(0, this.skillCooldowns[skillId] - now);
       const button = document.querySelector(`[data-skill="${skillId}"]`) as HTMLButtonElement | null;
