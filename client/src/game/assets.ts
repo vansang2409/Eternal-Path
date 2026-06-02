@@ -1,12 +1,19 @@
 // Pixel art generator. Tiles are baked into a single horizontal strip so a
 // Phaser tilemap can address them by index. Tile index must match the
 // TileId enum from shared (Grass=0, Road=1, Forest=2, ... Deep=11).
+//
+// Sprint 15: we also generate an ISO version of each tile (diamond shaped
+// 64x32) for the isometric renderer. Same color/dither palette as the 2D
+// tile, but masked to a rhombus and rendered as 12 separate textures
+// "iso-tile-0" .. "iso-tile-11".
 
 import { TileId } from "@mmorpg/shared";
 
 const TILE_PX = 32;
 const TILE_COUNT = 12;
 const TILE_SHEET_WIDTH = TILE_PX * TILE_COUNT;
+export const ISO_TILE_W = 64;
+export const ISO_TILE_H = 32;
 
 export function createPixelArt(scene: Phaser.Scene): void {
   createTexture(scene, "player", [
@@ -100,6 +107,84 @@ export function createPixelArt(scene: Phaser.Scene): void {
   ], { S: "#a0a0a3", W: "#f1d0a2", "2": "#151515", K: "#5b6266" });
 
   createTileSheet(scene);
+  createIsoTiles(scene);
+}
+
+// Iso tile: 64x32 diamond. We render the diamond shape filled with the
+// biome's primary color, then dither + add subtle pattern variation.
+function createIsoTiles(scene: Phaser.Scene): void {
+  // Top color (slightly brighter), side colors for tiles that visually
+  // "have height" (rock, water, dungeon wall, town stone).
+  const palette: Record<number, { top: string; dither?: string; accent?: string; outline?: string }> = {
+    [TileId.Grass]: { top: "#4f9a4d", dither: "#3a7a3b", accent: "#6dba5d" },
+    [TileId.Road]: { top: "#9b865f", dither: "#7d6a47", accent: "#bba37b" },
+    [TileId.Forest]: { top: "#326b3d", dither: "#1f4a2a", accent: "#45843a" },
+    [TileId.Water]: { top: "#3577b5", dither: "#23538a", accent: "#7fd2e8", outline: "#1a3e60" },
+    [TileId.Sand]: { top: "#d9c378", dither: "#c2a857", accent: "#efe1a2" },
+    [TileId.Snow]: { top: "#e3ecf2", dither: "#c7d6e0", accent: "#ffffff" },
+    [TileId.Swamp]: { top: "#3f5a30", dither: "#2f4326", accent: "#5c7e3a" },
+    [TileId.Rock]: { top: "#7e7e82", dither: "#5d5d60", accent: "#a0a0a3", outline: "#3a3a3d" },
+    [TileId.DungeonFloor]: { top: "#3a3148", dither: "#28213a", accent: "#544870" },
+    [TileId.DungeonWall]: { top: "#241b35", dither: "#0e0820", accent: "#5b3f86", outline: "#100820" },
+    [TileId.TownStone]: { top: "#a18d6c", dither: "#85714f", accent: "#c4b186", outline: "#5b4a30" },
+    [TileId.Deep]: { top: "#3a376b", dither: "#2b2947", accent: "#5c4fa3", outline: "#17142b" }
+  };
+
+  for (let id = 0; id < 12; id += 1) {
+    const p = palette[id];
+    const key = `iso-tile-${id}`;
+    const canvas = scene.textures.createCanvas(key, ISO_TILE_W, ISO_TILE_H);
+    if (!canvas) continue;
+    const ctx = canvas.getContext();
+    // Fill diamond pixel-by-pixel (no anti-alias). Diamond bounds:
+    // for row y (0..H-1), the row is centered, width grows then shrinks.
+    const half = ISO_TILE_H / 2;
+    for (let y = 0; y < ISO_TILE_H; y += 1) {
+      const dy = Math.abs(y - half + 0.5);
+      const rowHalfWidth = (1 - dy / half) * (ISO_TILE_W / 2);
+      const x0 = Math.floor(ISO_TILE_W / 2 - rowHalfWidth);
+      const x1 = Math.ceil(ISO_TILE_W / 2 + rowHalfWidth);
+      ctx.fillStyle = p.top;
+      ctx.fillRect(x0, y, x1 - x0, 1);
+    }
+    // Dither dots — deterministic pattern keyed by tile id so seam looks consistent.
+    const rng = seededRand(700 + id);
+    if (p.dither) {
+      ctx.fillStyle = p.dither;
+      for (let i = 0; i < 18; i += 1) {
+        const px = Math.floor(rng() * ISO_TILE_W);
+        const py = Math.floor(rng() * ISO_TILE_H);
+        if (isInsideIsoDiamond(px, py)) ctx.fillRect(px, py, 1, 1);
+      }
+    }
+    if (p.accent) {
+      ctx.fillStyle = p.accent;
+      for (let i = 0; i < 8; i += 1) {
+        const px = Math.floor(rng() * ISO_TILE_W);
+        const py = Math.floor(rng() * ISO_TILE_H);
+        if (isInsideIsoDiamond(px, py)) ctx.fillRect(px, py, 1, 1);
+      }
+    }
+    // Optional outline along the diamond edge.
+    if (p.outline) {
+      ctx.strokeStyle = p.outline;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ISO_TILE_W / 2, 0.5);
+      ctx.lineTo(ISO_TILE_W - 0.5, ISO_TILE_H / 2);
+      ctx.lineTo(ISO_TILE_W / 2, ISO_TILE_H - 0.5);
+      ctx.lineTo(0.5, ISO_TILE_H / 2);
+      ctx.closePath();
+      ctx.stroke();
+    }
+    canvas.refresh();
+  }
+}
+
+function isInsideIsoDiamond(x: number, y: number): boolean {
+  const cx = ISO_TILE_W / 2;
+  const cy = ISO_TILE_H / 2;
+  return Math.abs(x - cx) / cx + Math.abs(y - cy) / cy <= 1;
 }
 
 function createTexture(scene: Phaser.Scene, key: string, pixels: string[], colors: Record<string, string>): void {

@@ -15,7 +15,7 @@ import {
 import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, SkillId, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
-import { createPixelArt } from "./assets";
+import { ISO_TILE_W, ISO_TILE_H, createPixelArt } from "./assets";
 import { t, translateMonsterName } from "../i18n";
 import { soundManager } from "../sound";
 
@@ -23,6 +23,24 @@ const INTERPOLATION_DELAY_MS = 100;
 const MAX_SNAPSHOT_BUFFER = 8;
 const LOCAL_SNAP_DISTANCE = 64;
 const LOCAL_RECONCILE_ALPHA = 0.16;
+
+// Isometric projection. Server still works in 2D Cartesian world pixels;
+// the client renders projected iso for a 2.5D camera feel.
+const ISO_OFFSET_X = (WORLD_HEIGHT - 1) * (ISO_TILE_W / 2);
+function worldToIso(wx: number, wy: number): { x: number; y: number } {
+  const tx = wx / TILE_SIZE;
+  const ty = wy / TILE_SIZE;
+  return {
+    x: (tx - ty) * (ISO_TILE_W / 2) + ISO_OFFSET_X,
+    y: (tx + ty) * (ISO_TILE_H / 2)
+  };
+}
+function isoToWorld(sx: number, sy: number): { x: number; y: number } {
+  const ax = sx - ISO_OFFSET_X;
+  const tx = (ax / (ISO_TILE_W / 2) + sy / (ISO_TILE_H / 2)) / 2;
+  const ty = (sy / (ISO_TILE_H / 2) - ax / (ISO_TILE_W / 2)) / 2;
+  return { x: tx * TILE_SIZE, y: ty * TILE_SIZE };
+}
 
 export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
@@ -104,7 +122,9 @@ export class GameScene extends Phaser.Scene {
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
       if (!pointer.rightButtonDown() || objects.length > 0) return;
-      this.moveTarget = new Phaser.Math.Vector2(pointer.worldX, pointer.worldY);
+      // Pointer is in iso-screen world coords; reverse-project to game world.
+      const w = isoToWorld(pointer.worldX, pointer.worldY);
+      this.moveTarget = new Phaser.Math.Vector2(w.x, w.y);
       this.drawMoveMarker();
     });
   }
@@ -184,24 +204,14 @@ export class GameScene extends Phaser.Scene {
       const info = BIOME_INFO[c.biome as TileId];
       const label = this.biomeLabel(c.biome as TileId);
       if (!label) continue;
-      this.addZoneLabel(
-        (c.centroid.x + 0.5) * TILE_SIZE,
-        (c.centroid.y + 0.5) * TILE_SIZE,
-        label,
-        14,
-        info?.labelColor ?? "#ffffff"
-      );
+      const iso = worldToIso((c.centroid.x + 0.5) * TILE_SIZE, (c.centroid.y + 0.5) * TILE_SIZE);
+      this.addZoneLabel(iso.x, iso.y, label, 14, info?.labelColor ?? "#ffffff");
     }
 
     // Dungeon entrance markers.
     for (const d of worldMap.landmarks.dungeons) {
-      this.addZoneLabel(
-        (d.x + 0.5) * TILE_SIZE,
-        (d.y - 0.5) * TILE_SIZE,
-        "Hầm Bí Ẩn",
-        13,
-        "#c79bff"
-      );
+      const iso = worldToIso((d.x + 0.5) * TILE_SIZE, (d.y - 0.5) * TILE_SIZE);
+      this.addZoneLabel(iso.x, iso.y, "Hầm Bí Ẩn", 13, "#c79bff");
     }
   }
 
@@ -275,24 +285,35 @@ export class GameScene extends Phaser.Scene {
   // ------- arena -------
 
   private createArenaOverlay(): void {
-    const x = ARENA_TILE_BOX.x0 * TILE_SIZE;
-    const y = ARENA_TILE_BOX.y0 * TILE_SIZE;
-    const w = (ARENA_TILE_BOX.x1 - ARENA_TILE_BOX.x0 + 1) * TILE_SIZE;
-    const h = (ARENA_TILE_BOX.y1 - ARENA_TILE_BOX.y0 + 1) * TILE_SIZE;
-    // Reddish tint marks the dueling ground.
-    this.add.rectangle(x + w / 2, y + h / 2, w, h, 0xb73a48, 0.22).setDepth(1);
-    // Thicker red border.
-    const border = this.add.graphics().setDepth(1);
+    // Arena box: 4 world corners projected to iso form a rhombus.
+    const x0 = ARENA_TILE_BOX.x0 * TILE_SIZE;
+    const y0 = ARENA_TILE_BOX.y0 * TILE_SIZE;
+    const x1 = (ARENA_TILE_BOX.x1 + 1) * TILE_SIZE;
+    const y1 = (ARENA_TILE_BOX.y1 + 1) * TILE_SIZE;
+    const tl = worldToIso(x0, y0);
+    const tr = worldToIso(x1, y0);
+    const br = worldToIso(x1, y1);
+    const bl = worldToIso(x0, y1);
+    const poly = this.add.polygon(0, 0, [tl.x, tl.y, tr.x, tr.y, br.x, br.y, bl.x, bl.y], 0xb73a48, 0.22)
+      .setOrigin(0, 0)
+      .setDepth(0.5);
+    const border = this.add.graphics().setDepth(0.5);
     border.lineStyle(2, 0xff6b7a, 0.85);
-    border.strokeRect(x, y, w, h);
-    // Label.
-    this.add.text(x + w / 2, y - 6, "Đấu Trường (PvP)", {
+    border.strokePoints([
+      { x: tl.x, y: tl.y },
+      { x: tr.x, y: tr.y },
+      { x: br.x, y: br.y },
+      { x: bl.x, y: bl.y }
+    ], true);
+    // Label at the iso top corner.
+    this.add.text(tl.x, tl.y - 8, "Đấu Trường (PvP)", {
       fontFamily: "monospace",
       fontSize: "12px",
       color: "#ff8a98",
       stroke: "#111",
       strokeThickness: 3
     }).setOrigin(0.5, 1).setDepth(2);
+    poly.setVisible(true);
   }
 
   // ------- town NPCs -------
@@ -338,9 +359,12 @@ export class GameScene extends Phaser.Scene {
 
     const created: Npc[] = [];
     for (const def of npcs) {
-      const px = (town.x + def.offset.dx + 0.5) * TILE_SIZE;
-      const py = (town.y + def.offset.dy + 0.5) * TILE_SIZE;
-      const sprite = this.add.sprite(px, py, def.texture).setScale(3).setDepth(8);
+      const wx = (town.x + def.offset.dx + 0.5) * TILE_SIZE;
+      const wy = (town.y + def.offset.dy + 0.5) * TILE_SIZE;
+      const iso = worldToIso(wx, wy);
+      const px = iso.x;
+      const py = iso.y;
+      const sprite = this.add.sprite(px, py, def.texture).setScale(3).setDepth(py);
       sprite.setInteractive({ useHandCursor: true });
       const nameLabel = this.add.text(px, py - 32, def.name, {
         fontFamily: "monospace",
@@ -534,7 +558,8 @@ export class GameScene extends Phaser.Scene {
       const isHeavyHit = event.kind === "damage" && event.amount >= 60;
       const color = event.kind === "damage" ? (isHeavyHit ? "#ffbe3c" : "#ff6961") : event.kind === "loot" ? "#f7d774" : "#8be78b";
       const fontSize = event.kind === "level" ? 18 : isHeavyHit ? 18 : 14;
-      const text = this.add.text(event.position.x, event.position.y - 28, event.text ?? `${event.amount}`, {
+      const ftIso = worldToIso(event.position.x, event.position.y);
+      const text = this.add.text(ftIso.x, ftIso.y - 28, event.text ?? `${event.amount}`, {
         fontFamily: "monospace",
         fontSize: `${fontSize}px`,
         color,
@@ -890,7 +915,8 @@ export class GameScene extends Phaser.Scene {
   private renderPlayer(player: PlayerState, position: Vec2): void {
     let sprite = this.players.get(player.id);
     if (!sprite) {
-      sprite = this.add.sprite(position.x, position.y, "player").setScale(3).setDepth(10);
+      const ip = worldToIso(position.x, position.y);
+      sprite = this.add.sprite(ip.x, ip.y, "player").setScale(3).setDepth(ip.y);
       if (player.id !== this.selfId) {
         sprite.setInteractive({ useHandCursor: true });
         sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -898,7 +924,8 @@ export class GameScene extends Phaser.Scene {
         });
       }
       this.players.set(player.id, sprite);
-      const name = this.add.text(position.x, position.y - 34, player.accountName, {
+      const ip2 = worldToIso(position.x, position.y);
+      const name = this.add.text(ip2.x, ip2.y - 34, player.accountName, {
         fontFamily: "monospace",
         fontSize: "12px",
         color: player.id === this.selfId ? "#a8d8ff" : "#f1f1f1",
@@ -911,16 +938,18 @@ export class GameScene extends Phaser.Scene {
       if (player.id === this.selfId) this.cameras.main.startFollow(sprite, true, 0.12, 0.12);
     }
     const facing = player.id === this.selfId ? this.predictedSelfFacing : player.facing;
-    sprite.setPosition(position.x, position.y);
+    const ip3 = worldToIso(position.x, position.y);
+    sprite.setPosition(ip3.x, ip3.y);
+    sprite.setDepth(ip3.y);
     sprite.setFlipX(facing === "left");
     if (player.id !== this.selfId) {
       sprite.disableInteractive();
       sprite.setInteractive({ useHandCursor: true });
     }
     const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
-    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(position.x, position.y - 42);
-    this.drawPlayerBar(player, position);
-    this.drawPlayerEquipment(player, position, facing);
+    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 1);
+    this.drawPlayerBar(player, ip3);
+    this.drawPlayerEquipment(player, ip3, facing);
   }
 
   private drawPlayerEquipment(player: PlayerState, position: Vec2, facing: Direction): void {
@@ -967,22 +996,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   private renderMonster(monster: MonsterState, position: Vec2): void {
+    const iso = worldToIso(position.x, position.y);
     let sprite = this.monsters.get(monster.id);
     if (!sprite) {
-      sprite = this.add.sprite(position.x, position.y, "monster").setScale(3).setDepth(9);
+      sprite = this.add.sprite(iso.x, iso.y, "monster").setScale(3).setDepth(iso.y);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", () => {
         if (!monster.respawnsAt) this.socket.emit("targetMonster", { monsterId: monster.id });
       });
       this.monsters.set(monster.id, sprite);
-      this.monsterBars.set(monster.id, this.add.graphics().setDepth(12));
-      this.monsterLabels.set(monster.id, this.add.text(position.x, position.y - 45, "", {
+      this.monsterBars.set(monster.id, this.add.graphics().setDepth(iso.y + 1));
+      this.monsterLabels.set(monster.id, this.add.text(iso.x, iso.y - 45, "", {
         fontFamily: "monospace",
         fontSize: "11px",
         color: "#f3e7bf",
         stroke: "#111",
         strokeThickness: 3
-      }).setOrigin(0.5).setDepth(12));
+      }).setOrigin(0.5).setDepth(iso.y + 2));
     }
 
     sprite.setTexture(monster.respawnsAt ? "dead" : "monster");
@@ -992,44 +1022,50 @@ export class GameScene extends Phaser.Scene {
     sprite.setScale(monster.boss ? definition.scale : monster.elite ? definition.scale * 1.18 : definition.scale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
-    sprite.setPosition(position.x, position.y);
+    sprite.setPosition(iso.x, iso.y);
+    sprite.setDepth(iso.y);
     const name = `${monster.boss ? `${t("bossPrefix")} ` : monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
     this.monsterLabels.get(monster.id)
       ?.setText(`${t("levelShort")} ${monster.level} ${name}`)
       .setColor(monster.boss ? "#fff1a8" : monster.elite ? "#ffe088" : "#f3e7bf")
-      .setPosition(position.x, position.y - (monster.boss ? 66 : monster.elite ? 52 : 45))
+      .setPosition(iso.x, iso.y - (monster.boss ? 66 : monster.elite ? 52 : 45))
+      .setDepth(iso.y + 2)
       .setVisible(!monster.respawnsAt);
-    this.drawMonsterBar(monster, position);
+    this.monsterBars.get(monster.id)?.setDepth(iso.y + 1);
+    this.drawMonsterBar(monster, iso);
   }
 
   private renderGroundItem(groundItem: GroundItem): void {
     const isTreasure = groundItem.droppedBy === "treasure";
+    const iso = worldToIso(groundItem.position.x, groundItem.position.y);
     let sprite = this.groundItems.get(groundItem.id);
     if (!sprite) {
       const texture = isTreasure ? "chest" : "ground-item";
       const scale = isTreasure ? 3 : 2.5;
-      sprite = this.add.sprite(groundItem.position.x, groundItem.position.y, texture).setScale(scale).setDepth(7);
+      sprite = this.add.sprite(iso.x, iso.y, texture).setScale(scale).setDepth(iso.y);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
         if (pointer.leftButtonDown()) this.socket.emit("pickupGroundItem", { groundItemId: groundItem.id });
       });
       this.groundItems.set(groundItem.id, sprite);
       const labelText = isTreasure ? "Rương Kho Báu" : groundItem.item.name;
-      const label = this.add.text(groundItem.position.x, groundItem.position.y - 24, labelText, {
+      const label = this.add.text(iso.x, iso.y - 24, labelText, {
         fontFamily: "monospace",
         fontSize: isTreasure ? "11px" : "10px",
         color: isTreasure ? "#f7d774" : rarityHex(groundItem.item.rarity),
         stroke: "#111",
         strokeThickness: 3
-      }).setOrigin(0.5).setDepth(8);
+      }).setOrigin(0.5).setDepth(iso.y + 1);
       this.groundItemLabels.set(groundItem.id, label);
     }
-    sprite.setPosition(groundItem.position.x, groundItem.position.y);
+    sprite.setPosition(iso.x, iso.y);
+    sprite.setDepth(iso.y);
     if (!isTreasure) sprite.setTint(rarityColor(groundItem.item.rarity));
     this.groundItemLabels.get(groundItem.id)
       ?.setText(groundItem.item.name)
       .setColor(rarityHex(groundItem.item.rarity))
-      .setPosition(groundItem.position.x, groundItem.position.y - 20);
+      .setPosition(iso.x, iso.y - 20)
+      .setDepth(iso.y + 1);
   }
 
   private drawPlayerBar(player: PlayerState, position: Vec2): void {
@@ -1062,13 +1098,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawMoveMarker(): void {
-    if (!this.moveMarker) this.moveMarker = this.add.graphics().setDepth(8);
+    if (!this.moveMarker) this.moveMarker = this.add.graphics().setDepth(99999);
     this.moveMarker.clear();
     if (!this.moveTarget) return;
+    const iso = worldToIso(this.moveTarget.x, this.moveTarget.y);
     this.moveMarker.lineStyle(2, 0xf7d774, 0.95);
-    this.moveMarker.strokeCircle(this.moveTarget.x, this.moveTarget.y, 10);
-    this.moveMarker.lineBetween(this.moveTarget.x - 5, this.moveTarget.y, this.moveTarget.x + 5, this.moveTarget.y);
-    this.moveMarker.lineBetween(this.moveTarget.x, this.moveTarget.y - 5, this.moveTarget.x, this.moveTarget.y + 5);
+    this.moveMarker.strokeCircle(iso.x, iso.y, 10);
+    this.moveMarker.lineBetween(iso.x - 5, iso.y, iso.x + 5, iso.y);
+    this.moveMarker.lineBetween(iso.x, iso.y - 5, iso.x, iso.y + 5);
   }
 
   private clearMoveTarget(): void {
@@ -1099,15 +1136,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   private playDeathPoof(position: Vec2, big: boolean): void {
+    const iso = worldToIso(position.x, position.y);
     const count = big ? 14 : 8;
     for (let i = 0; i < count; i += 1) {
       const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
       const speed = (big ? 70 : 50) + Math.random() * 30;
       const radius = big ? 5 : 3.5;
       const color = big ? 0xffd166 : 0xc7c7c7;
-      const dot = this.add.circle(position.x, position.y, radius, color, 0.95).setDepth(19);
-      const tx = position.x + Math.cos(angle) * speed;
-      const ty = position.y + Math.sin(angle) * speed;
+      const dot = this.add.circle(iso.x, iso.y, radius, color, 0.95).setDepth(99998);
+      const tx = iso.x + Math.cos(angle) * speed;
+      const ty = iso.y + Math.sin(angle) * speed;
       this.tweens.add({
         targets: dot,
         x: tx,
@@ -1125,10 +1163,11 @@ export class GameScene extends Phaser.Scene {
   private playSkillVFX(skillId: SkillId, position: Vec2, targetPosition?: Vec2): void {
     const info = SKILL_CATALOG[skillId];
     if (!info) return;
+    const iso = worldToIso(position.x, position.y);
+    const tgtIso = targetPosition ? worldToIso(targetPosition.x, targetPosition.y) : undefined;
     if (info.effect === "healSelf") {
-      // Green column of sparkles rising at the caster.
       for (let i = 0; i < 6; i += 1) {
-        const dot = this.add.circle(position.x + (Math.random() - 0.5) * 22, position.y + 8, 2.5, 0x8be78b, 0.95).setDepth(21);
+        const dot = this.add.circle(iso.x + (Math.random() - 0.5) * 22, iso.y + 8, 2.5, 0x8be78b, 0.95).setDepth(99997);
         this.tweens.add({
           targets: dot,
           y: dot.y - 36 - Math.random() * 16,
@@ -1137,7 +1176,7 @@ export class GameScene extends Phaser.Scene {
           onComplete: () => dot.destroy()
         });
       }
-      const ring = this.add.circle(position.x, position.y, 8, 0x8be78b, 0).setStrokeStyle(2, 0x8be78b, 0.9).setDepth(20);
+      const ring = this.add.circle(iso.x, iso.y, 8, 0x8be78b, 0).setStrokeStyle(2, 0x8be78b, 0.9).setDepth(99996);
       this.tweens.add({
         targets: ring,
         radius: 28,
@@ -1149,7 +1188,7 @@ export class GameScene extends Phaser.Scene {
     }
     if (info.effect === "damageAoe") {
       const radius = info.aoeRadius ?? 100;
-      const ring = this.add.circle(position.x, position.y, 4, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(20);
+      const ring = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(99996);
       this.tweens.add({
         targets: ring,
         radius,
@@ -1157,7 +1196,7 @@ export class GameScene extends Phaser.Scene {
         duration: 380,
         onComplete: () => ring.destroy()
       });
-      const inner = this.add.circle(position.x, position.y, 4, 0xff9a3c, 0.55).setDepth(20);
+      const inner = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0.55).setDepth(99996);
       this.tweens.add({
         targets: inner,
         radius: radius * 0.7,
@@ -1167,10 +1206,10 @@ export class GameScene extends Phaser.Scene {
       });
       return;
     }
-    if (info.effect === "lifestealSingle" && targetPosition) {
-      const beam = this.add.graphics().setDepth(21);
+    if (info.effect === "lifestealSingle" && tgtIso) {
+      const beam = this.add.graphics().setDepth(99997);
       beam.lineStyle(3, 0xff5d7a, 0.95);
-      beam.lineBetween(position.x, position.y, targetPosition.x, targetPosition.y);
+      beam.lineBetween(iso.x, iso.y, tgtIso.x, tgtIso.y);
       this.tweens.add({
         targets: beam,
         alpha: 0,
@@ -1179,15 +1218,14 @@ export class GameScene extends Phaser.Scene {
       });
       return;
     }
-    // damageSingle: slash arc from caster toward target.
-    if (targetPosition) {
-      const slash = this.add.graphics().setDepth(21);
+    if (tgtIso) {
+      const slash = this.add.graphics().setDepth(99997);
       slash.lineStyle(3, 0xfff1a8, 0.95);
-      const midX = (position.x + targetPosition.x) / 2;
-      const midY = (position.y + targetPosition.y) / 2;
-      slash.lineBetween(position.x, position.y, midX, midY);
+      const midX = (iso.x + tgtIso.x) / 2;
+      const midY = (iso.y + tgtIso.y) / 2;
+      slash.lineBetween(iso.x, iso.y, midX, midY);
       slash.lineStyle(2, 0xffd166, 0.95);
-      slash.lineBetween(midX, midY, targetPosition.x, targetPosition.y);
+      slash.lineBetween(midX, midY, tgtIso.x, tgtIso.y);
       this.tweens.add({
         targets: slash,
         alpha: 0,
@@ -1198,6 +1236,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private playHitEffect(entityId: string, position: { x: number; y: number }): void {
+    // Project to iso since callers pass server-side world pixel coords.
+    const iso = worldToIso(position.x, position.y);
+    position = iso as { x: number; y: number };
     const sprite = this.players.get(entityId) ?? this.monsters.get(entityId);
     if (sprite) {
       this.tweens.add({
