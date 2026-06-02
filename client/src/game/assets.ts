@@ -53,6 +53,18 @@ export function createPixelArt(scene: Phaser.Scene): void {
     "........"
   ], palette());
 
+  // Treasure chest: a small wooden box with a gold lock.
+  createTexture(scene, "chest", [
+    "........",
+    ".CCCCCC.",
+    ".C8888C.",
+    ".C8228C.",
+    ".CCCCCC.",
+    ".B8888B.",
+    ".BBBBBB.",
+    "........"
+  ], { ...palette(), B: "#5b3a1e", C: "#8b5a2b" });
+
   createTileSheet(scene);
 }
 

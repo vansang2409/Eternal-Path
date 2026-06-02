@@ -748,25 +748,29 @@ export class GameScene extends Phaser.Scene {
   }
 
   private renderGroundItem(groundItem: GroundItem): void {
+    const isTreasure = groundItem.droppedBy === "treasure";
     let sprite = this.groundItems.get(groundItem.id);
     if (!sprite) {
-      sprite = this.add.sprite(groundItem.position.x, groundItem.position.y, "ground-item").setScale(2.5).setDepth(7);
+      const texture = isTreasure ? "chest" : "ground-item";
+      const scale = isTreasure ? 3 : 2.5;
+      sprite = this.add.sprite(groundItem.position.x, groundItem.position.y, texture).setScale(scale).setDepth(7);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
         if (pointer.leftButtonDown()) this.socket.emit("pickupGroundItem", { groundItemId: groundItem.id });
       });
       this.groundItems.set(groundItem.id, sprite);
-      const label = this.add.text(groundItem.position.x, groundItem.position.y - 20, groundItem.item.name, {
+      const labelText = isTreasure ? "Rương Kho Báu" : groundItem.item.name;
+      const label = this.add.text(groundItem.position.x, groundItem.position.y - 24, labelText, {
         fontFamily: "monospace",
-        fontSize: "10px",
-        color: rarityHex(groundItem.item.rarity),
+        fontSize: isTreasure ? "11px" : "10px",
+        color: isTreasure ? "#f7d774" : rarityHex(groundItem.item.rarity),
         stroke: "#111",
         strokeThickness: 3
       }).setOrigin(0.5).setDepth(8);
       this.groundItemLabels.set(groundItem.id, label);
     }
     sprite.setPosition(groundItem.position.x, groundItem.position.y);
-    sprite.setTint(rarityColor(groundItem.item.rarity));
+    if (!isTreasure) sprite.setTint(rarityColor(groundItem.item.rarity));
     this.groundItemLabels.get(groundItem.id)
       ?.setText(groundItem.item.name)
       .setColor(rarityHex(groundItem.item.rarity))

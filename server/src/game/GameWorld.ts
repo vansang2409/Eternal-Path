@@ -73,6 +73,9 @@ const TOWN_HEAL_PER_SECOND = 0.14;
 const TOWN_HEAL_FLOATING_COOLDOWN_MS = 1400;
 const GROUND_ITEM_PICKUP_RANGE = 72;
 const GROUND_ITEM_TTL_MS = 10 * 60 * 1000;
+const TREASURE_RESPAWN_MS = 5 * 60 * 1000;
+const TREASURE_DROPPED_BY = "treasure";
+const TREASURE_CHEST_COUNT = 18;
 const SELL_VALUE_RATE = 0.6;
 const AUTO_RETARGET_RANGE = 260;
 const BAG_FULL_MESSAGE = "Túi đồ đã đầy.";
@@ -163,6 +166,7 @@ export class GameWorld {
   private monsters: MonsterState[] = [];
   private readonly worldMap: WorldMap;
   private readonly worldMapPayload: WorldMapPayload;
+  private readonly chestSlots: Array<{ id: string; position: Vec2; activeItemId?: string; nextSpawnAt: number; lootLevel: number }> = [];
   private tickTimer?: NodeJS.Timeout;
   private snapshotTimer?: NodeJS.Timeout;
 
@@ -179,6 +183,67 @@ export class GameWorld {
       landmarks: this.worldMap.landmarks
     };
     this.monsters = createMonsterSpawns(this.worldMap);
+    this.initTreasureChestSlots();
+  }
+
+  // Pick TREASURE_CHEST_COUNT walkable tiles in remote (mid-to-high level)
+  // biomes; deterministic by world seed.
+  private initTreasureChestSlots(): void {
+    const candidates: Array<{ x: number; y: number; biomeLevel: number }> = [];
+    for (let y = 12; y < this.worldMap.height - 12; y += 4) {
+      for (let x = 12; x < this.worldMap.width - 12; x += 4) {
+        const t = this.worldMap.tiles[y][x];
+        if (!isWalkableTile(t)) continue;
+        if (t === TileId.TownStone || t === TileId.Road) continue;
+        if (x < 24 && y < 24) continue; // not too close to town
+        const info = BIOME_INFO[t];
+        candidates.push({ x, y, biomeLevel: info?.levelMin ?? 1 });
+      }
+    }
+    let rs = (this.worldMap.seed ^ 0xc4e57) >>> 0;
+    const rng = () => {
+      rs = (rs + 0x6d2b79f5) | 0;
+      let t = rs;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    // Shuffle and take N.
+    for (let i = candidates.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      const tmp = candidates[i];
+      candidates[i] = candidates[j];
+      candidates[j] = tmp;
+    }
+    const chosen = candidates.slice(0, TREASURE_CHEST_COUNT);
+    for (let i = 0; i < chosen.length; i += 1) {
+      const c = chosen[i];
+      this.chestSlots.push({
+        id: `chest-${i}`,
+        position: { x: c.x * TILE_SIZE + TILE_SIZE / 2, y: c.y * TILE_SIZE + TILE_SIZE / 2 },
+        nextSpawnAt: 0,
+        lootLevel: Math.max(2, c.biomeLevel)
+      });
+    }
+  }
+
+  private maintainTreasureChests(now: number): void {
+    for (const slot of this.chestSlots) {
+      if (slot.activeItemId) continue;
+      if (now < slot.nextSpawnAt) continue;
+      const item = createLoot(slot.lootLevel + 2, "voidKnight", false, true);
+      if (!item) continue;
+      const id = `${TREASURE_DROPPED_BY}-${slot.id}-${now}`;
+      const groundItem: GroundItem = {
+        id,
+        item,
+        position: { ...slot.position },
+        droppedBy: TREASURE_DROPPED_BY,
+        createdAt: now
+      };
+      this.groundItems.set(id, groundItem);
+      slot.activeItemId = id;
+    }
   }
 
   // Pixel position -> tile walkability lookup.
@@ -728,6 +793,14 @@ export class GameWorld {
         return;
       }
       this.groundItems.delete(groundItem.id);
+      // Treasure chest pickup: schedule the slot to respawn in 5 minutes.
+      if (groundItem.droppedBy === TREASURE_DROPPED_BY) {
+        const slot = this.chestSlots.find((s) => s.activeItemId === groundItem.id);
+        if (slot) {
+          slot.activeItemId = undefined;
+          slot.nextSpawnAt = Date.now() + TREASURE_RESPAWN_MS;
+        }
+      }
       player.inventory.items.push(groundItem.item);
       socket.emit("player", player);
       socket.emit("system", `Đã nhặt ${groundItem.item.name}.`);
@@ -781,6 +854,7 @@ export class GameWorld {
     this.updateCombat(now);
     this.updateRespawns(now);
     this.cleanupGroundItems(now);
+    this.maintainTreasureChests(now);
   }
 
   private updatePlayers(deltaMs: number): void {
@@ -1185,6 +1259,7 @@ export class GameWorld {
 
   private cleanupGroundItems(now: number): void {
     for (const [id, groundItem] of this.groundItems) {
+      if (groundItem.droppedBy === TREASURE_DROPPED_BY) continue;
       if (now - groundItem.createdAt > GROUND_ITEM_TTL_MS) this.groundItems.delete(id);
     }
   }
@@ -1315,32 +1390,31 @@ function collectTilesByBiome(map: WorldMap): Map<TileId, { x: number; y: number 
 }
 
 function createMonsterSpawns(map: WorldMap): MonsterState[] {
-  // Two copies of each species for variety, total 23 -> spread by level/biome.
-  const species: string[] = [
-    "forestSlime",
-    "forestSlime",
-    "wildBoar",
-    "caveBat",
-    "goblinScout",
-    "goblinScout",
-    "direWolf",
-    "direWolf",
-    "mossCrawler",
-    "stoneImp",
-    "stoneImp",
-    "emberSprite",
-    "cursedTreant",
-    "cursedTreant",
-    "ashWraith",
-    "ashWraith",
-    "frostRevenant",
-    "crystalGolem",
-    "crystalGolem",
-    "bloodHarpy",
-    "ancientDrake",
-    "voidKnight",
-    "elderHydra"
-  ];
+  // Denser spawns: more copies per species, more variety per biome.
+  // Low-level mobs are abundant (8 copies) for new players, high-level
+  // mobs are rare (3 copies) so end-game zones stay challenging.
+  const counts: Record<string, number> = {
+    forestSlime: 8,
+    wildBoar: 7,
+    caveBat: 6,
+    goblinScout: 7,
+    direWolf: 6,
+    mossCrawler: 5,
+    stoneImp: 6,
+    emberSprite: 5,
+    cursedTreant: 5,
+    ashWraith: 5,
+    frostRevenant: 4,
+    crystalGolem: 4,
+    bloodHarpy: 4,
+    ancientDrake: 3,
+    voidKnight: 3,
+    elderHydra: 3
+  };
+  const species: string[] = [];
+  for (const [type, n] of Object.entries(counts)) {
+    for (let i = 0; i < n; i += 1) species.push(type);
+  }
 
   const pools = collectTilesByBiome(map);
   // Deterministic PRNG so the same seed -> same monster placements.
@@ -1398,7 +1472,45 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
     };
   });
   monsters.push(createWorldBoss(map));
+  for (const dungeonBoss of createDungeonMiniBosses(map)) {
+    monsters.push(dungeonBoss);
+  }
   return monsters;
+}
+
+// One mini-boss per dungeon entrance. They use existing high-level species
+// re-skinned as "Khắc Tinh" (Nemesis) and drop epic loot guaranteed.
+function createDungeonMiniBosses(map: WorldMap): MonsterState[] {
+  const bossTypes = ["voidKnight", "ancientDrake", "elderHydra"] as const;
+  const out: MonsterState[] = [];
+  for (let i = 0; i < map.landmarks.dungeons.length && i < bossTypes.length; i += 1) {
+    const dungeon = map.landmarks.dungeons[i];
+    const type = bossTypes[i];
+    const definition = getMonsterDefinition(type);
+    // Mini-boss is 3x HP, 1.6x stats of base species.
+    const baseMaxHp = monsterMaxHp(definition);
+    const maxHp = Math.round(baseMaxHp * 3);
+    out.push({
+      id: `dungeon-boss-${i}`,
+      type,
+      name: `Khắc Tinh ${definition.name}`,
+      elite: false,
+      boss: true,
+      level: definition.level + 1,
+      position: { x: dungeon.x * TILE_SIZE, y: dungeon.y * TILE_SIZE },
+      spawn: { x: dungeon.x * TILE_SIZE, y: dungeon.y * TILE_SIZE },
+      velocity: { x: 0, y: 0 },
+      maxHp,
+      hp: maxHp,
+      attack: Math.round(monsterAttack(definition) * 1.6),
+      defense: Math.round(monsterDefense(definition) * 1.6),
+      aggroRadius: 200,
+      leashRadius: 320,
+      respawnDurationMs: 90 * 1000,
+      lastAttackAt: 0
+    });
+  }
+  return out;
 }
 
 function rerollMonsterRank(monster: MonsterState): void {
