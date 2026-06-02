@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import {
+  ARENA_TILE_BOX,
   BIOME_INFO,
   PLAYER_SPEED,
   SKILL_CATALOG,
@@ -161,6 +162,7 @@ export class GameScene extends Phaser.Scene {
 
     this.initMinimap(worldMap);
     this.createTownNpcs(worldMap);
+    this.createArenaOverlay();
 
     // Update camera bounds for the (possibly larger) world.
     this.cameras.main.setBounds(0, 0, worldMap.width * TILE_SIZE, worldMap.height * TILE_SIZE);
@@ -267,6 +269,29 @@ export class GameScene extends Phaser.Scene {
     }
     out.sort((a, b) => b.size - a.size);
     return out;
+  }
+
+  // ------- arena -------
+
+  private createArenaOverlay(): void {
+    const x = ARENA_TILE_BOX.x0 * TILE_SIZE;
+    const y = ARENA_TILE_BOX.y0 * TILE_SIZE;
+    const w = (ARENA_TILE_BOX.x1 - ARENA_TILE_BOX.x0 + 1) * TILE_SIZE;
+    const h = (ARENA_TILE_BOX.y1 - ARENA_TILE_BOX.y0 + 1) * TILE_SIZE;
+    // Reddish tint marks the dueling ground.
+    this.add.rectangle(x + w / 2, y + h / 2, w, h, 0xb73a48, 0.22).setDepth(1);
+    // Thicker red border.
+    const border = this.add.graphics().setDepth(1);
+    border.lineStyle(2, 0xff6b7a, 0.85);
+    border.strokeRect(x, y, w, h);
+    // Label.
+    this.add.text(x + w / 2, y - 6, "Đấu Trường (PvP)", {
+      fontFamily: "monospace",
+      fontSize: "12px",
+      color: "#ff8a98",
+      stroke: "#111",
+      strokeThickness: 3
+    }).setOrigin(0.5, 1).setDepth(2);
   }
 
   // ------- town NPCs -------
@@ -534,6 +559,32 @@ export class GameScene extends Phaser.Scene {
 
     this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
       this.playSkillVFX(skillId, position, targetPosition);
+    });
+
+    this.socket.on("arenaKill", ({ killerName, victimName }) => {
+      this.hud.log(`⚔ ${killerName} hạ ${victimName} tại Đấu Trường.`, "arena-line");
+    });
+
+    // Wire the arena toolbar button to fetch the leaderboard each time it opens.
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='arena-modal']").forEach((btn) => {
+      btn.addEventListener("click", () => this.socket.emit("arenaLeaderboardRequest"));
+    });
+
+    this.socket.on("arenaLeaderboard", (rows) => {
+      const tbody = document.querySelector<HTMLTableSectionElement>("#arena-leaderboard tbody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      if (!rows.length) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td colspan="3" style="text-align:center;padding:18px;color:#8e9192">Chưa có ai chiến đấu.</td>`;
+        tbody.appendChild(tr);
+        return;
+      }
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${row.accountName}</td><td style="text-align:right;padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#ffd166">${row.kills}</td><td style="text-align:right;padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#ff8181">${row.deaths}</td>`;
+        tbody.appendChild(tr);
+      }
     });
 
     this.socket.on("loot", ({ item, gold }) => {

@@ -108,6 +108,20 @@ export interface PlayerState {
   equippedSkills: SkillId[];
   learnedSkills: SkillId[];
   targetId?: string;
+  pvpKills?: number;
+  pvpDeaths?: number;
+  inArena?: boolean;
+}
+
+// In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
+// inclusive). Players inside are PvP-enabled; outside are PvE-safe.
+export const ARENA_TILE_BOX = { x0: 1, y0: 1, x1: 5, y1: 5 } as const;
+
+export interface ArenaLeaderRow {
+  playerId: string;
+  accountName: string;
+  kills: number;
+  deaths: number;
 }
 
 export interface MonsterState {
@@ -280,6 +294,8 @@ export interface ServerToClientEvents {
   shopStock: (items: ShopItem[]) => void;
   system: (message: string) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
+  arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
+  arenaKill: (event: { killerName: string; victimName: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -305,6 +321,7 @@ export interface ClientToServerEvents {
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;
   craftRecipe: (payload: { recipeId: string }) => void;
+  arenaLeaderboardRequest: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

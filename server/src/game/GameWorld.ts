@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import {
+  ARENA_TILE_BOX,
   BIOME_INFO,
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
@@ -43,6 +44,7 @@ import {
   rollDamage
 } from "@mmorpg/shared";
 import type {
+  ArenaLeaderRow,
   ClientInput,
   ClientToServerEvents,
   Direction,
@@ -369,7 +371,10 @@ export class GameWorld {
         lastAttackAt: 0,
         skillCooldowns: createSkillCooldowns(),
         learnedSkills: sanitizeLearnedSkills(saved.learnedSkills),
-        equippedSkills: []
+        equippedSkills: [],
+        pvpKills: 0,
+        pvpDeaths: 0,
+        inArena: false
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -776,6 +781,16 @@ export class GameWorld {
       this.craftRecipe(player, recipeId);
     });
 
+    socket.on("arenaLeaderboardRequest", () => {
+      const rows: ArenaLeaderRow[] = [];
+      for (const p of this.players.values()) {
+        if ((p.pvpKills ?? 0) === 0 && (p.pvpDeaths ?? 0) === 0) continue;
+        rows.push({ playerId: p.id, accountName: p.accountName, kills: p.pvpKills ?? 0, deaths: p.pvpDeaths ?? 0 });
+      }
+      rows.sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
+      socket.emit("arenaLeaderboard", rows.slice(0, 10));
+    });
+
     socket.on("dropItem", async ({ itemId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -909,6 +924,8 @@ export class GameWorld {
   private updateTownHealing(deltaMs: number, now: number): void {
     for (const player of this.players.values()) {
       if (!isInTown(player.position) || player.stats.hp >= player.stats.maxHp) continue;
+      // Arena tiles do NOT heal — otherwise duels would never end.
+      if (isInArena(player.position)) continue;
       const heal = Math.max(1, Math.ceil(player.stats.maxHp * TOWN_HEAL_PER_SECOND * (deltaMs / 1000)));
       const before = player.stats.hp;
       player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + heal);
@@ -1406,9 +1423,12 @@ export class GameWorld {
   }
 
   private selectedPvpTarget(attacker: PlayerState): PlayerState | undefined {
-    if (!attacker.targetId || isInTown(attacker.position)) return undefined;
+    if (!attacker.targetId) return undefined;
+    // PvP is only allowed when both fighters are in the arena rectangle.
+    if (!isInArena(attacker.position)) return undefined;
     const target = this.players.get(attacker.targetId);
-    if (!target || target.id === attacker.id || isInTown(target.position)) return undefined;
+    if (!target || target.id === attacker.id) return undefined;
+    if (!isInArena(target.position)) return undefined;
     if (distance(attacker.position, target.position) > PLAYER_ATTACK_RANGE) return undefined;
     return target;
   }
@@ -1422,10 +1442,13 @@ export class GameWorld {
       target.position = { ...townSpawn };
       target.velocity = { x: 0, y: 0 };
       target.targetId = undefined;
-      target.stats.hp = Math.ceil(target.stats.maxHp * 0.55);
+      target.stats.hp = target.stats.maxHp; // full heal on arena death
       attacker.targetId = undefined;
-      this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ gục và được đưa về thị trấn.`);
-      this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ gục ${target.accountName}.`);
+      attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
+      target.pvpDeaths = (target.pvpDeaths ?? 0) + 1;
+      this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ tại Đấu Trường.`);
+      this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! (Kills: ${attacker.pvpKills})`);
+      this.io.emit("arenaKill", { killerName: attacker.accountName, victimName: target.accountName });
       this.markDirty(target);
       this.markDirty(attacker);
     }
@@ -1866,6 +1889,12 @@ function removeItemStats(player: PlayerState, item: EquipmentItem): void {
 
 function isInTown(position: { x: number; y: number }): boolean {
   return position.x < 11 * TILE_SIZE && position.y < 11 * TILE_SIZE;
+}
+
+function isInArena(position: { x: number; y: number }): boolean {
+  const tx = Math.floor(position.x / TILE_SIZE);
+  const ty = Math.floor(position.y / TILE_SIZE);
+  return tx >= ARENA_TILE_BOX.x0 && tx <= ARENA_TILE_BOX.x1 && ty >= ARENA_TILE_BOX.y0 && ty <= ARENA_TILE_BOX.y1;
 }
 
 function goldForMonster(monster: MonsterState): number {
