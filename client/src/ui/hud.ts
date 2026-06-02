@@ -588,7 +588,8 @@ export class Hud {
 
   private renderInventoryActions(): void {
     const inventory = document.querySelector("#inventory")!;
-    const panel = document.querySelector(".inventory-panel")!;
+    const panel = inventory.parentElement;
+    if (!panel) return;
     let actions = document.querySelector("#inventory-actions") as HTMLDivElement | null;
     if (!actions) {
       actions = document.createElement("div");
