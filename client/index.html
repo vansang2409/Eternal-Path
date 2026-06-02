@@ -26,6 +26,13 @@
         </div>
       </div>
       <div id="achievement-toasts" aria-live="polite"></div>
+      <div id="class-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true">
+        <div class="modal-card" style="width:min(800px,calc(100vw - 40px));text-align:center">
+          <h1>Chọn Lớp Nhân Vật</h1>
+          <p style="color:#bdbdbd;font-size:13px;margin:0 0 18px">Chọn 1 lớp — không đổi được sau. Mỗi lớp có chỉ số khởi đầu và bộ kỹ năng riêng.</p>
+          <div id="class-cards" style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap"></div>
+        </div>
+      </div>
       <div id="offline-rewards-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="offline-rewards-title">
         <div class="modal-card">
           <h1 id="offline-rewards-title">AFK Rewards</h1>

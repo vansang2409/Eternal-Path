@@ -281,6 +281,63 @@ body {
   color: var(--gold);
 }
 
+.class-card {
+  flex: 1 1 200px;
+  max-width: 230px;
+  padding: 18px 14px;
+  color: var(--text);
+  text-align: left;
+  background: rgba(28, 28, 28, 0.85);
+  border: 2px solid rgba(142, 145, 146, 0.35);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.class-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.class-card h3 {
+  margin: 0 0 6px;
+  color: var(--gold);
+  font-family: Literata, Georgia, serif;
+  font-size: 20px;
+}
+
+.class-card p {
+  font-size: 12px;
+  color: #cfcfcf;
+  margin: 0 0 10px;
+  min-height: 56px;
+}
+
+.class-card .class-stats {
+  font-size: 12px;
+  color: #8be78b;
+  margin-bottom: 8px;
+}
+
+.class-card .class-skills {
+  font-size: 11px;
+  color: #9be3ff;
+  line-height: 1.5;
+}
+
+.class-card .pick-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 0;
+  color: #1d1500;
+  font-weight: 700;
+  background: var(--gold-bright);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
 .forge-recipe {
   padding: 12px 14px;
   margin-bottom: 10px;

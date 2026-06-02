@@ -6,3 +6,4 @@ export * from "./achievements.js";
 export * from "./world/biomes.js";
 export * from "./world/mapGen.js";
 export * from "./crafting.js";
+export * from "./classes.js";

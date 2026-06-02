@@ -2,13 +2,16 @@ import type { Server, Socket } from "socket.io";
 import {
   ARENA_TILE_BOX,
   BIOME_INFO,
+  CLASS_CATALOG,
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
   INVENTORY_CAPACITY,
   MATERIAL_CATALOG,
   RECIPES,
+  classCanLearnSkill,
   getRecipe,
+  isPlayerClass,
   materialDropForMonster,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
@@ -374,7 +377,8 @@ export class GameWorld {
         equippedSkills: [],
         pvpKills: 0,
         pvpDeaths: 0,
-        inArena: false
+        inArena: false,
+        playerClass: saved.playerClass
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -695,6 +699,14 @@ export class GameWorld {
         socket.emit("system", "Đã học kỹ năng này rồi.");
         return;
       }
+      if (!player.playerClass) {
+        socket.emit("system", "Hãy chọn lớp nhân vật trước khi học kỹ năng.");
+        return;
+      }
+      if (!classCanLearnSkill(player.playerClass, skillId)) {
+        socket.emit("system", "Kỹ năng này không thuộc lớp của bạn.");
+        return;
+      }
       const required = SKILL_CATALOG[skillId].requiredLevel;
       if (player.stats.level < required) {
         socket.emit("system", `Cần đạt cấp ${required} để học ${skillLabel(skillId)}.`);
@@ -779,6 +791,40 @@ export class GameWorld {
         return;
       }
       this.craftRecipe(player, recipeId);
+    });
+
+    socket.on("selectClass", ({ playerClass }) => {
+      const player = this.players.get(socket.id);
+      if (!player) {
+        socket.emit("system", "Chưa đăng nhập.");
+        return;
+      }
+      if (player.playerClass) {
+        socket.emit("system", "Bạn đã chọn lớp rồi, không thể đổi.");
+        return;
+      }
+      if (!isPlayerClass(playerClass)) {
+        socket.emit("system", "Lớp nhân vật không hợp lệ.");
+        return;
+      }
+      const info = CLASS_CATALOG[playerClass];
+      player.playerClass = playerClass;
+      // Apply one-time stat bonuses.
+      player.stats.maxHp += info.startBonusMaxHp;
+      player.stats.hp = Math.min(player.stats.hp + info.startBonusMaxHp, player.stats.maxHp);
+      player.stats.attack += info.startBonusAttack;
+      player.stats.defense += info.startBonusDefense;
+      // Default-learned skills: keep only those allowed by class.
+      player.learnedSkills = player.learnedSkills.filter((s) => info.skills.includes(s));
+      // Always grant the first class skill so the player has something castable.
+      if (info.skills.length && !player.learnedSkills.includes(info.skills[0])) {
+        player.learnedSkills.push(info.skills[0]);
+      }
+      // Clear any equipped skills that no longer match (server will sanitize).
+      player.equippedSkills = player.equippedSkills.filter((s) => player.learnedSkills.includes(s));
+      this.markDirty(player);
+      socket.emit("player", player);
+      socket.emit("system", `Chào mừng ${info.name}! HP +${info.startBonusMaxHp}, ATK +${info.startBonusAttack}, DEF +${info.startBonusDefense}.`);
     });
 
     socket.on("arenaLeaderboardRequest", () => {

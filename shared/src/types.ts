@@ -111,6 +111,8 @@ export interface PlayerState {
   pvpKills?: number;
   pvpDeaths?: number;
   inArena?: boolean;
+  // Class assignment. Undefined means the player has not yet picked one.
+  playerClass?: "warrior" | "mage" | "ranger";
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -322,6 +324,7 @@ export interface ClientToServerEvents {
   sellJunk: () => void;
   craftRecipe: (payload: { recipeId: string }) => void;
   arenaLeaderboardRequest: () => void;
+  selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

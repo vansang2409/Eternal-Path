@@ -91,7 +91,8 @@ export class GameScene extends Phaser.Scene {
       () => this.socket.emit("leaveParty"),
       () => soundManager.toggleMuted(),
       () => soundManager.isMuted(),
-      (recipeId) => this.socket.emit("craftRecipe", { recipeId })
+      (recipeId) => this.socket.emit("craftRecipe", { recipeId }),
+      (playerClass) => this.socket.emit("selectClass", { playerClass })
     );
     this.socket = createSocket();
     this.registerSocketEvents();

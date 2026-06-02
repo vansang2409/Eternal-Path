@@ -1,7 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type pg from "pg";
-import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone, isSkillId } from "@mmorpg/shared";
-import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerState, SkillId, Stats, Vec2 } from "@mmorpg/shared";
+import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone, isPlayerClass, isSkillId } from "@mmorpg/shared";
+import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerClass, PlayerState, SkillId, Stats, Vec2 } from "@mmorpg/shared";
 
 interface SavedPlayer {
   accountName: string;
@@ -15,6 +15,7 @@ interface SavedPlayer {
   learnedSkills?: SkillId[];
   lastSeenAt?: number;
   position?: Vec2;
+  playerClass?: PlayerClass;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -163,7 +164,8 @@ export class PlayerRepository {
       equippedSkills: [...player.equippedSkills],
       learnedSkills: [...player.learnedSkills],
       lastSeenAt: Date.now(),
-      position: { x: player.position.x, y: player.position.y }
+      position: { x: player.position.x, y: player.position.y },
+      playerClass: player.playerClass
     };
     memorySaves.set(player.email, saved);
 

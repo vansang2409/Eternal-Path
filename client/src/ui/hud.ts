@@ -1,5 +1,5 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, MATERIAL_CATALOG, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -39,7 +39,8 @@ export class Hud {
     private readonly onLeaveParty: () => void,
     private readonly onToggleMuted: () => boolean,
     private readonly isMuted: () => boolean,
-    private readonly onCraft: (recipeId: string) => void = () => {}
+    private readonly onCraft: (recipeId: string) => void = () => {},
+    private readonly onSelectClass: (playerClass: PlayerClass) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -115,7 +116,9 @@ export class Hud {
 
   setPlayer(player: PlayerState): void {
     this.player = player;
-    document.querySelector("#player-name")!.textContent = `${player.accountName} - ${t("levelShort")} ${player.stats.level}`;
+    this.updateClassModal(player);
+    const classLabel = player.playerClass ? ` [${CLASS_CATALOG[player.playerClass].name}]` : "";
+    document.querySelector("#player-name")!.textContent = `${player.accountName}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
     setBar("#hp-fill", "#hp-label", player.stats.hp, player.stats.maxHp, t("hp"));
     setBar("#exp-fill", "#exp-label", player.stats.exp, expToNextLevel(player.stats.level), t("exp"));
     const canAllocate = player.unspentPoints > 0;
@@ -219,6 +222,37 @@ export class Hud {
     }
   }
 
+  // ---- class selection modal ----
+
+  private updateClassModal(player: PlayerState): void {
+    const modal = document.querySelector<HTMLElement>("#class-modal");
+    if (!modal) return;
+    if (player.playerClass) {
+      modal.classList.add("hidden");
+      return;
+    }
+    // Build cards if not already built.
+    const cards = document.querySelector<HTMLDivElement>("#class-cards");
+    if (cards && cards.children.length === 0) {
+      for (const id of PLAYER_CLASSES) {
+        const info = CLASS_CATALOG[id];
+        const card = document.createElement("div");
+        card.className = "class-card";
+        const skillNames = info.skills.map((s) => t(skillNameKey(s))).join(", ");
+        card.innerHTML = `
+          <h3>${escapeHtml(info.name)}</h3>
+          <p>${escapeHtml(info.description)}</p>
+          <div class="class-stats">+${info.startBonusMaxHp} HP · +${info.startBonusAttack} ATK · +${info.startBonusDefense} DEF</div>
+          <div class="class-skills">Kỹ năng: ${escapeHtml(skillNames)}</div>
+          <button type="button" class="pick-btn" data-class="${id}">Chọn ${escapeHtml(info.name)}</button>
+        `;
+        card.querySelector<HTMLButtonElement>(".pick-btn")!.addEventListener("click", () => this.onSelectClass(id));
+        cards.appendChild(card);
+      }
+    }
+    modal.classList.remove("hidden");
+  }
+
   private renderSkillPicker(): void {
     if (!this.player) return;
     const root = document.querySelector("#skill-picker")!;
@@ -227,7 +261,11 @@ export class Hud {
     const learnedSet = new Set(this.player.learnedSkills ?? []);
     const equippedSkills = this.player.equippedSkills ?? [];
     const playerLevel = this.player.stats.level;
+    const playerClass = this.player.playerClass;
+    const classSkills = playerClass ? CLASS_CATALOG[playerClass].skills : SKILL_IDS;
     for (const id of SKILL_IDS) {
+      const classOk = playerClass ? CLASS_CATALOG[playerClass].skills.includes(id) : true;
+      if (!classOk) continue; // Hide other classes' skills entirely.
       const info = SKILL_CATALOG[id];
       const learned = learnedSet.has(id);
       const meetsLevel = playerLevel >= info.requiredLevel;
