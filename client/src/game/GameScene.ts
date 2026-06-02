@@ -954,7 +954,12 @@ export class GameScene extends Phaser.Scene {
       sprite.setInteractive({ useHandCursor: true });
     }
     const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
-    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 1);
+    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2);
+    // Iso depth sort: bar + gear must follow sprite's depth, otherwise the
+    // fixed (12,13) depth set at creation puts them under the sprite once
+    // ip3.y exceeds those values (which it always does in a 200x150 world).
+    this.playerBars.get(player.id)?.setDepth(ip3.y + 1);
+    this.playerEquipment.get(player.id)?.setDepth(ip3.y + 0.5);
     this.drawPlayerBar(player, ip3);
     this.drawPlayerEquipment(player, ip3, facing);
   }
