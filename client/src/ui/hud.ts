@@ -255,16 +255,38 @@ export class Hud {
 
   private renderSkillPicker(): void {
     if (!this.player) return;
-    const root = document.querySelector("#skill-picker")!;
+    const root = document.querySelector<HTMLDivElement>("#skill-picker");
+    if (!root) {
+      console.warn("[hud] #skill-picker root missing");
+      return;
+    }
     root.innerHTML = "";
     const keys = ["Q", "W", "E", "R"];
     const learnedSet = new Set(this.player.learnedSkills ?? []);
     const equippedSkills = this.player.equippedSkills ?? [];
     const playerLevel = this.player.stats.level;
     const playerClass = this.player.playerClass;
-    const classSkills = playerClass ? CLASS_CATALOG[playerClass].skills : SKILL_IDS;
+    // If no class picked yet, prompt user instead of dumping all 16 skills.
+    if (!playerClass) {
+      const msg = document.createElement("div");
+      msg.style.cssText = "padding:18px;text-align:center;color:#bdbdbd;font-size:13px";
+      msg.textContent = "Bạn cần chọn Lớp Nhân Vật trước khi học kỹ năng.";
+      root.appendChild(msg);
+      return;
+    }
+    // Defensive: CLASS_CATALOG lookup must succeed.
+    const classInfo = CLASS_CATALOG[playerClass];
+    if (!classInfo) {
+      const msg = document.createElement("div");
+      msg.style.cssText = "padding:18px;text-align:center;color:#ff8181;font-size:13px";
+      msg.textContent = `Lớp "${playerClass}" không hợp lệ. Liên hệ admin.`;
+      root.appendChild(msg);
+      console.error("[hud] unknown playerClass:", playerClass);
+      return;
+    }
+    let appended = 0;
     for (const id of SKILL_IDS) {
-      const classOk = playerClass ? CLASS_CATALOG[playerClass].skills.includes(id) : true;
+      const classOk = classInfo.skills.includes(id);
       if (!classOk) continue; // Hide other classes' skills entirely.
       const info = SKILL_CATALOG[id];
       const learned = learnedSet.has(id);
@@ -302,6 +324,14 @@ export class Hud {
         });
       }
       root.append(card);
+      appended += 1;
+    }
+    if (appended === 0) {
+      const msg = document.createElement("div");
+      msg.style.cssText = "padding:18px;text-align:center;color:#ff8181;font-size:13px";
+      msg.textContent = `Lớp ${classInfo.name} không có kỹ năng nào được cấu hình.`;
+      root.appendChild(msg);
+      console.error("[hud] no skills appended for class", playerClass, "skills list:", classInfo.skills);
     }
   }
 
