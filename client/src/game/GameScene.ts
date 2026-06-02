@@ -159,6 +159,7 @@ export class GameScene extends Phaser.Scene {
     map.createLayer(0, tiles!, 0, 0);
 
     this.initMinimap(worldMap);
+    this.createTownNpcs(worldMap);
 
     // Update camera bounds for the (possibly larger) world.
     this.cameras.main.setBounds(0, 0, worldMap.width * TILE_SIZE, worldMap.height * TILE_SIZE);
@@ -265,6 +266,94 @@ export class GameScene extends Phaser.Scene {
     }
     out.sort((a, b) => b.size - a.size);
     return out;
+  }
+
+  // ------- town NPCs -------
+
+  private createTownNpcs(worldMap: WorldMapPayload): void {
+    const town = worldMap.landmarks.town;
+    type Npc = { sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; phrases: string[]; index: number };
+    const npcs: { texture: string; offset: { dx: number; dy: number }; name: string; phrases: string[] }[] = [
+      {
+        texture: "npc-sage",
+        offset: { dx: -3, dy: -3 },
+        name: "Hiền Giả",
+        phrases: [
+          "Cốt lõi của sức mạnh nằm ở sự kiên trì.",
+          "Vực Sâu giấu báu vật, nhưng cũng giấu tử thần.",
+          "Hãy luyện skill cho thuần, đừng chỉ đeo nhiều.",
+          "Mỗi hầm mộ có Khắc Tinh canh giữ — đừng vội."
+        ]
+      },
+      {
+        texture: "npc-merchant",
+        offset: { dx: 2, dy: -3 },
+        name: "Thương Gia",
+        phrases: [
+          "Đồ thường hả? Bán lấy vàng cho khỏe.",
+          "Rương kho báu rải khắp đồng — chịu khó đi xa.",
+          "Vàng để dành mua bình máu nhé.",
+          "Trang bị epic mới đáng giá."
+        ]
+      },
+      {
+        texture: "npc-guard",
+        offset: { dx: -1, dy: 3 },
+        name: "Vệ Binh",
+        phrases: [
+          "Tôi giữ cổng — quái không vào được đâu, cứ yên tâm.",
+          "Bên ngoài là Rừng Xanh, đi thẳng là tới.",
+          "Phía nam có Đầm Lầy, cẩn thận chân nhão.",
+          "Nghe đồn Khắc Tinh Hầm vừa hồi sinh."
+        ]
+      }
+    ];
+
+    const created: Npc[] = [];
+    for (const def of npcs) {
+      const px = (town.x + def.offset.dx + 0.5) * TILE_SIZE;
+      const py = (town.y + def.offset.dy + 0.5) * TILE_SIZE;
+      const sprite = this.add.sprite(px, py, def.texture).setScale(3).setDepth(8);
+      sprite.setInteractive({ useHandCursor: true });
+      const nameLabel = this.add.text(px, py - 32, def.name, {
+        fontFamily: "monospace",
+        fontSize: "11px",
+        color: "#f3e7bf",
+        stroke: "#111",
+        strokeThickness: 3
+      }).setOrigin(0.5).setDepth(9);
+      const npc: Npc = { sprite, label: nameLabel, phrases: def.phrases, index: 0 };
+      sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+        if (!pointer.leftButtonDown()) return;
+        this.showNpcDialogue(npc);
+      });
+      created.push(npc);
+    }
+  }
+
+  private showNpcDialogue(npc: { sprite: Phaser.GameObjects.Sprite; phrases: string[]; index: number }): void {
+    const phrase = npc.phrases[npc.index % npc.phrases.length];
+    npc.index += 1;
+    const px = npc.sprite.x;
+    const py = npc.sprite.y - 58;
+    const text = this.add.text(px, py, phrase, {
+      fontFamily: "monospace",
+      fontSize: "11px",
+      color: "#f1f1f1",
+      backgroundColor: "rgba(20, 20, 20, 0.92)",
+      padding: { left: 8, right: 8, top: 6, bottom: 6 },
+      stroke: "#111",
+      strokeThickness: 2,
+      wordWrap: { width: 200 }
+    }).setOrigin(0.5).setDepth(40);
+    this.tweens.add({
+      targets: text,
+      y: py - 6,
+      alpha: 0,
+      delay: 3200,
+      duration: 600,
+      onComplete: () => text.destroy()
+    });
   }
 
   // ------- minimap -------

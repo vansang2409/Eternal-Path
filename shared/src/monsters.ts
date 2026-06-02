@@ -235,6 +235,59 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     dropRate: 1,
     preferredSlots: ["weapon", "armor", "ring"],
     lootTheme: "Warden"
+  },
+  // ----- biome-specific additions (Sprint 11) -----
+  desertScarab: {
+    type: "desertScarab",
+    name: "Desert Scarab",
+    level: 3,
+    tint: 0xd6a23a,
+    scale: 2.5,
+    hpMultiplier: 0.95,
+    attackMultiplier: 1,
+    defenseMultiplier: 1.3,
+    dropRate: 0.42,
+    preferredSlots: ["armor", "helmet"],
+    lootTheme: "Carapace"
+  },
+  bogWitch: {
+    type: "bogWitch",
+    name: "Bog Witch",
+    level: 5,
+    tint: 0x7aa86a,
+    scale: 2.7,
+    hpMultiplier: 1.05,
+    attackMultiplier: 1.35,
+    defenseMultiplier: 0.85,
+    dropRate: 0.5,
+    preferredSlots: ["weapon", "ring"],
+    lootTheme: "Hex"
+  },
+  tundraYeti: {
+    type: "tundraYeti",
+    name: "Tundra Yeti",
+    level: 6,
+    tint: 0xe6eef5,
+    scale: 3.1,
+    hpMultiplier: 1.55,
+    attackMultiplier: 1.3,
+    defenseMultiplier: 1.4,
+    dropRate: 0.55,
+    preferredSlots: ["armor", "boots"],
+    lootTheme: "Frost"
+  },
+  crystalLich: {
+    type: "crystalLich",
+    name: "Crystal Lich",
+    level: 8,
+    tint: 0xc79bff,
+    scale: 2.95,
+    hpMultiplier: 1.45,
+    attackMultiplier: 1.7,
+    defenseMultiplier: 1.2,
+    dropRate: 0.62,
+    preferredSlots: ["weapon", "ring", "helmet"],
+    lootTheme: "Crystal"
   }
 };
 

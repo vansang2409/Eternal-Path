@@ -1367,7 +1367,12 @@ export class GameWorld {
 
 // Map monster level -> biomes the species prefers. Pick from the matched
 // biome pool; fall back to nearest walkable tile if the pool is empty.
-function biomeBucketForLevel(level: number): TileId[] {
+function biomeBucketForLevel(level: number, type?: string): TileId[] {
+  // Strong biome preference for the new species, falling back to level band.
+  if (type === "desertScarab") return [TileId.Sand];
+  if (type === "bogWitch") return [TileId.Swamp];
+  if (type === "tundraYeti") return [TileId.Snow];
+  if (type === "crystalLich") return [TileId.DungeonFloor];
   if (level <= 2) return [TileId.Grass, TileId.Forest];
   if (level <= 4) return [TileId.Forest, TileId.Swamp, TileId.Sand];
   if (level <= 6) return [TileId.Swamp, TileId.Snow, TileId.Sand, TileId.Deep];
@@ -1412,7 +1417,12 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
     bloodHarpy: 4,
     ancientDrake: 3,
     voidKnight: 3,
-    elderHydra: 3
+    elderHydra: 3,
+    // Biome-specific additions
+    desertScarab: 6,
+    bogWitch: 5,
+    tundraYeti: 4,
+    crystalLich: 4
   };
   const species: string[] = [];
   for (const [type, n] of Object.entries(counts)) {
@@ -1432,7 +1442,7 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
 
   const monsters: MonsterState[] = species.map((type, index) => {
     const definition = getMonsterDefinition(type);
-    const candidates = biomeBucketForLevel(definition.level);
+    const candidates = biomeBucketForLevel(definition.level, type);
     let pick: { x: number; y: number } | undefined;
     for (const biome of candidates) {
       const pool = pools.get(biome);

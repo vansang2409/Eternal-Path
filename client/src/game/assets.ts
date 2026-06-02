@@ -65,6 +65,40 @@ export function createPixelArt(scene: Phaser.Scene): void {
     "........"
   ], { ...palette(), B: "#5b3a1e", C: "#8b5a2b" });
 
+  // NPC sprites — distinct hat/robe colors per role.
+  createTexture(scene, "npc-sage", [
+    "..PPPP..",
+    ".PWWWWP.",
+    ".PW22WP.",
+    ".PWWWWP.",
+    ".VVVVVV.",
+    ".VVVVVV.",
+    "..V..V..",
+    ".VV..VV."
+  ], { P: "#6e4c9b", W: "#f1d0a2", "2": "#151515", V: "#3b2670" });
+
+  createTexture(scene, "npc-merchant", [
+    "..HHHH..",
+    ".HWWWWH.",
+    ".HW22WH.",
+    ".HWWWWH.",
+    ".GGGGGG.",
+    ".GG88GG.",
+    "..G..G..",
+    ".GG..GG."
+  ], { H: "#8b5a2b", W: "#f1d0a2", "2": "#151515", G: "#8a6a39", "8": "#e9c349" });
+
+  createTexture(scene, "npc-guard", [
+    "..SSSS..",
+    ".SWWWWS.",
+    ".SW22WS.",
+    ".SWWWWS.",
+    ".KKKKKK.",
+    ".KKKKKK.",
+    "..K..K..",
+    ".KK..KK."
+  ], { S: "#a0a0a3", W: "#f1d0a2", "2": "#151515", K: "#5b6266" });
+
   createTileSheet(scene);
 }
 
