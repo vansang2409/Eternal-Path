@@ -1,6 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type pg from "pg";
-import { DEFAULT_AFK_ZONE, baseStatsForLevel, isAfkZone, isPlayerClass, isSkillId } from "@mmorpg/shared";
+import { DEFAULT_AFK_ZONE, SKILL_LOADOUT_SIZE, baseStatsForLevel, isAfkZone, isPlayerClass, isSkillId } from "@mmorpg/shared";
 import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerClass, PlayerState, SkillId, Stats, Vec2 } from "@mmorpg/shared";
 
 interface SavedPlayer {
@@ -11,7 +11,7 @@ interface SavedPlayer {
   inventory: InventoryState;
   afkZone: AfkZone;
   achievements: string[];
-  equippedSkills?: SkillId[];
+  equippedSkills?: Array<SkillId | null>;
   learnedSkills?: SkillId[];
   lastSeenAt?: number;
   position?: Vec2;
@@ -125,7 +125,7 @@ export class PlayerRepository {
           afkZone: normalizeAfkZone(characterRow?.afkZone),
           achievements: normalizeAchievements(characterRow?.achievements),
           equippedSkills: normalizeEquippedSkills(characterRow?.equippedSkills),
-          learnedSkills: normalizeEquippedSkills(characterRow?.learnedSkills),
+          learnedSkills: normalizeSkillList(characterRow?.learnedSkills),
           lastSeenAt: normalizeLastSeenAt(characterRow?.lastSeenAt),
           position: characterRow && characterRow.posX != null && characterRow.posY != null
             ? { x: characterRow.posX, y: characterRow.posY }
@@ -258,7 +258,22 @@ function normalizeAchievements(value: unknown): string[] {
   return [...new Set(value.filter((id): id is string => typeof id === "string"))];
 }
 
-function normalizeEquippedSkills(value: unknown): SkillId[] | undefined {
+function normalizeEquippedSkills(value: unknown): Array<SkillId | null> | undefined {
+  if (!Array.isArray(value) || value.length === 0) return undefined;
+  const seen = new Set<SkillId>();
+  const result: Array<SkillId | null> = [];
+  for (const id of value.slice(0, SKILL_LOADOUT_SIZE)) {
+    if (isSkillId(id) && !seen.has(id)) {
+      seen.add(id);
+      result.push(id);
+    } else {
+      result.push(null);
+    }
+  }
+  return result.some((id) => id !== null) ? result : undefined;
+}
+
+function normalizeSkillList(value: unknown): SkillId[] | undefined {
   if (!Array.isArray(value) || value.length === 0) return undefined;
   const result: SkillId[] = [];
   for (const id of value) {

@@ -674,12 +674,13 @@ export class GameWorld {
         socket.emit("system", "Phải học kỹ năng trước khi gắn.");
         return;
       }
+      while (player.equippedSkills.length < SKILL_LOADOUT_SIZE) player.equippedSkills.push(null);
       const existingIndex = player.equippedSkills.indexOf(skillId);
       if (existingIndex === slot) return;
       const current = player.equippedSkills[slot];
       player.equippedSkills[slot] = skillId;
       if (existingIndex >= 0 && current) player.equippedSkills[existingIndex] = current;
-      else if (existingIndex >= 0) player.equippedSkills.splice(existingIndex, 1);
+      else if (existingIndex >= 0) player.equippedSkills[existingIndex] = null;
       this.markDirty(player);
       socket.emit("player", player);
       socket.emit("system", `Đã gắn ${skillLabel(skillId)} vào ô ${slot + 1}.`);
@@ -821,7 +822,7 @@ export class GameWorld {
         player.learnedSkills.push(info.skills[0]);
       }
       // Clear any equipped skills that no longer match (server will sanitize).
-      player.equippedSkills = player.equippedSkills.filter((s) => player.learnedSkills.includes(s));
+      player.equippedSkills = player.equippedSkills.map((s) => s && player.learnedSkills.includes(s) ? s : null);
       this.markDirty(player);
       socket.emit("player", player);
       socket.emit("system", `Chào mừng ${info.name}! HP +${info.startBonusMaxHp}, ATK +${info.startBonusAttack}, DEF +${info.startBonusDefense}.`);
@@ -1764,32 +1765,39 @@ function createSkillCooldowns(): Record<SkillId, number> {
   };
 }
 
-function sanitizeEquippedSkills(input: SkillId[] | undefined, learned: SkillId[]): SkillId[] {
+function sanitizeEquippedSkills(input: Array<SkillId | null> | undefined, learned: SkillId[]): Array<SkillId | null> {
   const learnedSet = new Set(learned);
   const seen = new Set<SkillId>();
-  const result: SkillId[] = [];
+  const hasSavedLoadout = Array.isArray(input) && input.length > 0;
+  const result: Array<SkillId | null> = [];
   if (Array.isArray(input)) {
-    for (const id of input) {
+    for (const id of input.slice(0, SKILL_LOADOUT_SIZE)) {
       if (isSkillId(id) && learnedSet.has(id) && !seen.has(id)) {
         seen.add(id);
         result.push(id);
-        if (result.length >= SKILL_LOADOUT_SIZE) break;
+      } else {
+        result.push(null);
       }
     }
   }
+  while (result.length < SKILL_LOADOUT_SIZE) result.push(null);
+  if (hasSavedLoadout) return result;
+
   for (const id of DEFAULT_EQUIPPED_SKILLS) {
-    if (result.length >= SKILL_LOADOUT_SIZE) break;
     if (learnedSet.has(id) && !seen.has(id)) {
+      const emptySlot = result.indexOf(null);
+      if (emptySlot < 0) break;
       seen.add(id);
-      result.push(id);
+      result[emptySlot] = id;
     }
   }
   // Fill remaining slots with any learned skill so player always has options.
   for (const id of learned) {
-    if (result.length >= SKILL_LOADOUT_SIZE) break;
     if (!seen.has(id)) {
+      const emptySlot = result.indexOf(null);
+      if (emptySlot < 0) break;
       seen.add(id);
-      result.push(id);
+      result[emptySlot] = id;
     }
   }
   return result;

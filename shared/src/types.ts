@@ -105,7 +105,7 @@ export interface PlayerState {
   achievements: string[];
   lastAttackAt: number;
   skillCooldowns: Record<SkillId, number>;
-  equippedSkills: SkillId[];
+  equippedSkills: Array<SkillId | null>;
   learnedSkills: SkillId[];
   targetId?: string;
   pvpKills?: number;
