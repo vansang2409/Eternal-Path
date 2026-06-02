@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   BIOME_INFO,
   PLAYER_SPEED,
+  SKILL_CATALOG,
   TILE_SIZE,
   TileId,
   WORLD_HEIGHT,
@@ -10,7 +11,7 @@ import {
   getMonsterDefinition,
   isWalkableTile
 } from "@mmorpg/shared";
-import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
+import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, SkillId, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
 import { createPixelArt } from "./assets";
@@ -50,6 +51,11 @@ export class GameScene extends Phaser.Scene {
   private formCaptureHandlers: Array<{ type: string; handler: EventListener }> = [];
   private worldMap?: WorldMapPayload;
   private mapBuilt = false;
+  private minimapCanvas?: HTMLCanvasElement;
+  private minimapCtx?: CanvasRenderingContext2D;
+  private minimapBase?: ImageData;
+  private lastMinimapAt = 0;
+  private aliveMonsters = new Set<string>();
 
   preload(): void {}
 
@@ -151,6 +157,8 @@ export class GameScene extends Phaser.Scene {
     });
     const tiles = map.addTilesetImage("tiles", "tiles", TILE_SIZE, TILE_SIZE);
     map.createLayer(0, tiles!, 0, 0);
+
+    this.initMinimap(worldMap);
 
     // Update camera bounds for the (possibly larger) world.
     this.cameras.main.setBounds(0, 0, worldMap.width * TILE_SIZE, worldMap.height * TILE_SIZE);
@@ -259,6 +267,88 @@ export class GameScene extends Phaser.Scene {
     return out;
   }
 
+  // ------- minimap -------
+
+  private initMinimap(worldMap: WorldMapPayload): void {
+    const canvas = document.querySelector<HTMLCanvasElement>("#minimap");
+    if (!canvas) return;
+    canvas.width = worldMap.width;
+    canvas.height = worldMap.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    this.minimapCanvas = canvas;
+    this.minimapCtx = ctx;
+    const img = ctx.createImageData(worldMap.width, worldMap.height);
+    for (let y = 0; y < worldMap.height; y += 1) {
+      for (let x = 0; x < worldMap.width; x += 1) {
+        const t = worldMap.tiles[y][x] as TileId;
+        const [r, g, b] = minimapColorFor(t);
+        const idx = (y * worldMap.width + x) * 4;
+        img.data[idx] = r;
+        img.data[idx + 1] = g;
+        img.data[idx + 2] = b;
+        img.data[idx + 3] = 255;
+      }
+    }
+    this.minimapBase = img;
+    // Mark dungeon entrances in pink on the base layer so they persist.
+    for (const d of worldMap.landmarks.dungeons) {
+      this.paintMinimapPixel(img, d.x, d.y, 233, 142, 255);
+      this.paintMinimapPixel(img, d.x + 1, d.y, 233, 142, 255);
+      this.paintMinimapPixel(img, d.x, d.y + 1, 233, 142, 255);
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  private paintMinimapPixel(img: ImageData, x: number, y: number, r: number, g: number, b: number): void {
+    if (x < 0 || y < 0 || x >= img.width || y >= img.height) return;
+    const idx = (y * img.width + x) * 4;
+    img.data[idx] = r;
+    img.data[idx + 1] = g;
+    img.data[idx + 2] = b;
+    img.data[idx + 3] = 255;
+  }
+
+  private redrawMinimap(snapshot: WorldSnapshot): void {
+    if (!this.minimapCtx || !this.minimapBase || !this.worldMap) return;
+    this.minimapCtx.putImageData(this.minimapBase, 0, 0);
+    const ctx = this.minimapCtx;
+    // Treasure chests in gold
+    ctx.fillStyle = "#f7d774";
+    for (const g of snapshot.groundItems) {
+      if (g.droppedBy !== "treasure") continue;
+      const mx = Math.floor(g.position.x / TILE_SIZE);
+      const my = Math.floor(g.position.y / TILE_SIZE);
+      ctx.fillRect(mx, my, 2, 2);
+    }
+    // Monsters
+    for (const m of snapshot.monsters) {
+      if (m.respawnsAt) continue;
+      const mx = Math.floor(m.position.x / TILE_SIZE);
+      const my = Math.floor(m.position.y / TILE_SIZE);
+      ctx.fillStyle = m.boss ? "#ff5d7a" : m.elite ? "#ffb55a" : "#ff8181";
+      ctx.fillRect(mx, my, m.boss ? 3 : 2, m.boss ? 3 : 2);
+    }
+    // Other players
+    ctx.fillStyle = "#9be3ff";
+    for (const p of snapshot.players) {
+      if (p.id === this.selfId) continue;
+      const px = Math.floor(p.position.x / TILE_SIZE);
+      const py = Math.floor(p.position.y / TILE_SIZE);
+      ctx.fillRect(px, py, 2, 2);
+    }
+    // Self in bright yellow
+    const me = snapshot.players.find((p) => p.id === this.selfId);
+    if (me) {
+      const px = Math.floor(me.position.x / TILE_SIZE);
+      const py = Math.floor(me.position.y / TILE_SIZE);
+      ctx.fillStyle = "#ffe25e";
+      ctx.fillRect(px - 1, py - 1, 3, 3);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(px, py, 1, 1);
+    }
+  }
+
   private isClientTileWalkable(position: Vec2): boolean {
     if (!this.worldMap) return true;
     const tx = Math.floor(position.x / TILE_SIZE);
@@ -325,13 +415,16 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.socket.on("floatingText", (event) => {
-      const color = event.kind === "damage" ? "#ff6961" : event.kind === "loot" ? "#f7d774" : "#8be78b";
+      const isHeavyHit = event.kind === "damage" && event.amount >= 60;
+      const color = event.kind === "damage" ? (isHeavyHit ? "#ffbe3c" : "#ff6961") : event.kind === "loot" ? "#f7d774" : "#8be78b";
+      const fontSize = event.kind === "level" ? 18 : isHeavyHit ? 18 : 14;
       const text = this.add.text(event.position.x, event.position.y - 28, event.text ?? `${event.amount}`, {
         fontFamily: "monospace",
-        fontSize: event.kind === "level" ? "18px" : "14px",
+        fontSize: `${fontSize}px`,
         color,
         stroke: "#111",
-        strokeThickness: 3
+        strokeThickness: isHeavyHit ? 4 : 3,
+        fontStyle: isHeavyHit ? "bold" : ""
       }).setDepth(20).setOrigin(0.5);
       this.tweens.add({
         targets: text,
@@ -343,8 +436,14 @@ export class GameScene extends Phaser.Scene {
       if (event.kind === "damage") {
         if (this.monsters.has(event.entityId)) soundManager.play("hit");
         this.playHitEffect(event.entityId, event.position);
+        // Heavy hit (>=60 dmg) shakes the camera a bit harder.
+        if (isHeavyHit) this.cameras.main.shake(160, 0.008);
       }
       if (event.kind === "level") soundManager.play("levelUp");
+    });
+
+    this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
+      this.playSkillVFX(skillId, position, targetPosition);
     });
 
     this.socket.on("loot", ({ item, gold }) => {
@@ -491,6 +590,14 @@ export class GameScene extends Phaser.Scene {
     const seenMonsters = new Set<string>();
     for (const monster of snapshot.monsters) {
       seenMonsters.add(monster.id);
+      // Detect death transition: previously alive, now respawning -> poof.
+      const wasAlive = this.aliveMonsters.has(monster.id);
+      const isAlive = !monster.respawnsAt && monster.hp > 0;
+      if (wasAlive && !isAlive) {
+        this.playDeathPoof(monster.position, monster.boss || monster.elite);
+      }
+      if (isAlive) this.aliveMonsters.add(monster.id);
+      else this.aliveMonsters.delete(monster.id);
       this.renderMonster(monster, this.monsters.get(monster.id) ?? monster.position);
     }
     for (const [id, sprite] of this.monsters) {
@@ -519,6 +626,12 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateTargetPanel(snapshot);
     this.hud.updatePartyVitals(snapshot.players);
+    // Throttle minimap redraw to ~6 fps; that's enough for spatial awareness.
+    const now = this.time.now;
+    if (now - this.lastMinimapAt > 160) {
+      this.redrawMinimap(snapshot);
+      this.lastMinimapAt = now;
+    }
   }
 
   private updateTargetPanel(snapshot = this.snapshotBuffer[this.snapshotBuffer.length - 1]): void {
@@ -843,6 +956,105 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private playDeathPoof(position: Vec2, big: boolean): void {
+    const count = big ? 14 : 8;
+    for (let i = 0; i < count; i += 1) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const speed = (big ? 70 : 50) + Math.random() * 30;
+      const radius = big ? 5 : 3.5;
+      const color = big ? 0xffd166 : 0xc7c7c7;
+      const dot = this.add.circle(position.x, position.y, radius, color, 0.95).setDepth(19);
+      const tx = position.x + Math.cos(angle) * speed;
+      const ty = position.y + Math.sin(angle) * speed;
+      this.tweens.add({
+        targets: dot,
+        x: tx,
+        y: ty,
+        alpha: 0,
+        scale: 0.2,
+        duration: big ? 700 : 500,
+        ease: "Cubic.Out",
+        onComplete: () => dot.destroy()
+      });
+    }
+    if (big) this.cameras.main.shake(180, 0.006);
+  }
+
+  private playSkillVFX(skillId: SkillId, position: Vec2, targetPosition?: Vec2): void {
+    const info = SKILL_CATALOG[skillId];
+    if (!info) return;
+    if (info.effect === "healSelf") {
+      // Green column of sparkles rising at the caster.
+      for (let i = 0; i < 6; i += 1) {
+        const dot = this.add.circle(position.x + (Math.random() - 0.5) * 22, position.y + 8, 2.5, 0x8be78b, 0.95).setDepth(21);
+        this.tweens.add({
+          targets: dot,
+          y: dot.y - 36 - Math.random() * 16,
+          alpha: 0,
+          duration: 600 + Math.random() * 200,
+          onComplete: () => dot.destroy()
+        });
+      }
+      const ring = this.add.circle(position.x, position.y, 8, 0x8be78b, 0).setStrokeStyle(2, 0x8be78b, 0.9).setDepth(20);
+      this.tweens.add({
+        targets: ring,
+        radius: 28,
+        alpha: 0,
+        duration: 500,
+        onComplete: () => ring.destroy()
+      });
+      return;
+    }
+    if (info.effect === "damageAoe") {
+      const radius = info.aoeRadius ?? 100;
+      const ring = this.add.circle(position.x, position.y, 4, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(20);
+      this.tweens.add({
+        targets: ring,
+        radius,
+        alpha: 0,
+        duration: 380,
+        onComplete: () => ring.destroy()
+      });
+      const inner = this.add.circle(position.x, position.y, 4, 0xff9a3c, 0.55).setDepth(20);
+      this.tweens.add({
+        targets: inner,
+        radius: radius * 0.7,
+        alpha: 0,
+        duration: 320,
+        onComplete: () => inner.destroy()
+      });
+      return;
+    }
+    if (info.effect === "lifestealSingle" && targetPosition) {
+      const beam = this.add.graphics().setDepth(21);
+      beam.lineStyle(3, 0xff5d7a, 0.95);
+      beam.lineBetween(position.x, position.y, targetPosition.x, targetPosition.y);
+      this.tweens.add({
+        targets: beam,
+        alpha: 0,
+        duration: 280,
+        onComplete: () => beam.destroy()
+      });
+      return;
+    }
+    // damageSingle: slash arc from caster toward target.
+    if (targetPosition) {
+      const slash = this.add.graphics().setDepth(21);
+      slash.lineStyle(3, 0xfff1a8, 0.95);
+      const midX = (position.x + targetPosition.x) / 2;
+      const midY = (position.y + targetPosition.y) / 2;
+      slash.lineBetween(position.x, position.y, midX, midY);
+      slash.lineStyle(2, 0xffd166, 0.95);
+      slash.lineBetween(midX, midY, targetPosition.x, targetPosition.y);
+      this.tweens.add({
+        targets: slash,
+        alpha: 0,
+        duration: 280,
+        onComplete: () => slash.destroy()
+      });
+    }
+  }
+
   private playHitEffect(entityId: string, position: { x: number; y: number }): void {
     const sprite = this.players.get(entityId) ?? this.monsters.get(entityId);
     if (sprite) {
@@ -876,6 +1088,25 @@ function rarityColor(rarity: "common" | "rare" | "epic"): number {
   if (rarity === "epic") return 0xd98cff;
   if (rarity === "rare") return 0x69a7ff;
   return 0xd6dddf;
+}
+
+// Minimap palette per biome (RGB triplets).
+function minimapColorFor(tile: TileId): [number, number, number] {
+  switch (tile) {
+    case TileId.Grass: return [79, 154, 77];
+    case TileId.Road: return [155, 134, 95];
+    case TileId.Forest: return [31, 74, 42];
+    case TileId.Water: return [35, 83, 138];
+    case TileId.Sand: return [217, 195, 120];
+    case TileId.Snow: return [227, 236, 242];
+    case TileId.Swamp: return [47, 67, 38];
+    case TileId.Rock: return [111, 111, 115];
+    case TileId.DungeonFloor: return [58, 49, 72];
+    case TileId.DungeonWall: return [26, 20, 38];
+    case TileId.TownStone: return [161, 141, 108];
+    case TileId.Deep: return [43, 41, 71];
+    default: return [60, 60, 60];
+  }
 }
 
 function rarityHex(rarity: "common" | "rare" | "epic"): string {

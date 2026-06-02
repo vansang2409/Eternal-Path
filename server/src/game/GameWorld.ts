@@ -1024,6 +1024,7 @@ export class GameWorld {
       const healed = player.stats.hp - before;
       player.skillCooldowns[skillId] = now + info.cooldownMs;
       this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
+      this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -1045,6 +1046,7 @@ export class GameWorld {
         const healed = player.stats.hp - before;
         if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
       }
+      this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position }, targetPosition: { ...target.position } });
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -1058,6 +1060,7 @@ export class GameWorld {
     }
     player.skillCooldowns[skillId] = now + info.cooldownMs;
     for (const monster of targets) this.damageMonster(player, monster, info.damageMultiplier ?? 1, now, label);
+    this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
     this.sockets.get(player.id)?.emit("player", player);
   }
 

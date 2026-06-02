@@ -265,6 +265,7 @@ export interface ServerToClientEvents {
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;
   system: (message: string) => void;
+  skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
 }
 
 export interface ClientToServerEvents {
