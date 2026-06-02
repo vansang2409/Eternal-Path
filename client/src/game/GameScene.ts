@@ -515,6 +515,13 @@ export class GameScene extends Phaser.Scene {
       document.querySelector("#login-overlay")?.classList.add("hidden");
       if (worldMap) this.buildMapFromServer(worldMap);
       this.applySnapshot(snapshot);
+      // First-ever login on this device: show the help guide once.
+      if (!localStorage.getItem("helpShown")) {
+        setTimeout(() => {
+          document.querySelector("#help-modal")?.classList.remove("hidden");
+          localStorage.setItem("helpShown", "1");
+        }, 600);
+      }
     });
 
     this.socket.on("session", ({ token }) => localStorage.setItem("sessionToken", token));

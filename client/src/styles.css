@@ -281,6 +281,29 @@ body {
   color: var(--gold);
 }
 
+.help-section {
+  margin-bottom: 18px;
+}
+
+.help-section h3 {
+  margin: 0 0 6px;
+  color: var(--gold);
+  font-family: Literata, Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.help-section p {
+  margin: 4px 0;
+  color: #d6dddf;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.help-section b {
+  color: #f3e7bf;
+}
+
 .class-card {
   flex: 1 1 200px;
   max-width: 230px;

@@ -124,6 +124,7 @@
         <button class="toolbar-btn" type="button" data-modal="afk-modal" title="AFK" aria-label="AFK"><i class="material-symbols-outlined">hotel</i></button>
         <button class="toolbar-btn" type="button" data-modal="forge-modal" title="Lò Rèn" aria-label="Lò Rèn"><i class="material-symbols-outlined">construction</i></button>
         <button class="toolbar-btn" type="button" data-modal="arena-modal" title="Đấu Trường" aria-label="Đấu Trường"><i class="material-symbols-outlined">stadium</i></button>
+        <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
 
@@ -171,6 +172,66 @@
               <button class="afk-zone-button" type="button" data-afk-zone="greenwood">Greenwood</button>
               <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="help-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header><h2>Hướng Dẫn Linh Vực</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body" id="help-body">
+            <div class="help-section">
+              <h3>🎮 Di chuyển</h3>
+              <p><b>Chuột phải</b> vào vị trí trên bản đồ để nhân vật tự đi tới. <b>Mũi tên</b> hoặc <b>WASD</b> để di chuyển trực tiếp. Đi vào nước/núi/tường hầm sẽ bị chặn.</p>
+            </div>
+            <div class="help-section">
+              <h3>⚔️ Đánh quái</h3>
+              <p><b>Click trái</b> vào quái để chọn làm mục tiêu — nhân vật sẽ tự đánh khi đứng trong tầm. Bật <b>"Tự chọn"</b> trong panel Mục Tiêu để tự kiếm quái tiếp khi giết xong.</p>
+            </div>
+            <div class="help-section">
+              <h3>✨ Kỹ năng (Q / W / E / R / F)</h3>
+              <p>4 phím <b>Q W E R</b> kích hoạt 4 skill đã gắn ở thanh dưới. Mỗi skill có cooldown riêng. <b>F</b> dùng bình máu trong túi.</p>
+              <p>Mở modal <b>"Kỹ năng"</b> (biểu tượng ngôi sao ✨) để học skill mới khi đủ cấp và gắn vào ô Q/W/E/R bất kỳ.</p>
+            </div>
+            <div class="help-section">
+              <h3>🛡️ Lớp nhân vật</h3>
+              <p>Chọn 1 lần duy nhất khi mới tạo: <b>Chiến Binh</b> (HP cao, cận chiến), <b>Pháp Sư</b> (AoE phép thuật, mong manh), hoặc <b>Du Hiệp</b> (đánh nhanh, hút máu). Mỗi class chỉ học được 6 skill thuộc nhóm của mình.</p>
+            </div>
+            <div class="help-section">
+              <h3>🎒 Túi đồ &amp; Trang bị</h3>
+              <p>Nhặt loot trên đất bằng cách <b>click</b>. Mở <b>Túi đồ</b> (ba lô) để xem, click trang bị để mặc / tháo. <b>"Bán đồ thường"</b> ở town đổi đồ rác lấy vàng.</p>
+            </div>
+            <div class="help-section">
+              <h3>🔨 Lò Rèn (Crafting)</h3>
+              <p>Quái drop 8 loại nguyên liệu (Slime Core, Wolf Fang, Crystal Shard, Void Ash...). Về town mở <b>Lò Rèn</b> (búa kìm) để ghép trang bị <b>rare/epic</b> theo công thức. 30% mob thường + 100% boss đều drop nguyên liệu.</p>
+            </div>
+            <div class="help-section">
+              <h3>🏘️ Thị trấn</h3>
+              <p>Khu vực 11×11 ở góc trên-trái map. <b>Tự hồi máu</b> khi đứng trong town. Có 3 NPC để click hỏi chuyện. <b>Shop</b> mua bình máu + đồ cơ bản. <b>Lò Rèn</b> chỉ mở ở town.</p>
+            </div>
+            <div class="help-section">
+              <h3>⚔️ Đấu Trường (PvP)</h3>
+              <p>Ô đỏ ở góc trên-trái thị trấn. <b>Đứng vào đó để bật PvP</b>. Click người chơi khác trong vùng để chỉ định mục tiêu — đánh thường sẽ ra sát thương. Chết tại Đấu Trường: hồi máu đầy, quay về spawn, ghi nhận K/D vào bảng xếp hạng.</p>
+            </div>
+            <div class="help-section">
+              <h3>💎 Rương kho báu</h3>
+              <p>18 rương vàng rải khắp map (tránh town). Click để mở, nhận trang bị rare/epic. Sau 5 phút rương <b>tự respawn</b> tại chỗ cũ.</p>
+            </div>
+            <div class="help-section">
+              <h3>🛌 AFK Rewards</h3>
+              <p>Mở modal <b>AFK</b> (giường) để chọn vùng farm khi offline. Khi đăng nhập lại, nhận exp + gold tích lũy theo thời gian vắng mặt (tối đa 8 tiếng).</p>
+            </div>
+            <div class="help-section">
+              <h3>👥 Tổ đội (Party)</h3>
+              <p>Click vào người chơi khác để chọn target, sau đó nhấn <b>"Mời mục tiêu"</b> trong panel Tổ Đội. Tối đa 4 người, share EXP khi cùng đánh trong tầm.</p>
+            </div>
+            <div class="help-section">
+              <h3>🗺️ Minimap &amp; Khám phá</h3>
+              <p>Góc trên-phải hiện minimap toàn bản đồ. Chấm vàng = bạn, đỏ = quái, hồng = boss, kim = rương, cyan = player khác. 3 dấu hồng cố định = lối vào hầm — vào đó để đánh <b>Khắc Tinh</b> drop epic.</p>
+            </div>
+            <div class="help-section" style="border-top:1px solid #444;padding-top:14px;margin-top:14px">
+              <p style="color:#8be78b">Mẹo: cấp 1-3 farm Greenwood quanh town. Cấp 4-6 tiến vào Đầm Lầy / Sa Mạc. Cấp 7+ vào Vực Sâu &amp; Hầm Mộ để săn epic.</p>
             </div>
           </div>
         </div>
