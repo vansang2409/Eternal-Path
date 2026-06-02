@@ -5,6 +5,10 @@ import {
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
   INVENTORY_CAPACITY,
+  MATERIAL_CATALOG,
+  RECIPES,
+  getRecipe,
+  materialDropForMonster,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
@@ -47,6 +51,8 @@ import type {
   FloatingTextEvent,
   GroundItem,
   Item,
+  MaterialId,
+  MaterialItem,
   MonsterState,
   PlayerState,
   ChatMessage,
@@ -760,6 +766,16 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    socket.on("craftRecipe", ({ recipeId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Cần về thị trấn để mở lò rèn.");
+        return;
+      }
+      this.craftRecipe(player, recipeId);
+    });
+
     socket.on("dropItem", async ({ itemId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -1144,10 +1160,88 @@ export class GameWorld {
     if (monster.boss) {
       this.io.emit("bossAnnounce", { kind: "defeat", bossName: monster.name, accountName: player.accountName });
     }
+    // Material drop: 30% chance per kill (50% for elite, 100% for boss).
+    this.tryDropMaterial(player, monster);
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });
     this.tryAutoRetarget(player);
     this.emitQuestList(player);
 
+    this.sockets.get(player.id)?.emit("player", player);
+    this.markDirty(player);
+  }
+
+  private tryDropMaterial(player: PlayerState, monster: MonsterState): void {
+    const materialId = materialDropForMonster(monster.type);
+    if (!materialId) return;
+    const chance = monster.boss ? 1 : monster.elite ? 0.5 : 0.3;
+    if (Math.random() > chance) return;
+    if (isBagFull(player)) {
+      this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
+      return;
+    }
+    const info = MATERIAL_CATALOG[materialId];
+    const item: MaterialItem = {
+      id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      kind: "material",
+      materialId,
+      name: info.name,
+      rarity: info.rarity,
+      value: info.value
+    };
+    player.inventory.items.push(item);
+    this.emitFloating(player.id, player.position, 0, "loot", info.name);
+  }
+
+  private craftRecipe(player: PlayerState, recipeId: string): void {
+    const recipe = getRecipe(recipeId);
+    if (!recipe) {
+      this.sockets.get(player.id)?.emit("system", "Công thức không tồn tại.");
+      return;
+    }
+    // Verify the player has the required materials.
+    const needed = new Map(Object.entries(recipe.cost) as [MaterialId, number][]);
+    const owned = new Map<MaterialId, number>();
+    const indexByMaterial = new Map<MaterialId, number[]>();
+    player.inventory.items.forEach((item, idx) => {
+      if (item.kind !== "material") return;
+      const m = item as MaterialItem;
+      owned.set(m.materialId, (owned.get(m.materialId) ?? 0) + 1);
+      const arr = indexByMaterial.get(m.materialId) ?? [];
+      arr.push(idx);
+      indexByMaterial.set(m.materialId, arr);
+    });
+    for (const [mid, qty] of needed) {
+      if ((owned.get(mid) ?? 0) < qty) {
+        const info = MATERIAL_CATALOG[mid];
+        this.sockets.get(player.id)?.emit("system", `Thiếu ${info.name} (${owned.get(mid) ?? 0}/${qty}).`);
+        return;
+      }
+    }
+    if (isBagFull(player)) {
+      this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
+      return;
+    }
+    // Consume materials: collect indices to remove, sorted descending.
+    const toRemove: number[] = [];
+    for (const [mid, qty] of needed) {
+      const arr = indexByMaterial.get(mid)!;
+      for (let i = 0; i < qty; i += 1) toRemove.push(arr[i]);
+    }
+    toRemove.sort((a, b) => b - a);
+    for (const idx of toRemove) player.inventory.items.splice(idx, 1);
+    // Produce the equipment item via createLoot with guaranteed=true.
+    const crafted = createLoot(recipe.level, recipe.themeFrom, false, true);
+    if (!crafted || crafted.kind !== "equipment") {
+      this.sockets.get(player.id)?.emit("system", "Lò rèn nguội — thử lại sau.");
+      return;
+    }
+    // Override the loot's slot, rarity, and name to match the recipe.
+    crafted.name = recipe.name;
+    crafted.rarity = recipe.rarity;
+    crafted.slot = recipe.slot;
+    player.inventory.items.push(crafted);
+    this.sockets.get(player.id)?.emit("system", `Chế tạo thành công: ${crafted.name}.`);
+    this.emitFloating(player.id, player.position, 0, "loot", crafted.name);
     this.sockets.get(player.id)?.emit("player", player);
     this.markDirty(player);
   }
@@ -1750,9 +1844,10 @@ function cloneShopItem(offer: ShopItem): Item {
     rarity: offer.rarity,
     value: offer.value
   };
-  return offer.kind === "consumable"
-    ? { ...base, kind: "consumable", heal: offer.heal }
-    : { ...base, kind: "equipment", slot: offer.slot, stats: { ...offer.stats } };
+  if (offer.kind === "consumable") return { ...base, kind: "consumable", heal: offer.heal };
+  if (offer.kind === "equipment") return { ...base, kind: "equipment", slot: offer.slot, stats: { ...offer.stats } };
+  // material — shop does not currently sell materials, but keep exhaustive.
+  return { ...base, kind: "material", materialId: offer.materialId };
 }
 
 function addItemStats(player: PlayerState, item: EquipmentItem): void {

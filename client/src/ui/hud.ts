@@ -1,5 +1,5 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, INVENTORY_CAPACITY, MATERIAL_CATALOG, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -38,7 +38,8 @@ export class Hud {
     private readonly onAcceptParty: (partyId: string) => void,
     private readonly onLeaveParty: () => void,
     private readonly onToggleMuted: () => boolean,
-    private readonly isMuted: () => boolean
+    private readonly isMuted: () => boolean,
+    private readonly onCraft: (recipeId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -133,12 +134,62 @@ export class Hud {
     this.renderInventory();
     this.renderAfkZone();
     this.renderAchievements();
+    this.renderForgeRecipes();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
     this.renderSkillBar();
     this.renderSkillPicker();
     this.renderSkillCooldowns();
+  }
+
+  // ----- Forge / crafting -----
+
+  private renderForgeRecipes(): void {
+    const root = document.querySelector<HTMLDivElement>("#forge-recipes");
+    if (!root) return;
+    root.innerHTML = "";
+    const owned = this.materialCounts();
+    for (const recipe of RECIPES) {
+      const card = document.createElement("div");
+      card.className = `forge-recipe rarity-${recipe.rarity}`;
+      const header = document.createElement("div");
+      header.className = "forge-name";
+      header.textContent = `${recipe.name} (${t(recipe.rarity)} ${t(recipe.slot)})`;
+      card.appendChild(header);
+      const cost = document.createElement("div");
+      cost.className = "forge-cost";
+      let canCraft = true;
+      for (const [mid, qty] of Object.entries(recipe.cost) as [MaterialId, number][]) {
+        const have = owned.get(mid) ?? 0;
+        const ok = have >= qty;
+        if (!ok) canCraft = false;
+        const span = document.createElement("span");
+        span.className = ok ? "ok" : "missing";
+        span.textContent = `${MATERIAL_CATALOG[mid].name}: ${have}/${qty}`;
+        cost.appendChild(span);
+      }
+      card.appendChild(cost);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forge-craft";
+      btn.disabled = !canCraft;
+      btn.textContent = canCraft ? "Chế tạo" : "Thiếu nguyên liệu";
+      btn.addEventListener("click", () => this.onCraft(recipe.id));
+      card.appendChild(btn);
+      root.appendChild(card);
+    }
+  }
+
+  private materialCounts(): Map<MaterialId, number> {
+    const counts = new Map<MaterialId, number>();
+    if (!this.player) return counts;
+    for (const item of this.player.inventory.items) {
+      if (item.kind !== "material") continue;
+      const m = item as MaterialItem;
+      counts.set(m.materialId, (counts.get(m.materialId) ?? 0) + 1);
+    }
+    return counts;
   }
 
   private renderSkillBar(): void {
@@ -710,17 +761,22 @@ function describeItem(item: Item): string {
   if (item.kind === "consumable") {
     return `${item.name}\n${t(item.rarity)} ${t("consumable")}\n${t("heals")}: ${item.heal} ${t("hp")}\n${t("value")}: ${item.value} ${t("gold")}`;
   }
+  if (item.kind === "material") {
+    return `${item.name}\nNguyên liệu chế tạo\n${t("value")}: ${item.value} ${t("gold")}`;
+  }
   const stats = Object.entries(item.stats).map(([key, value]) => `+${value} ${statLabel(key)}`).join(" ");
   return `${item.name}\n${t(item.rarity)} ${t(item.slot)}\n${stats}\n${t("value")}: ${item.value} ${t("gold")}`;
 }
 
 function shortStats(item: Item): string {
   if (item.kind === "consumable") return `${t("heals")} ${item.heal} ${t("hp")}`;
+  if (item.kind === "material") return "Nguyên liệu";
   return Object.entries(item.stats).map(([key, value]) => `+${value} ${statLabel(key)}`).join("  ");
 }
 
 function itemIcon(item: Item): string {
   if (item.kind === "consumable") return t("itemPotion");
+  if (item.kind === "material") return "Mảnh";
   const icons: Record<EquipmentSlot, string> = {
     weapon: t("itemWeapon"),
     helmet: t("itemHelmet"),
@@ -732,7 +788,9 @@ function itemIcon(item: Item): string {
 }
 
 function itemMaterialIcon(item: Item): string {
-  return item.kind === "consumable" ? "local_drink" : materialIcon(item.slot);
+  if (item.kind === "consumable") return "local_drink";
+  if (item.kind === "material") return "diamond";
+  return materialIcon(item.slot);
 }
 
 function materialIcon(slot: EquipmentSlot): string {

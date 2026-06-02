@@ -1,0 +1,179 @@
+// Crafting catalog: materials + recipes. Materials drop from monsters
+// at a small rate (server-side), recipes are exchanged for epic/rare gear.
+
+import type { EquipmentSlot, MaterialId, Rarity } from "./types.js";
+
+export interface MaterialInfo {
+  id: MaterialId;
+  name: string;
+  rarity: Rarity;
+  // monster types that drop this material
+  sources: string[];
+  value: number;
+}
+
+export const MATERIAL_CATALOG: Record<MaterialId, MaterialInfo> = {
+  slimeCore: {
+    id: "slimeCore",
+    name: "Slime Core",
+    rarity: "common",
+    sources: ["forestSlime", "mossCrawler"],
+    value: 8
+  },
+  wolfFang: {
+    id: "wolfFang",
+    name: "Wolf Fang",
+    rarity: "common",
+    sources: ["wildBoar", "direWolf"],
+    value: 12
+  },
+  goblinMark: {
+    id: "goblinMark",
+    name: "Goblin Mark",
+    rarity: "common",
+    sources: ["goblinScout", "caveBat"],
+    value: 10
+  },
+  emberHeart: {
+    id: "emberHeart",
+    name: "Ember Heart",
+    rarity: "rare",
+    sources: ["stoneImp", "emberSprite", "desertScarab"],
+    value: 22
+  },
+  cursedBark: {
+    id: "cursedBark",
+    name: "Cursed Bark",
+    rarity: "rare",
+    sources: ["cursedTreant", "bogWitch"],
+    value: 26
+  },
+  frostShard: {
+    id: "frostShard",
+    name: "Frost Shard",
+    rarity: "rare",
+    sources: ["frostRevenant", "tundraYeti", "ashWraith"],
+    value: 30
+  },
+  crystalShard: {
+    id: "crystalShard",
+    name: "Crystal Shard",
+    rarity: "epic",
+    sources: ["crystalGolem", "crystalLich"],
+    value: 55
+  },
+  voidAsh: {
+    id: "voidAsh",
+    name: "Void Ash",
+    rarity: "epic",
+    sources: ["voidKnight", "bloodHarpy", "ancientDrake", "elderHydra"],
+    value: 70
+  }
+};
+
+export function materialDropForMonster(monsterType: string): MaterialId | undefined {
+  for (const info of Object.values(MATERIAL_CATALOG)) {
+    if (info.sources.includes(monsterType)) return info.id;
+  }
+  return undefined;
+}
+
+export interface Recipe {
+  id: string;
+  name: string;
+  slot: EquipmentSlot;
+  rarity: Rarity;
+  // monster level the crafted item is power-scaled against
+  level: number;
+  // monster type whose loot theme the item borrows
+  themeFrom: string;
+  cost: Partial<Record<MaterialId, number>>;
+}
+
+export const RECIPES: Recipe[] = [
+  {
+    id: "wanderer-boots",
+    name: "Giày Lữ Khách",
+    slot: "boots",
+    rarity: "rare",
+    level: 3,
+    themeFrom: "forestSlime",
+    cost: { slimeCore: 4, wolfFang: 2 }
+  },
+  {
+    id: "spirit-ring",
+    name: "Nhẫn Linh Khí",
+    slot: "ring",
+    rarity: "rare",
+    level: 4,
+    themeFrom: "caveBat",
+    cost: { goblinMark: 3, cursedBark: 1 }
+  },
+  {
+    id: "storm-helm",
+    name: "Mũ Phong Bão",
+    slot: "helmet",
+    rarity: "rare",
+    level: 5,
+    themeFrom: "emberSprite",
+    cost: { emberHeart: 2, frostShard: 1 }
+  },
+  {
+    id: "ember-blade",
+    name: "Kiếm Tàn Hỏa",
+    slot: "weapon",
+    rarity: "epic",
+    level: 6,
+    themeFrom: "emberSprite",
+    cost: { emberHeart: 3, crystalShard: 1 }
+  },
+  {
+    id: "frozen-armor",
+    name: "Giáp Băng Vĩnh Cửu",
+    slot: "armor",
+    rarity: "epic",
+    level: 7,
+    themeFrom: "frostRevenant",
+    cost: { frostShard: 4, wolfFang: 3 }
+  },
+  {
+    id: "hex-ring",
+    name: "Nhẫn Tà Chú",
+    slot: "ring",
+    rarity: "epic",
+    level: 8,
+    themeFrom: "cursedTreant",
+    cost: { cursedBark: 3, voidAsh: 1 }
+  },
+  {
+    id: "void-blade",
+    name: "Kiếm Hư Vô",
+    slot: "weapon",
+    rarity: "epic",
+    level: 9,
+    themeFrom: "voidKnight",
+    cost: { voidAsh: 5, crystalShard: 2 }
+  },
+  {
+    id: "dragon-helm",
+    name: "Mũ Long Vương",
+    slot: "helmet",
+    rarity: "epic",
+    level: 10,
+    themeFrom: "ancientDrake",
+    cost: { voidAsh: 4, frostShard: 1 }
+  },
+  {
+    id: "crystal-robe",
+    name: "Áo Pha Lê",
+    slot: "armor",
+    rarity: "epic",
+    level: 10,
+    themeFrom: "crystalGolem",
+    cost: { crystalShard: 3, cursedBark: 2, emberHeart: 1 }
+  }
+];
+
+export function getRecipe(id: string): Recipe | undefined {
+  return RECIPES.find((r) => r.id === id);
+}

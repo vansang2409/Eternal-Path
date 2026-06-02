@@ -3,7 +3,16 @@ export type Direction = "up" | "down" | "left" | "right";
 export type Rarity = "common" | "rare" | "epic";
 
 export type EquipmentSlot = "weapon" | "helmet" | "armor" | "boots" | "ring";
-export type ItemKind = "equipment" | "consumable";
+export type ItemKind = "equipment" | "consumable" | "material";
+export type MaterialId =
+  | "slimeCore"
+  | "wolfFang"
+  | "goblinMark"
+  | "emberHeart"
+  | "cursedBark"
+  | "frostShard"
+  | "crystalShard"
+  | "voidAsh";
 export type SkillId =
   | "powerStrike"
   | "cleave"
@@ -70,7 +79,12 @@ export interface ConsumableItem extends BaseItem {
   heal: number;
 }
 
-export type Item = EquipmentItem | ConsumableItem;
+export interface MaterialItem extends BaseItem {
+  kind: "material";
+  materialId: MaterialId;
+}
+
+export type Item = EquipmentItem | ConsumableItem | MaterialItem;
 
 export interface InventoryState {
   items: Item[];
@@ -290,6 +304,7 @@ export interface ClientToServerEvents {
   useItem: (payload: { itemId: string }) => void;
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;
+  craftRecipe: (payload: { recipeId: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

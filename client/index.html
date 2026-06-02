@@ -115,6 +115,7 @@
         <button class="toolbar-btn" type="button" data-modal="achievements-modal" title="Thành tựu" aria-label="Thành tựu"><i class="material-symbols-outlined">emoji_events</i></button>
         <button class="toolbar-btn" type="button" data-modal="shop-modal" title="Cửa hàng" aria-label="Cửa hàng"><i class="material-symbols-outlined">store</i></button>
         <button class="toolbar-btn" type="button" data-modal="afk-modal" title="AFK" aria-label="AFK"><i class="material-symbols-outlined">hotel</i></button>
+        <button class="toolbar-btn" type="button" data-modal="forge-modal" title="Lò Rèn" aria-label="Lò Rèn"><i class="material-symbols-outlined">construction</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
 
@@ -164,6 +165,13 @@
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div id="forge-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header><h2 id="forge-title">Lò Rèn</h2><span id="forge-hint">Cần đứng ở thị trấn</span><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body"><div id="forge-recipes"></div></div>
         </div>
       </div>
 
