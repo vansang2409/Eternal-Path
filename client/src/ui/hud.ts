@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -425,19 +425,62 @@ export class Hud {
     }
   }
 
+  // Cache the latest quest payload so tab switches can re-render without
+  // waiting for another server emission.
+  private lastQuestPayload?: QuestListPayload;
+  private questTab: "all" | "tutorial" | "story" | "daily" = "all";
+
   setQuests(payload: QuestListPayload): void {
-    const root = document.querySelector("#quests")!;
+    this.lastQuestPayload = payload;
+    this.renderQuestList();
+  }
+
+  private renderQuestList(): void {
+    const payload = this.lastQuestPayload;
+    const root = document.querySelector<HTMLDivElement>("#quests");
+    if (!root) return;
     root.innerHTML = "";
-    if (payload.active.length > 0) {
+
+    // ---- tab bar ----
+    const tabs = [
+      { id: "all" as const, label: "Tất cả" },
+      { id: "tutorial" as const, label: "Tập sự" },
+      { id: "story" as const, label: "Cốt truyện" },
+      { id: "daily" as const, label: "Hằng ngày" }
+    ];
+    const bar = document.createElement("div");
+    bar.className = "quest-tabs";
+    for (const t of tabs) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `quest-tab${this.questTab === t.id ? " active" : ""}`;
+      btn.textContent = t.label;
+      btn.addEventListener("click", () => {
+        this.questTab = t.id;
+        this.renderQuestList();
+      });
+      bar.appendChild(btn);
+    }
+    root.appendChild(bar);
+
+    if (!payload) {
+      root.insertAdjacentHTML("beforeend", `<div class="empty">${t("noQuests")}</div>`);
+      return;
+    }
+    const filter = (q: QuestView) => this.questTab === "all" || q.category === this.questTab;
+    const active = payload.active.filter(filter);
+    const available = payload.available.filter(filter);
+
+    if (active.length > 0) {
       root.append(sectionTitle(t("activeQuests")));
-      for (const quest of payload.active) root.append(this.renderQuest(quest, "active"));
+      for (const quest of active) root.append(this.renderQuest(quest, "active"));
     }
-    if (payload.available.length > 0) {
+    if (available.length > 0) {
       root.append(sectionTitle(t("availableQuests")));
-      for (const quest of payload.available) root.append(this.renderQuest(quest, "available"));
+      for (const quest of available) root.append(this.renderQuest(quest, "available"));
     }
-    if (payload.active.length === 0 && payload.available.length === 0) {
-      root.innerHTML = `<div class="empty">${t("noQuests")}</div>`;
+    if (active.length === 0 && available.length === 0) {
+      root.insertAdjacentHTML("beforeend", `<div class="empty">${t("noQuests")}</div>`);
     }
   }
 
@@ -709,10 +752,11 @@ export class Hud {
 
   private renderQuest(quest: QuestView, mode: "available" | "active"): HTMLElement {
     const row = document.createElement("div");
-    row.className = `quest-card${quest.completed ? " complete" : ""}`;
+    row.className = `quest-card category-${quest.category ?? "story"}${quest.completed ? " complete" : ""}`;
     const pct = Math.max(0, Math.min(1, quest.progress / quest.required));
+    const catLabel = quest.category === "tutorial" ? "Tập sự" : quest.category === "daily" ? "Hằng ngày" : quest.category === "story" ? "Cốt truyện" : "";
     row.innerHTML = `
-      <strong>${escapeHtml(quest.title)}</strong>
+      <strong>${escapeHtml(quest.title)} ${catLabel ? `<span class="quest-cat-tag">${catLabel}</span>` : ""}</strong>
       <p>${escapeHtml(quest.description)}</p>
       <div class="quest-progress"><span style="width: ${pct * 100}%"></span><label>${quest.progress} / ${quest.required}</label></div>
       <em>${t("reward")}: ${quest.rewardGold} ${t("gold")} + ${quest.rewardExp} ${t("exp")}</em>

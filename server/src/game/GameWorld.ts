@@ -112,6 +112,19 @@ interface Party {
   memberIds: string[];
 }
 
+type QuestCategoryKind = "tutorial" | "story" | "daily";
+
+type QuestObjective =
+  | { kind: "killAny" }
+  | { kind: "killLevel"; minLevel: number }
+  | { kind: "killSpecific"; monsterType: string }
+  | { kind: "reachLevel"; level: number }
+  | { kind: "openChest" }
+  | { kind: "learnSkill" }
+  | { kind: "equipRarity"; rarity: "rare" | "epic" }
+  | { kind: "craftItem" }
+  | { kind: "collectGold"; amount: number };
+
 interface QuestTemplate {
   id: string;
   title: string;
@@ -119,7 +132,8 @@ interface QuestTemplate {
   required: number;
   rewardGold: number;
   rewardExp: number;
-  objective: { kind: "killAny" } | { kind: "killLevel"; minLevel: number } | { kind: "reachLevel"; level: number };
+  category: QuestCategoryKind;
+  objective: QuestObjective;
 }
 
 interface ActiveQuestState {
@@ -128,34 +142,150 @@ interface ActiveQuestState {
 }
 
 const QUEST_TEMPLATES: QuestTemplate[] = [
+  // ─── TUTORIAL (5) — auto-given to brand new players ─────────────────
   {
-    id: "cull-greenwood",
-    title: "Cull Greenwood",
-    description: "Defeat 5 monsters anywhere.",
-    required: 5,
-    rewardGold: 45,
-    rewardExp: 90,
-    objective: { kind: "killAny" }
+    id: "tut-first-kill",
+    title: "Lần đầu chiến đấu",
+    description: "Hạ 1 quái bất kỳ để làm quen combat.",
+    required: 1, rewardGold: 25, rewardExp: 40,
+    category: "tutorial", objective: { kind: "killAny" }
   },
   {
-    id: "prove-midlands",
-    title: "Prove the Midlands",
-    description: "Defeat 4 monsters level 4 or higher.",
-    required: 4,
-    rewardGold: 95,
-    rewardExp: 180,
-    objective: { kind: "killLevel", minLevel: 4 }
+    id: "tut-slime-hunter",
+    title: "Săn Slime",
+    description: "Hạ 3 Forest Slime ở rừng Greenwood.",
+    required: 3, rewardGold: 30, rewardExp: 60,
+    category: "tutorial", objective: { kind: "killSpecific", monsterType: "forestSlime" }
   },
   {
-    id: "reach-level-five",
-    title: "Reach Level 5",
-    description: "Reach character level 5.",
-    required: 5,
-    rewardGold: 150,
-    rewardExp: 260,
-    objective: { kind: "reachLevel", level: 5 }
+    id: "tut-learn-skill",
+    title: "Học kỹ năng đầu tiên",
+    description: "Học 1 kỹ năng từ modal Học kỹ năng.",
+    required: 1, rewardGold: 30, rewardExp: 50,
+    category: "tutorial", objective: { kind: "learnSkill" }
+  },
+  {
+    id: "tut-open-chest",
+    title: "Khám phá kho báu",
+    description: "Mở 1 Rương Kho Báu rải rác trên bản đồ.",
+    required: 1, rewardGold: 40, rewardExp: 80,
+    category: "tutorial", objective: { kind: "openChest" }
+  },
+  {
+    id: "tut-equip-rare",
+    title: "Trang bị tốt hơn",
+    description: "Trang bị 1 món đồ Hiếm (Rare) hoặc cao hơn.",
+    required: 1, rewardGold: 35, rewardExp: 70,
+    category: "tutorial", objective: { kind: "equipRarity", rarity: "rare" }
+  },
+
+  // ─── STORY (8) — always available ────────────────────────────────────
+  {
+    id: "story-cull-5",
+    title: "Diệt quái Greenwood",
+    description: "Hạ 5 quái bất kỳ.",
+    required: 5, rewardGold: 60, rewardExp: 100,
+    category: "story", objective: { kind: "killAny" }
+  },
+  {
+    id: "story-midlands",
+    title: "Chinh phục Midlands",
+    description: "Hạ 4 quái cấp 4 trở lên.",
+    required: 4, rewardGold: 130, rewardExp: 220,
+    category: "story", objective: { kind: "killLevel", minLevel: 4 }
+  },
+  {
+    id: "story-deeplands",
+    title: "Vực Sâu Gọi Tên",
+    description: "Hạ 3 quái cấp 7 trở lên.",
+    required: 3, rewardGold: 240, rewardExp: 380,
+    category: "story", objective: { kind: "killLevel", minLevel: 7 }
+  },
+  {
+    id: "story-reach-5",
+    title: "Lên cấp 5",
+    description: "Đạt cấp nhân vật 5.",
+    required: 5, rewardGold: 180, rewardExp: 300,
+    category: "story", objective: { kind: "reachLevel", level: 5 }
+  },
+  {
+    id: "story-reach-10",
+    title: "Lên cấp 10",
+    description: "Đạt cấp nhân vật 10.",
+    required: 10, rewardGold: 500, rewardExp: 900,
+    category: "story", objective: { kind: "reachLevel", level: 10 }
+  },
+  {
+    id: "story-craft",
+    title: "Lò Rèn Đầu Tiên",
+    description: "Chế tạo 1 trang bị tại Lò Rèn.",
+    required: 1, rewardGold: 120, rewardExp: 200,
+    category: "story", objective: { kind: "craftItem" }
+  },
+  {
+    id: "story-equip-epic",
+    title: "Trang bị Sử Thi",
+    description: "Trang bị 1 món Epic.",
+    required: 1, rewardGold: 250, rewardExp: 400,
+    category: "story", objective: { kind: "equipRarity", rarity: "epic" }
+  },
+  {
+    id: "story-treasure-hunter",
+    title: "Thợ Săn Kho Báu",
+    description: "Mở 5 Rương Kho Báu.",
+    required: 5, rewardGold: 280, rewardExp: 450,
+    category: "story", objective: { kind: "openChest" }
+  },
+
+  // ─── DAILY POOL (5+) — 3 picked per day per player ──────────────────
+  {
+    id: "daily-kill-12",
+    title: "Hằng ngày: Săn 12 quái",
+    description: "Hạ 12 quái bất kỳ. Reset mỗi 24 giờ.",
+    required: 12, rewardGold: 220, rewardExp: 360,
+    category: "daily", objective: { kind: "killAny" }
+  },
+  {
+    id: "daily-elite-3",
+    title: "Hằng ngày: Săn 3 elite/boss",
+    description: "Hạ 3 quái cấp 6 trở lên (elite/boss).",
+    required: 3, rewardGold: 320, rewardExp: 520,
+    category: "daily", objective: { kind: "killLevel", minLevel: 6 }
+  },
+  {
+    id: "daily-chest-2",
+    title: "Hằng ngày: Mở 2 rương",
+    description: "Mở 2 Rương Kho Báu.",
+    required: 2, rewardGold: 180, rewardExp: 280,
+    category: "daily", objective: { kind: "openChest" }
+  },
+  {
+    id: "daily-craft-1",
+    title: "Hằng ngày: Chế 1 trang bị",
+    description: "Chế tạo 1 món tại Lò Rèn.",
+    required: 1, rewardGold: 200, rewardExp: 320,
+    category: "daily", objective: { kind: "craftItem" }
+  },
+  {
+    id: "daily-slime-8",
+    title: "Hằng ngày: Tiêu diệt Slime",
+    description: "Hạ 8 Forest Slime.",
+    required: 8, rewardGold: 150, rewardExp: 230,
+    category: "daily", objective: { kind: "killSpecific", monsterType: "forestSlime" }
+  },
+  {
+    id: "daily-wolf-6",
+    title: "Hằng ngày: Săn Sói",
+    description: "Hạ 6 Dire Wolf.",
+    required: 6, rewardGold: 240, rewardExp: 380,
+    category: "daily", objective: { kind: "killSpecific", monsterType: "direWolf" }
   }
 ];
+
+const TUTORIAL_QUEST_IDS = QUEST_TEMPLATES.filter((q) => q.category === "tutorial").map((q) => q.id);
+const DAILY_QUEST_POOL = QUEST_TEMPLATES.filter((q) => q.category === "daily").map((q) => q.id);
+const DAILY_QUESTS_PER_DAY = 3;
+const DAILY_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 export class GameWorld {
   private readonly players = new Map<string, PlayerState>();
@@ -378,12 +508,16 @@ export class GameWorld {
         pvpKills: 0,
         pvpDeaths: 0,
         inArena: false,
-        playerClass: saved.playerClass
+        playerClass: saved.playerClass,
+        dailyQuestIds: saved.dailyQuestIds,
+        dailyResetAt: saved.dailyResetAt,
+        tutorialGiven: saved.tutorialGiven
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
+      this.initQuestsForPlayer(player);
       const offlineRewards = this.applyOfflineRewards(player, saved.lastSeenAt, Date.now());
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
@@ -593,6 +727,9 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã trang bị ${item.name}.`);
       this.markDirty(player);
+      if (item.rarity === "rare" || item.rarity === "epic") {
+        this.bumpQuestProgress(player, ["equipRarity"], { rarity: item.rarity });
+      }
     });
 
     socket.on("unequipItem", async ({ slot }) => {
@@ -717,6 +854,7 @@ export class GameWorld {
       this.markDirty(player);
       socket.emit("player", player);
       socket.emit("system", `Đã học ${skillLabel(skillId)}.`);
+      this.bumpQuestProgress(player, ["learnSkill"]);
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -878,6 +1016,7 @@ export class GameWorld {
           slot.activeItemId = undefined;
           slot.nextSpawnAt = Date.now() + TREASURE_RESPAWN_MS;
         }
+        this.bumpQuestProgress(player, ["openChest"]);
       }
       player.inventory.items.push(groundItem.item);
       socket.emit("player", player);
@@ -1308,6 +1447,7 @@ export class GameWorld {
     this.emitFloating(player.id, player.position, 0, "loot", crafted.name);
     this.sockets.get(player.id)?.emit("player", player);
     this.markDirty(player);
+    this.bumpQuestProgress(player, ["craftItem"]);
   }
 
   private updateRespawns(now: number): void {
@@ -1332,10 +1472,77 @@ export class GameWorld {
     for (const entry of active) {
       const template = questById(entry.questId);
       if (!template || isQuestComplete(entry, template)) continue;
-      if (template.objective.kind === "killAny" || (template.objective.kind === "killLevel" && monster.level >= template.objective.minLevel)) {
-        entry.progress = Math.min(template.required, entry.progress + 1);
-      }
+      const obj = template.objective;
+      if (obj.kind === "killAny") entry.progress = Math.min(template.required, entry.progress + 1);
+      else if (obj.kind === "killLevel" && monster.level >= obj.minLevel) entry.progress = Math.min(template.required, entry.progress + 1);
+      else if (obj.kind === "killSpecific" && monster.type === obj.monsterType) entry.progress = Math.min(template.required, entry.progress + 1);
     }
+  }
+
+  // Auto-give tutorial quests to brand-new players, and refresh daily quests
+  // when 24h has elapsed since last roll.
+  private initQuestsForPlayer(player: PlayerState): void {
+    const active = this.activeQuests.get(player.id) ?? [];
+    // Tutorial — given once per character.
+    if (!player.tutorialGiven) {
+      for (const id of TUTORIAL_QUEST_IDS) {
+        if (active.find((entry) => entry.questId === id)) continue;
+        const template = questById(id);
+        if (!template) continue;
+        active.push({ questId: id, progress: initialQuestProgress(template, player) });
+      }
+      player.tutorialGiven = true;
+    }
+    // Daily — pick fresh ones if expired or missing.
+    const now = Date.now();
+    const needsReset = !player.dailyResetAt || now - player.dailyResetAt >= DAILY_RESET_INTERVAL_MS;
+    if (needsReset || !player.dailyQuestIds || player.dailyQuestIds.length === 0) {
+      const pool = [...DAILY_QUEST_POOL];
+      // Simple Fisher-Yates shuffle.
+      for (let i = pool.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const fresh = pool.slice(0, DAILY_QUESTS_PER_DAY);
+      // Drop yesterday's daily entries from active.
+      const stale = new Set(player.dailyQuestIds ?? []);
+      const filtered = active.filter((entry) => !stale.has(entry.questId));
+      // Auto-accept fresh daily quests so the player sees them immediately.
+      for (const id of fresh) {
+        const template = questById(id);
+        if (!template) continue;
+        filtered.push({ questId: id, progress: initialQuestProgress(template, player) });
+      }
+      this.activeQuests.set(player.id, filtered);
+      player.dailyQuestIds = fresh;
+      player.dailyResetAt = now;
+    } else {
+      this.activeQuests.set(player.id, active);
+    }
+    this.markDirty(player);
+  }
+
+  // Generic progress hook for non-kill objectives (chest, learnSkill, equip, craft).
+  private bumpQuestProgress(player: PlayerState, kinds: QuestObjective["kind"][], extra?: { rarity?: "rare" | "epic" }): void {
+    const active = this.activeQuests.get(player.id);
+    if (!active) return;
+    let changed = false;
+    for (const entry of active) {
+      const template = questById(entry.questId);
+      if (!template || isQuestComplete(entry, template)) continue;
+      const obj = template.objective;
+      if (!kinds.includes(obj.kind)) continue;
+      if (obj.kind === "equipRarity") {
+        const want = obj.rarity;
+        if (!extra?.rarity) continue;
+        // Equipping epic also satisfies the rare quest.
+        const matches = want === "rare" ? (extra.rarity === "rare" || extra.rarity === "epic") : extra.rarity === "epic";
+        if (!matches) continue;
+      }
+      entry.progress = Math.min(template.required, entry.progress + 1);
+      changed = true;
+    }
+    if (changed) this.emitQuestList(player);
   }
 
   private updateReachLevelQuests(player: PlayerState): void {
@@ -1850,7 +2057,8 @@ function questById(questId: string): QuestTemplate | undefined {
 }
 
 function initialQuestProgress(quest: QuestTemplate, player: PlayerState): number {
-  return quest.objective.kind === "reachLevel" ? Math.min(quest.required, player.stats.level) : 0;
+  if (quest.objective.kind === "reachLevel") return Math.min(quest.required, player.stats.level);
+  return 0;
 }
 
 function isQuestComplete(entry: ActiveQuestState, quest: QuestTemplate): boolean {
@@ -1859,9 +2067,18 @@ function isQuestComplete(entry: ActiveQuestState, quest: QuestTemplate): boolean
 
 function questListFor(player: PlayerState, active: ActiveQuestState[]): QuestListPayload {
   const activeIds = new Set(active.map((entry) => entry.questId));
+  const dailyAllowed = new Set(player.dailyQuestIds ?? []);
   return {
     available: QUEST_TEMPLATES
-      .filter((quest) => !activeIds.has(quest.id))
+      .filter((quest) => {
+        if (activeIds.has(quest.id)) return false;
+        // Daily quests are only browsable if they're the player's current roll.
+        if (quest.category === "daily" && !dailyAllowed.has(quest.id)) return false;
+        // Tutorial quests are only browsable if not yet completed; once given
+        // they live in active until claimed.
+        if (quest.category === "tutorial" && player.tutorialGiven) return false;
+        return true;
+      })
       .map((quest) => questView(quest, { questId: quest.id, progress: initialQuestProgress(quest, player) })),
     active: active
       .map((entry) => {
@@ -1881,7 +2098,8 @@ function questView(quest: QuestTemplate, entry: ActiveQuestState): QuestView {
     required: quest.required,
     completed: isQuestComplete(entry, quest),
     rewardGold: quest.rewardGold,
-    rewardExp: quest.rewardExp
+    rewardExp: quest.rewardExp,
+    category: quest.category
   };
 }
 

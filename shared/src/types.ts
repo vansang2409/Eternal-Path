@@ -113,6 +113,10 @@ export interface PlayerState {
   inArena?: boolean;
   // Class assignment. Undefined means the player has not yet picked one.
   playerClass?: "warrior" | "mage" | "ranger";
+  // Quest progression metadata
+  dailyQuestIds?: string[];
+  dailyResetAt?: number;
+  tutorialGiven?: boolean;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -178,6 +182,8 @@ export interface ChatMessage {
   sentAt: number;
 }
 
+export type QuestCategory = "tutorial" | "story" | "daily";
+
 export interface QuestView {
   id: string;
   title: string;
@@ -187,6 +193,7 @@ export interface QuestView {
   completed: boolean;
   rewardGold: number;
   rewardExp: number;
+  category?: QuestCategory;
 }
 
 export interface QuestListPayload {

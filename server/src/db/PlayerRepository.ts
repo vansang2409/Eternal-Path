@@ -16,6 +16,9 @@ interface SavedPlayer {
   lastSeenAt?: number;
   position?: Vec2;
   playerClass?: PlayerClass;
+  dailyQuestIds?: string[];
+  dailyResetAt?: number;
+  tutorialGiven?: boolean;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -165,7 +168,10 @@ export class PlayerRepository {
       learnedSkills: [...player.learnedSkills],
       lastSeenAt: Date.now(),
       position: { x: player.position.x, y: player.position.y },
-      playerClass: player.playerClass
+      playerClass: player.playerClass,
+      dailyQuestIds: player.dailyQuestIds ? [...player.dailyQuestIds] : undefined,
+      dailyResetAt: player.dailyResetAt,
+      tutorialGiven: player.tutorialGiven
     };
     memorySaves.set(player.email, saved);
 

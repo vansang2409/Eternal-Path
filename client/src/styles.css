@@ -281,6 +281,52 @@ body {
   color: var(--gold);
 }
 
+.quest-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(142, 145, 146, 0.3);
+}
+
+.quest-tab {
+  padding: 6px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(28, 28, 28, 0.4);
+  border: 1px solid rgba(142, 145, 146, 0.25);
+  border-radius: 3px;
+}
+
+.quest-tab:hover {
+  color: var(--gold);
+  border-color: var(--gold-dark);
+}
+
+.quest-tab.active {
+  color: #1d1500;
+  background: var(--gold-bright);
+  border-color: var(--gold-bright);
+}
+
+.quest-cat-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: rgba(142, 145, 146, 0.18);
+  border-radius: 2px;
+}
+
+.quest-card.category-tutorial .quest-cat-tag { color: #9be3ff; background: rgba(105, 167, 255, 0.18); }
+.quest-card.category-daily .quest-cat-tag { color: #ffbe3c; background: rgba(255, 190, 60, 0.18); }
+.quest-card.category-story .quest-cat-tag { color: #d8e9bf; background: rgba(143, 211, 107, 0.18); }
+
 .help-section {
   margin-bottom: 18px;
 }
