@@ -887,16 +887,47 @@ export class Hud {
     const earned = new Set(this.player.achievements);
     const root = document.querySelector("#achievements")!;
     root.innerHTML = "";
+
+    // Counter header.
+    const total = ACHIEVEMENTS.length;
+    const got = earned.size;
+    const header = document.createElement("div");
+    header.style.cssText = "padding:10px 12px;margin-bottom:12px;background:rgba(28,28,28,0.55);border:1px solid rgba(200,169,72,0.4);border-radius:4px;font-size:13px;color:#f3e7bf";
+    header.innerHTML = `<strong>Tiến trình:</strong> ${got} / ${total} thành tựu mở khóa.`;
+    root.appendChild(header);
+
+    // Build per-achievement progress data using player counters.
+    const player = this.player;
+    const progress = (id: string): { cur: number; max: number } | undefined => {
+      switch (id) {
+        case "kill-100":       return { cur: Math.min(100, player.totalKills ?? 0), max: 100 };
+        case "kill-500":       return { cur: Math.min(500, player.totalKills ?? 0), max: 500 };
+        case "treasure-hoard": return { cur: Math.min(10, player.chestsOpened ?? 0), max: 10 };
+        case "craft-master":   return { cur: Math.min(5, player.itemsCrafted ?? 0), max: 5 };
+        case "pvp-champion":   return { cur: Math.min(10, player.pvpKills ?? 0), max: 10 };
+        case "reach-level-5":  return { cur: Math.min(5, player.stats.level), max: 5 };
+        case "reach-level-10": return { cur: Math.min(10, player.stats.level), max: 10 };
+        case "reach-level-20": return { cur: Math.min(20, player.stats.level), max: 20 };
+      }
+      return undefined;
+    };
+
     for (const achievement of ACHIEVEMENTS) {
       const unlocked = earned.has(achievement.id);
       const text = localizedAchievement(achievement);
+      const p = progress(achievement.id);
+      const pct = p ? (p.cur / p.max) * 100 : 0;
       const row = document.createElement("div");
       row.className = `achievement-card${unlocked ? " earned" : " locked"}`;
+      const progressHtml = p && !unlocked
+        ? `<div style="margin-top:4px;height:6px;background:#1a1a1a;border-radius:999px;overflow:hidden"><span style="display:block;height:100%;width:${pct}%;background:linear-gradient(to right,#c8a948,#ffd166);transition:width 200ms linear"></span></div><small style="color:#8e9192">${p.cur} / ${p.max}</small>`
+        : "";
       row.innerHTML = `
-        <i class="material-symbols-outlined">${unlocked ? "workspace_premium" : "lock"}</i>
+        <i class="material-symbols-outlined" style="${unlocked ? "color:#ffd166" : ""}">${unlocked ? "workspace_premium" : "lock"}</i>
         <div>
           <strong>${escapeHtml(text.title)}</strong>
           <p>${escapeHtml(text.description)}</p>
+          ${progressHtml}
         </div>
         <span>${unlocked ? t("earned") : t("locked")}</span>
       `;
