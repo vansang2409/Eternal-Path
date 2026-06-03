@@ -88,10 +88,42 @@ export class Hud {
         if (event.target === modal) modal.classList.add("hidden");
       });
     });
+    // Hotkeys for opening modals. Only act when the user isn't typing in a
+    // text field — otherwise typing 'i' in chat would open inventory.
+    const modalHotkeys: Record<string, string> = {
+      i: "inventory-modal",
+      c: "equipment-modal",
+      k: "skills-modal",
+      n: "quests-modal",        // 'n' for nhiệm vụ — quests
+      v: "achievements-modal",  // 'v' for vinh quang
+      h: "shop-modal",
+      g: "afk-modal",
+      j: "forge-modal",         // 'j' for jewel/forge
+      b: "leaderboard-modal",   // 'b' for bảng vinh danh
+      "?": "help-modal"
+    };
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         document.querySelectorAll<HTMLElement>(".game-modal:not(.hidden)").forEach((m) => m.classList.add("hidden"));
+        return;
       }
+      // Ignore hotkeys when user is typing.
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      const key = event.key.toLowerCase();
+      const modalId = modalHotkeys[key];
+      if (!modalId) return;
+      event.preventDefault();
+      const allModals = document.querySelectorAll<HTMLElement>(".game-modal");
+      const target_ = document.querySelector<HTMLElement>(`#${modalId}`);
+      if (!target_) return;
+      // If clicking same modal that's open, close it; otherwise close others first.
+      const isOpen = !target_.classList.contains("hidden");
+      allModals.forEach((m) => m.classList.add("hidden"));
+      if (!isOpen) target_.classList.remove("hidden");
+      // Some modals trigger socket requests on open (arena, leaderboard).
+      if (!isOpen && modalId === "leaderboard-modal") window.dispatchEvent(new CustomEvent("hotkey-leaderboard"));
+      if (!isOpen && modalId === "arena-modal") window.dispatchEvent(new CustomEvent("hotkey-arena"));
     });
     this.setParty(null);
     this.renderSoundToggle();

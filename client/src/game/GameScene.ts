@@ -734,6 +734,12 @@ export class GameScene extends Phaser.Scene {
         this.activeLeaderboardTab = "byLevel";
       });
     });
+    // Hotkey-driven modals also need their server requests.
+    window.addEventListener("hotkey-leaderboard", () => {
+      this.socket.emit("leaderboardRequest");
+      this.activeLeaderboardTab = "byLevel";
+    });
+    window.addEventListener("hotkey-arena", () => this.socket.emit("arenaLeaderboardRequest"));
 
     this.socket.on("leaderboard", (payload) => {
       this.lastLeaderboard = payload;
