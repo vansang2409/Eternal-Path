@@ -128,6 +128,7 @@ export class Hud {
     });
     this.setParty(null);
     this.renderSoundToggle();
+    this.installPanelCollapseButtons();
     languageSelect.value = getLanguage();
     languageSelect.addEventListener("change", () => {
       setLanguage(languageSelect.value as Language);
@@ -517,6 +518,40 @@ export class Hud {
 
   announceDrop(accountName: string, itemName: string, rarity: Rarity): void {
     this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
+  }
+
+  // Add a small collapse / expand button to each bottom-HUD panel so the
+  // player can hide the content of any panel they don't want on screen.
+  // State is persisted to localStorage.
+  private installPanelCollapseButtons(): void {
+    const panels: Array<{ selector: string; key: string }> = [
+      { selector: ".log-panel", key: "log" },
+      { selector: ".chat-panel", key: "chat" },
+      { selector: ".player-panel", key: "player" },
+      { selector: ".target-panel", key: "target" },
+      { selector: ".party-panel", key: "party" }
+    ];
+    for (const { selector, key } of panels) {
+      const panel = document.querySelector<HTMLElement>(selector);
+      if (!panel) continue;
+      const btn = document.createElement("button");
+      btn.className = "panel-collapse-btn";
+      btn.type = "button";
+      btn.setAttribute("aria-label", "Thu gọn");
+      panel.appendChild(btn);
+      const apply = (collapsed: boolean) => {
+        panel.classList.toggle("collapsed", collapsed);
+        btn.textContent = collapsed ? "▸" : "▾";
+        btn.title = collapsed ? "Mở rộng" : "Thu gọn";
+      };
+      apply(localStorage.getItem(`panel-collapsed-${key}`) === "1");
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const next = !panel.classList.contains("collapsed");
+        apply(next);
+        localStorage.setItem(`panel-collapsed-${key}`, next ? "1" : "0");
+      });
+    }
   }
 
   // Handle locally-interpreted slash commands. Currently:

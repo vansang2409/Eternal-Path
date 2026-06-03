@@ -356,6 +356,47 @@ body {
   font-size: 11px;
 }
 
+.panel {
+  position: relative;
+}
+
+.panel-collapse-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--gold);
+  font-size: 13px;
+  line-height: 18px;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(233, 195, 73, 0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.panel-collapse-btn:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold-bright);
+}
+
+/* Hide everything except the panel header and the collapse button. */
+.panel.collapsed > *:not(:first-child):not(.panel-collapse-btn) {
+  display: none;
+}
+
+.panel.collapsed {
+  padding-bottom: 6px;
+}
+
+.panel.collapsed > h2,
+.panel.collapsed > .name,
+.panel.collapsed > .target-heading {
+  margin-bottom: 0;
+}
+
 .chat-time {
   margin-right: 6px;
   color: #6e7173;
