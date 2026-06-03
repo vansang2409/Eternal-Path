@@ -284,6 +284,26 @@ export class GameScene extends Phaser.Scene {
     return out;
   }
 
+  // ------- boss HUD -------
+
+  private updateBossHud(snapshot: WorldSnapshot): void {
+    const hud = document.querySelector<HTMLDivElement>("#boss-hud");
+    if (!hud) return;
+    const boss = snapshot.monsters.find((m) => m.boss && m.type === "eternalWarden" && !m.respawnsAt && m.hp > 0);
+    if (!boss) {
+      hud.classList.add("hidden");
+      return;
+    }
+    hud.classList.remove("hidden");
+    const name = document.querySelector<HTMLDivElement>("#boss-hud-name");
+    const fill = document.querySelector<HTMLSpanElement>("#boss-hud-fill");
+    const label = document.querySelector<HTMLLabelElement>("#boss-hud-label");
+    if (name) name.textContent = `⚔ ${boss.name}`;
+    const pct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
+    if (fill) fill.style.width = `${pct * 100}%`;
+    if (label) label.textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
+  }
+
   // ------- leaderboard -------
 
   private lastLeaderboard?: { byLevel: any[]; byGold: any[]; byKills: any[] };
@@ -912,6 +932,10 @@ export class GameScene extends Phaser.Scene {
       const isAlive = !monster.respawnsAt && monster.hp > 0;
       if (wasAlive && !isAlive) {
         this.playDeathPoof(monster.position, monster.boss || monster.elite);
+        if (monster.boss) {
+          // Extra screen-wide golden flash for boss kills.
+          this.cameras.main.flash(420, 255, 220, 120);
+        }
       }
       if (isAlive) this.aliveMonsters.add(monster.id);
       else this.aliveMonsters.delete(monster.id);
@@ -943,6 +967,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateTargetPanel(snapshot);
     this.hud.updatePartyVitals(snapshot.players);
+    this.updateBossHud(snapshot);
     // Throttle minimap redraw to ~6 fps; that's enough for spatial awareness.
     const now = this.time.now;
     if (now - this.lastMinimapAt > 160) {

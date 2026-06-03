@@ -514,6 +514,61 @@ body {
   cursor: not-allowed;
 }
 
+#boss-hud {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 46;
+  width: 380px;
+  padding: 8px 14px;
+  color: #f3e7bf;
+  text-align: center;
+  font-family: Literata, Georgia, serif;
+  background: rgba(0, 0, 0, 0.78);
+  border: 1px solid rgba(255, 93, 122, 0.7);
+  border-radius: 4px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+
+#boss-hud.hidden { display: none; }
+
+#boss-hud-name {
+  margin-bottom: 4px;
+  color: #ff8a98;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+#boss-hud .boss-bar {
+  position: relative;
+  height: 12px;
+  overflow: hidden;
+  background: #1a0810;
+  border-radius: 999px;
+  box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+#boss-hud .boss-bar span {
+  display: block;
+  height: 100%;
+  transition: width 200ms linear;
+  background: linear-gradient(to bottom, #ff5d7a, #b73a48);
+}
+
+#boss-hud .boss-bar label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffe9ed;
+  font-size: 10px;
+  font-weight: 800;
+  text-shadow: 0 1px 2px #000;
+}
+
 #world-clock {
   position: fixed;
   top: 184px;
