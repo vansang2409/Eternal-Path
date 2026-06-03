@@ -1292,11 +1292,14 @@ export class GameWorld {
       }
       if (player.stats.maxStamina === undefined) player.stats.maxStamina = maxStam;
 
-      // Auto-stop when running with moveTarget toward (or past) an alive
-      // monster the player is already targeting — stop at attack range so
-      // the auto-attack loop can fire instead of running through it.
+      // Auto-stop only when the moveTarget is on the targeted monster
+      // (player clicked the mob) AND they are already within attack range.
+      // Don't clear moveTarget if the player wants to walk past or away
+      // from the target.
       const aliveTarget = player.targetId ? this.monsters.find((m) => m.id === player.targetId && !m.respawnsAt && m.hp > 0) : undefined;
-      if (input.moveTarget && aliveTarget && distance(player.position, aliveTarget.position) <= PLAYER_ATTACK_RANGE) {
+      if (input.moveTarget && aliveTarget &&
+          distance(input.moveTarget, aliveTarget.position) <= 48 &&
+          distance(player.position, aliveTarget.position) <= PLAYER_ATTACK_RANGE) {
         input.moveTarget = undefined;
       }
       const manualLength = Math.hypot(axis.x, axis.y);
