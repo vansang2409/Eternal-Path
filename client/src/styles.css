@@ -1532,7 +1532,10 @@ h2 {
 }
 
 .skill-button.cooling span {
-  background: rgba(0, 0, 0, 0.58);
+  background:
+    conic-gradient(from -90deg,
+      rgba(0, 0, 0, 0.78) var(--cd-sweep, 0%),
+      rgba(0, 0, 0, 0.18) var(--cd-sweep, 0%));
 }
 
 .skill-button.empty {

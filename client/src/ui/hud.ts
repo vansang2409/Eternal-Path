@@ -861,12 +861,21 @@ export class Hud {
     const now = Date.now();
     for (const skillId of this.player.equippedSkills ?? []) {
       if (!skillId) continue;
+      const cdMs = SKILL_CATALOG[skillId]?.cooldownMs ?? 0;
       const remaining = Math.max(0, this.skillCooldowns[skillId] - now);
       const button = document.querySelector(`[data-skill="${skillId}"]`) as HTMLButtonElement | null;
       const label = document.querySelector(`[data-cooldown="${skillId}"]`) as HTMLElement | null;
       if (!button || !label) continue;
-      button.classList.toggle("cooling", remaining > 0);
-      label.textContent = remaining > 0 ? `${(remaining / 1000).toFixed(1)}s` : "";
+      const cooling = remaining > 0;
+      button.classList.toggle("cooling", cooling);
+      // Radial sweep via CSS conic-gradient on a custom property.
+      if (cooling && cdMs > 0) {
+        const pct = Math.max(0, Math.min(100, (remaining / cdMs) * 100));
+        button.style.setProperty("--cd-sweep", `${pct}%`);
+      } else {
+        button.style.setProperty("--cd-sweep", "0%");
+      }
+      label.textContent = cooling ? `${(remaining / 1000).toFixed(1)}s` : "";
     }
   }
 
