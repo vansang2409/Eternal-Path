@@ -550,7 +550,10 @@ export class GameWorld {
         dailyResetAt: saved.dailyResetAt,
         tutorialGiven: saved.tutorialGiven,
         talentPoints: saved.talentPoints ?? Math.max(0, saved.stats.level - 1) * TALENT_POINTS_PER_LEVEL,
-        skillRanks: saved.skillRanks ?? {}
+        skillRanks: saved.skillRanks ?? {},
+        totalKills: saved.totalKills ?? 0,
+        chestsOpened: saved.chestsOpened ?? 0,
+        itemsCrafted: saved.itemsCrafted ?? 0
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -924,6 +927,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Nâng ${skillLabel(skillId)} lên cấp ${current + 1}/${SKILL_MAX_RANK}.`);
       this.markDirty(player);
+      this.unlockAchievement(player, "talent-spent");
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -941,6 +945,7 @@ export class GameWorld {
         socket.emit("player", player);
         socket.emit("system", `Đã dùng ${item.name}, trở về thị trấn.`);
         this.markDirty(player);
+        this.unlockAchievement(player, "homeward");
         return;
       }
       const before = player.stats.hp;
@@ -1142,6 +1147,8 @@ export class GameWorld {
           slot.nextSpawnAt = Date.now() + TREASURE_RESPAWN_MS;
         }
         this.bumpQuestProgress(player, ["openChest"]);
+        player.chestsOpened = (player.chestsOpened ?? 0) + 1;
+        if (player.chestsOpened >= 10) this.unlockAchievement(player, "treasure-hoard");
       }
       player.inventory.items.push(groundItem.item);
       socket.emit("player", player);
@@ -1447,6 +1454,7 @@ export class GameWorld {
   private checkLevelAchievements(player: PlayerState): void {
     if (player.stats.level >= 5) this.unlockAchievement(player, "reach-level-5");
     if (player.stats.level >= 10) this.unlockAchievement(player, "reach-level-10");
+    if (player.stats.level >= 20) this.unlockAchievement(player, "reach-level-20");
   }
 
   private unlockAchievement(player: PlayerState, achievementId: string): boolean {
@@ -1488,9 +1496,14 @@ export class GameWorld {
       }
     }
     this.updateQuestProgressForKill(player, monster);
+    player.totalKills = (player.totalKills ?? 0) + 1;
     this.unlockAchievement(player, "first-blood");
+    if (player.totalKills >= 100) this.unlockAchievement(player, "kill-100");
+    if (player.totalKills >= 500) this.unlockAchievement(player, "kill-500");
+    if (monster.level >= 8) this.unlockAchievement(player, "deep-explorer");
     if (monster.elite) this.unlockAchievement(player, "slay-elite");
-    if (monster.boss) this.unlockAchievement(player, "slay-boss");
+    if (monster.boss && monster.type === "eternalWarden") this.unlockAchievement(player, "slay-boss");
+    if (monster.boss && monster.type !== "eternalWarden") this.unlockAchievement(player, "slay-dungeon-boss");
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
 
     const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
@@ -1528,6 +1541,7 @@ export class GameWorld {
         player.inventory.items.push(mount);
         this.sockets.get(player.id)?.emit("system", "Bạn nhận được Bùa Cưỡi Gió (+25% tốc độ).");
         this.emitFloating(player.id, player.position, 0, "loot", mount.name);
+        this.unlockAchievement(player, "mount-rider");
       }
     }
     // Material drop: 30% chance per kill (50% for elite, 100% for boss).
@@ -1615,6 +1629,8 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.markDirty(player);
     this.bumpQuestProgress(player, ["craftItem"]);
+    player.itemsCrafted = (player.itemsCrafted ?? 0) + 1;
+    if (player.itemsCrafted >= 5) this.unlockAchievement(player, "craft-master");
   }
 
   private updateRespawns(now: number): void {
@@ -1867,6 +1883,8 @@ export class GameWorld {
       attacker.targetId = undefined;
       attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
       target.pvpDeaths = (target.pvpDeaths ?? 0) + 1;
+      this.unlockAchievement(attacker, "pvp-victor");
+      if ((attacker.pvpKills ?? 0) >= 10) this.unlockAchievement(attacker, "pvp-champion");
       this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ tại Đấu Trường.`);
       this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! (Kills: ${attacker.pvpKills})`);
       this.io.emit("arenaKill", { killerName: attacker.accountName, victimName: target.accountName });

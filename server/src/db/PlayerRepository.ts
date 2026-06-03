@@ -21,6 +21,9 @@ interface SavedPlayer {
   tutorialGiven?: boolean;
   talentPoints?: number;
   skillRanks?: Partial<Record<SkillId, number>>;
+  totalKills?: number;
+  chestsOpened?: number;
+  itemsCrafted?: number;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -175,7 +178,10 @@ export class PlayerRepository {
       dailyResetAt: player.dailyResetAt,
       tutorialGiven: player.tutorialGiven,
       talentPoints: player.talentPoints,
-      skillRanks: player.skillRanks ? { ...player.skillRanks } : undefined
+      skillRanks: player.skillRanks ? { ...player.skillRanks } : undefined,
+      totalKills: player.totalKills,
+      chestsOpened: player.chestsOpened,
+      itemsCrafted: player.itemsCrafted
     };
     memorySaves.set(player.email, saved);
 

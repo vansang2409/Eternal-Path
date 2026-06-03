@@ -126,6 +126,10 @@ export interface PlayerState {
   // Talent system — 1 point per level, spendable on skill ranks (0-3 each).
   talentPoints?: number;
   skillRanks?: Partial<Record<SkillId, number>>;
+  // Lifetime counters for achievement progression.
+  totalKills?: number;
+  chestsOpened?: number;
+  itemsCrafted?: number;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
