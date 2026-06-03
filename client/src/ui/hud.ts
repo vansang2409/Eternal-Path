@@ -143,7 +143,12 @@ export class Hud {
       event.preventDefault();
       const message = input.value.trim();
       if (!message) return;
-      this.onChat(message);
+      // Slash commands handled client-side.
+      if (message.startsWith("/")) {
+        this.handleSlashCommand(message);
+      } else {
+        this.onChat(message);
+      }
       input.value = "";
     });
   }
@@ -514,6 +519,34 @@ export class Hud {
     this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
   }
 
+  // Handle locally-interpreted slash commands. Currently:
+  //  /help        — list commands in the log
+  //  /me <text>   — emote (broadcast as a chat message prefixed with *)
+  //  /clear       — clear chat history
+  private handleSlashCommand(raw: string): void {
+    const [cmd, ...rest] = raw.slice(1).split(/\s+/);
+    const arg = rest.join(" ").trim();
+    if (cmd === "help") {
+      const lines = [
+        "/help — danh sách lệnh",
+        "/me <text> — phát emote (vd: /me chào mọi người)",
+        "/clear — xoá nội dung chat"
+      ];
+      for (const l of lines) this.log(l, "log-line");
+      return;
+    }
+    if (cmd === "me" && arg) {
+      this.onChat(`* ${arg}`);
+      return;
+    }
+    if (cmd === "clear") {
+      const root = document.querySelector("#chat-messages");
+      if (root) root.innerHTML = "";
+      return;
+    }
+    this.log(`Lệnh không hợp lệ: ${cmd}. Gõ /help để xem danh sách.`, "log-line");
+  }
+
   setChatHistory(messages: ChatMessage[]): void {
     const root = document.querySelector("#chat-messages")!;
     root.innerHTML = "";
@@ -524,7 +557,10 @@ export class Hud {
     const root = document.querySelector("#chat-messages")!;
     const line = document.createElement("div");
     line.className = "chat-line";
-    line.innerHTML = `<strong>${escapeHtml(message.accountName)}</strong><span>${escapeHtml(message.message)}</span>`;
+    const time = new Date(message.sentAt);
+    const hh = time.getHours().toString().padStart(2, "0");
+    const mm = time.getMinutes().toString().padStart(2, "0");
+    line.innerHTML = `<time class="chat-time">${hh}:${mm}</time><strong>${escapeHtml(message.accountName)}</strong><span>${escapeHtml(message.message)}</span>`;
     root.append(line);
     while (root.childElementCount > 50) root.firstElementChild?.remove();
     root.scrollTop = root.scrollHeight;
