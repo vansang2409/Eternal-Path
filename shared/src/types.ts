@@ -133,6 +133,8 @@ export interface PlayerState {
   totalKills?: number;
   chestsOpened?: number;
   itemsCrafted?: number;
+  // Up to 3 saved skill loadouts, each an array of 4 skill ids.
+  skillLoadouts?: Array<SkillId[]>;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -390,6 +392,8 @@ export interface ClientToServerEvents {
   leaderboardRequest: () => void;
   rerollDailyQuests: () => void;
   enchantItem: (payload: { itemId: string }) => void;
+  saveLoadout: (payload: { slot: number }) => void;
+  loadLoadout: (payload: { slot: number }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

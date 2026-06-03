@@ -553,7 +553,8 @@ export class GameWorld {
         skillRanks: saved.skillRanks ?? {},
         totalKills: saved.totalKills ?? 0,
         chestsOpened: saved.chestsOpened ?? 0,
-        itemsCrafted: saved.itemsCrafted ?? 0
+        itemsCrafted: saved.itemsCrafted ?? 0,
+        skillLoadouts: saved.skillLoadouts ?? [[], [], []]
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -897,6 +898,48 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã học ${skillLabel(skillId)}.`);
       this.bumpQuestProgress(player, ["learnSkill"]);
+    });
+
+    socket.on("saveLoadout", ({ slot }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (typeof slot !== "number" || slot < 0 || slot > 2) {
+        socket.emit("system", "Vị trí preset không hợp lệ.");
+        return;
+      }
+      const loadouts = player.skillLoadouts ?? [[], [], []];
+      while (loadouts.length < 3) loadouts.push([]);
+      loadouts[slot] = [...player.equippedSkills].filter((s): s is SkillId => !!s);
+      player.skillLoadouts = loadouts;
+      socket.emit("player", player);
+      socket.emit("system", `Đã lưu loadout ${slot + 1}.`);
+      this.markDirty(player);
+    });
+
+    socket.on("loadLoadout", ({ slot }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (typeof slot !== "number" || slot < 0 || slot > 2) {
+        socket.emit("system", "Vị trí preset không hợp lệ.");
+        return;
+      }
+      const loadouts = player.skillLoadouts ?? [];
+      const target = loadouts[slot];
+      if (!target || target.length === 0) {
+        socket.emit("system", `Preset ${slot + 1} chưa có dữ liệu.`);
+        return;
+      }
+      // Filter to only currently-learned skills.
+      const learned = new Set(player.learnedSkills);
+      const next: SkillId[] = [];
+      for (const id of target) {
+        if (learned.has(id)) next.push(id);
+        if (next.length >= 4) break;
+      }
+      player.equippedSkills = next;
+      socket.emit("player", player);
+      socket.emit("system", `Đã chuyển sang loadout ${slot + 1}.`);
+      this.markDirty(player);
     });
 
     socket.on("upgradeSkill", ({ skillId }) => {

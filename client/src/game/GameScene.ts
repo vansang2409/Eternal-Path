@@ -762,6 +762,13 @@ export class GameScene extends Phaser.Scene {
     });
     window.addEventListener("hotkey-arena", () => this.socket.emit("arenaLeaderboardRequest"));
 
+    window.addEventListener("loadout-save", ((event: CustomEvent<number>) => {
+      this.socket.emit("saveLoadout", { slot: event.detail });
+    }) as EventListener);
+    window.addEventListener("loadout-load", ((event: CustomEvent<number>) => {
+      this.socket.emit("loadLoadout", { slot: event.detail });
+    }) as EventListener);
+
     this.socket.on("leaderboard", (payload) => {
       this.lastLeaderboard = payload;
       this.renderLeaderboard();

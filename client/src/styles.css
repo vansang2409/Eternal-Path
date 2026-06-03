@@ -281,6 +281,56 @@ body {
   color: var(--gold);
 }
 
+.loadout-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  background: rgba(28, 28, 28, 0.45);
+  border: 1px solid rgba(142, 145, 146, 0.25);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.loadout-bar strong {
+  color: var(--gold);
+}
+
+.loadout-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(18, 18, 18, 0.55);
+  border: 1px solid rgba(142, 145, 146, 0.25);
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.loadout-slot-head {
+  min-width: 110px;
+  color: #d6dddf;
+}
+
+.loadout-slot button {
+  padding: 3px 8px;
+  color: #1d1500;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--gold-bright);
+  border: none;
+  border-radius: 3px;
+}
+
+.loadout-slot button:disabled {
+  color: #999;
+  background: #444;
+  cursor: not-allowed;
+}
+
 .talent-header {
   padding: 10px 12px;
   margin-bottom: 12px;

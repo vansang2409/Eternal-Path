@@ -24,6 +24,7 @@ interface SavedPlayer {
   totalKills?: number;
   chestsOpened?: number;
   itemsCrafted?: number;
+  skillLoadouts?: Array<SkillId[]>;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -181,7 +182,8 @@ export class PlayerRepository {
       skillRanks: player.skillRanks ? { ...player.skillRanks } : undefined,
       totalKills: player.totalKills,
       chestsOpened: player.chestsOpened,
-      itemsCrafted: player.itemsCrafted
+      itemsCrafted: player.itemsCrafted,
+      skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined
     };
     memorySaves.set(player.email, saved);
 

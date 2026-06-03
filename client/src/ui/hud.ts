@@ -397,6 +397,33 @@ export class Hud {
     header.innerHTML = `<strong>Điểm tài năng:</strong> <span class="talent-points">${talentPoints}</span> <span class="talent-hint">— Mỗi cấp được +1, dùng để tăng cấp skill (+25% sức mạnh mỗi cấp, tối đa ${SKILL_MAX_RANK} cấp)</span>`;
     root.appendChild(header);
 
+    // Loadout preset bar — save / load current Q/W/E/R loadout to 3 slots.
+    const loadouts = this.player.skillLoadouts ?? [[], [], []];
+    const presetBar = document.createElement("div");
+    presetBar.className = "loadout-bar";
+    presetBar.innerHTML = "<strong>Loadout:</strong>";
+    for (let s = 0; s < 3; s += 1) {
+      const slot = s;
+      const saved = loadouts[slot] ?? [];
+      const preview = saved.length ? saved.map((id) => (t(skillNameKey(id)) || id).slice(0, 4)).join(" / ") : "trống";
+      const wrap = document.createElement("div");
+      wrap.className = "loadout-slot";
+      wrap.innerHTML = `<div class="loadout-slot-head">${slot + 1}. ${preview}</div>`;
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.textContent = "Dùng";
+      loadBtn.disabled = saved.length === 0;
+      loadBtn.addEventListener("click", () => window.dispatchEvent(new CustomEvent("loadout-load", { detail: slot })));
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.textContent = "Lưu";
+      saveBtn.addEventListener("click", () => window.dispatchEvent(new CustomEvent("loadout-save", { detail: slot })));
+      wrap.appendChild(loadBtn);
+      wrap.appendChild(saveBtn);
+      presetBar.appendChild(wrap);
+    }
+    root.appendChild(presetBar);
+
     let appended = 0;
     for (const id of SKILL_IDS) {
       const classOk = classInfo.skills.includes(id);
