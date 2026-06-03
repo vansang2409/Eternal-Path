@@ -18,6 +18,21 @@ export function skillRankMultiplier(rank: number | undefined): number {
   const r = Math.max(0, Math.min(SKILL_MAX_RANK, rank ?? 0));
   return 1 + r * SKILL_RANK_BONUS_PER_RANK;
 }
+
+// One in-game day takes 10 real minutes. Time of day = 0..1 where 0 is
+// midnight, 0.25 sunrise, 0.5 noon, 0.75 sunset.
+export const WORLD_DAY_LENGTH_MS = 10 * 60 * 1000;
+export function timeOfDay(serverNow: number): number {
+  return (serverNow % WORLD_DAY_LENGTH_MS) / WORLD_DAY_LENGTH_MS;
+}
+
+export function dayPhaseAt(time01: number): "dawn" | "day" | "dusk" | "night" {
+  // 0.20-0.30 dawn, 0.30-0.70 day, 0.70-0.80 dusk, rest night.
+  if (time01 >= 0.2 && time01 < 0.3) return "dawn";
+  if (time01 >= 0.3 && time01 < 0.7) return "day";
+  if (time01 >= 0.7 && time01 < 0.8) return "dusk";
+  return "night";
+}
 export const WORLD_WIDTH = 200;
 export const WORLD_HEIGHT = 150;
 export const WORLD_SEED = 1337;

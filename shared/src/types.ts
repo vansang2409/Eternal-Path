@@ -247,6 +247,16 @@ export interface WorldSnapshot {
   groundItems: GroundItem[];
 }
 
+// Time-of-day broadcast at low frequency. Phase strings give the client
+// human-readable labels without recomputing thresholds.
+export type DayPhase = "dawn" | "day" | "dusk" | "night";
+export interface WorldTime {
+  serverTime: number;
+  // 0..1 fraction through the in-game day
+  timeOfDay: number;
+  phase: DayPhase;
+}
+
 // Lightweight payload for the init handshake. We only send the tile grid;
 // the client derives walkability via BIOME_INFO so we don't ship a full
 // boolean array.
@@ -315,6 +325,7 @@ export interface ServerToClientEvents {
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
   arenaKill: (event: { killerName: string; victimName: string }) => void;
+  worldTime: (payload: WorldTime) => void;
 }
 
 export interface ClientToServerEvents {

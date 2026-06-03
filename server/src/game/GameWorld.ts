@@ -14,7 +14,9 @@ import {
   SPRINT_MULTIPLIER,
   SPRINT_REGEN_PER_SECOND,
   TALENT_POINTS_PER_LEVEL,
+  dayPhaseAt,
   skillRankMultiplier,
+  timeOfDay,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -432,6 +434,16 @@ export class GameWorld {
     this.tickTimer = setInterval(() => this.tick(1000 / TICK_RATE), 1000 / TICK_RATE);
     this.snapshotTimer = setInterval(() => this.broadcastSnapshot(), 1000 / SNAPSHOT_RATE);
     setInterval(() => this.flushDirty(), SAVE_FLUSH_MS);
+    // Broadcast a low-rate world clock so the client can animate the day/night
+    // tint without each player having to compute time independently.
+    setInterval(() => this.broadcastWorldTime(), 5000);
+  }
+
+  private broadcastWorldTime(): void {
+    const now = Date.now();
+    const t01 = timeOfDay(now);
+    const phase = dayPhaseAt(t01);
+    this.io.emit("worldTime", { serverTime: now, timeOfDay: t01, phase });
   }
 
   private markDirty(player: PlayerState): void {

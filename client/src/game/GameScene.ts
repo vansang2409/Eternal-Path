@@ -284,6 +284,52 @@ export class GameScene extends Phaser.Scene {
     return out;
   }
 
+  // ------- day / night cycle -------
+
+  private dayOverlay?: Phaser.GameObjects.Rectangle;
+  private lastDayPhase = "";
+
+  private applyWorldTime(payload: { timeOfDay: number; phase: string }): void {
+    // Lazy-create a full-screen overlay rectangle that lives above the world
+    // but below entities (depth -500 so map and entities stay visible).
+    if (!this.dayOverlay) {
+      this.dayOverlay = this.add
+        .rectangle(0, 0, 1, 1, 0x000000, 0)
+        .setOrigin(0, 0)
+        .setDepth(50000)
+        .setScrollFactor(0);
+      this.scale.on("resize", () => this.fitDayOverlay());
+    }
+    this.fitDayOverlay();
+    const t01 = payload.timeOfDay;
+    // Tint color + alpha by phase.
+    // Night: deep blue / strong alpha. Dawn/dusk: warm orange / mid alpha.
+    // Day: barely any tint.
+    let color = 0x000020;
+    let alpha = 0;
+    if (payload.phase === "night") { color = 0x0a1238; alpha = 0.42; }
+    else if (payload.phase === "dawn") { color = 0xff9a3c; alpha = 0.18; }
+    else if (payload.phase === "dusk") { color = 0xff5a3c; alpha = 0.22; }
+    else { color = 0xffeec0; alpha = 0.05; }
+    this.dayOverlay.setFillStyle(color, alpha);
+
+    // Update HUD clock.
+    const phaseLabel: Record<string, string> = { dawn: "🌅 Bình minh", day: "☀️ Ban ngày", dusk: "🌇 Hoàng hôn", night: "🌙 Đêm" };
+    const minutesIntoDay = Math.floor(t01 * 24 * 60);
+    const hours = Math.floor(minutesIntoDay / 60).toString().padStart(2, "0");
+    const minutes = (minutesIntoDay % 60).toString().padStart(2, "0");
+    const phaseEl = document.querySelector<HTMLSpanElement>("#world-clock-phase");
+    const timeEl = document.querySelector<HTMLSpanElement>("#world-clock-time");
+    if (phaseEl) phaseEl.textContent = phaseLabel[payload.phase] ?? payload.phase;
+    if (timeEl) timeEl.textContent = `${hours}:${minutes}`;
+    this.lastDayPhase = payload.phase;
+  }
+
+  private fitDayOverlay(): void {
+    if (!this.dayOverlay) return;
+    this.dayOverlay.setSize(this.scale.width, this.scale.height);
+  }
+
   // ------- arena -------
 
   private createArenaOverlay(): void {
@@ -595,6 +641,8 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
       this.playSkillVFX(skillId, position, targetPosition);
     });
+
+    this.socket.on("worldTime", (payload) => this.applyWorldTime(payload));
 
     this.socket.on("arenaKill", ({ killerName, victimName }) => {
       this.hud.log(`⚔ ${killerName} hạ ${victimName} tại Đấu Trường.`, "arena-line");
