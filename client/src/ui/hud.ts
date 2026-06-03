@@ -316,8 +316,10 @@ export class Hud {
         button.dataset.skill = skillId;
         const name = t(skillNameKey(skillId));
         const info = SKILL_CATALOG[skillId];
-        button.title = `${name} - CD ${(info.cooldownMs / 1000).toFixed(1)}s`;
-        button.innerHTML = `<kbd>${keys[slot]}</kbd><strong>${escapeHtml(name)}</strong><span data-cooldown="${skillId}"></span>`;
+        const rank = this.player.skillRanks?.[skillId] ?? 0;
+        const rankDots = rank > 0 ? `<span class="skill-rank-dots" title="Cấp ${rank}">${"★".repeat(rank)}</span>` : "";
+        button.title = `${name} - CD ${(info.cooldownMs / 1000).toFixed(1)}s${rank > 0 ? ` · +${rank * 25}% sức mạnh` : ""}`;
+        button.innerHTML = `<kbd>${keys[slot]}</kbd>${rankDots}<strong>${escapeHtml(name)}</strong><span data-cooldown="${skillId}"></span>`;
         button.addEventListener("click", () => this.onSkill(skillId));
       } else {
         button.classList.add("empty");

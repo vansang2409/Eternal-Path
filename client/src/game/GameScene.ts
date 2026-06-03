@@ -75,6 +75,7 @@ export class GameScene extends Phaser.Scene {
   private minimapBase?: ImageData;
   private lastMinimapAt = 0;
   private aliveMonsters = new Set<string>();
+  private recentFloating: Array<{ id: string; at: number }> = [];
 
   preload(): void {}
 
@@ -710,14 +711,21 @@ export class GameScene extends Phaser.Scene {
       const color = event.kind === "damage" ? (isHeavyHit ? "#ffbe3c" : "#ff6961") : event.kind === "loot" ? "#f7d774" : "#8be78b";
       const fontSize = event.kind === "level" ? 18 : isHeavyHit ? 18 : 14;
       const ftIso = worldToIso(event.position.x, event.position.y);
-      const text = this.add.text(ftIso.x, ftIso.y - 28, event.text ?? `${event.amount}`, {
+      // Stack damage numbers vertically: bump up by recent-text count near
+      // the same entity to avoid overlap.
+      const now = this.time.now;
+      const recents = this.recentFloating.filter((r) => r.id === event.entityId && now - r.at < 700);
+      const stackIndex = recents.length;
+      this.recentFloating.push({ id: event.entityId, at: now });
+      if (this.recentFloating.length > 60) this.recentFloating.shift();
+      const text = this.add.text(ftIso.x, ftIso.y - 28 - stackIndex * 14, event.text ?? `${event.amount}`, {
         fontFamily: "monospace",
         fontSize: `${fontSize}px`,
         color,
         stroke: "#111",
         strokeThickness: isHeavyHit ? 4 : 3,
         fontStyle: isHeavyHit ? "bold" : ""
-      }).setDepth(20).setOrigin(0.5);
+      }).setDepth(99990).setOrigin(0.5);
       this.tweens.add({
         targets: text,
         y: text.y - 34,
@@ -728,8 +736,22 @@ export class GameScene extends Phaser.Scene {
       if (event.kind === "damage") {
         if (this.monsters.has(event.entityId)) soundManager.play("hit");
         this.playHitEffect(event.entityId, event.position);
-        // Heavy hit (>=60 dmg) shakes the camera a bit harder.
-        if (isHeavyHit) this.cameras.main.shake(160, 0.008);
+        if (isHeavyHit) {
+          this.cameras.main.shake(160, 0.008);
+          // Crit indicator: 8 brief golden particles.
+          for (let i = 0; i < 8; i += 1) {
+            const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.2;
+            const dot = this.add.circle(ftIso.x, ftIso.y - 28, 3, 0xffd166, 0.95).setDepth(99988);
+            this.tweens.add({
+              targets: dot,
+              x: ftIso.x + Math.cos(ang) * 32,
+              y: ftIso.y - 28 + Math.sin(ang) * 32,
+              alpha: 0,
+              duration: 350,
+              onComplete: () => dot.destroy()
+            });
+          }
+        }
       }
       if (event.kind === "level") soundManager.play("levelUp");
     });
