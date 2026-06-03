@@ -139,6 +139,20 @@ export interface ArenaLeaderRow {
   deaths: number;
 }
 
+export interface LeaderboardRow {
+  playerId: string;
+  accountName: string;
+  level: number;
+  gold: number;
+  pvpKills: number;
+}
+
+export interface LeaderboardPayload {
+  byLevel: LeaderboardRow[];
+  byGold: LeaderboardRow[];
+  byKills: LeaderboardRow[];
+}
+
 export interface MonsterState {
   id: string;
   type: string;
@@ -326,6 +340,7 @@ export interface ServerToClientEvents {
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
   arenaKill: (event: { killerName: string; victimName: string }) => void;
   worldTime: (payload: WorldTime) => void;
+  leaderboard: (payload: LeaderboardPayload) => void;
 }
 
 export interface ClientToServerEvents {
@@ -354,6 +369,8 @@ export interface ClientToServerEvents {
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;
+  leaderboardRequest: () => void;
+  rerollDailyQuests: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

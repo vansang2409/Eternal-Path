@@ -1045,6 +1045,52 @@ export class GameWorld {
       socket.emit("system", `Chào mừng ${info.name}! HP +${info.startBonusMaxHp}, ATK +${info.startBonusAttack}, DEF +${info.startBonusDefense}.`);
     });
 
+    socket.on("leaderboardRequest", () => {
+      const players = [...this.players.values()].map((p) => ({
+        playerId: p.id,
+        accountName: p.accountName,
+        level: p.stats.level,
+        gold: p.stats.gold,
+        pvpKills: p.pvpKills ?? 0
+      }));
+      const byLevel = [...players].sort((a, b) => b.level - a.level || b.gold - a.gold).slice(0, 10);
+      const byGold = [...players].sort((a, b) => b.gold - a.gold).slice(0, 10);
+      const byKills = [...players].sort((a, b) => b.pvpKills - a.pvpKills).slice(0, 10);
+      socket.emit("leaderboard", { byLevel, byGold, byKills });
+    });
+
+    socket.on("rerollDailyQuests", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const cost = 100;
+      if (player.stats.gold < cost) {
+        socket.emit("system", `Cần ${cost} vàng để làm mới nhiệm vụ hằng ngày.`);
+        return;
+      }
+      player.stats.gold -= cost;
+      // Force a re-roll regardless of timer.
+      const pool = [...DAILY_QUEST_POOL];
+      for (let i = pool.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const fresh = pool.slice(0, DAILY_QUESTS_PER_DAY);
+      const oldDaily = new Set(player.dailyQuestIds ?? []);
+      const active = this.activeQuests.get(player.id) ?? [];
+      const filtered = active.filter((entry) => !oldDaily.has(entry.questId));
+      for (const id of fresh) {
+        const template = questById(id);
+        if (template) filtered.push({ questId: id, progress: initialQuestProgress(template, player) });
+      }
+      this.activeQuests.set(player.id, filtered);
+      player.dailyQuestIds = fresh;
+      player.dailyResetAt = Date.now();
+      socket.emit("player", player);
+      socket.emit("system", `Đã làm mới nhiệm vụ hằng ngày (-${cost} vàng).`);
+      this.emitQuestList(player);
+      this.markDirty(player);
+    });
+
     socket.on("arenaLeaderboardRequest", () => {
       const rows: ArenaLeaderRow[] = [];
       for (const p of this.players.values()) {

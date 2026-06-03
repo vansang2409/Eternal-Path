@@ -284,6 +284,50 @@ export class GameScene extends Phaser.Scene {
     return out;
   }
 
+  // ------- leaderboard -------
+
+  private lastLeaderboard?: { byLevel: any[]; byGold: any[]; byKills: any[] };
+  private activeLeaderboardTab: "byLevel" | "byGold" | "byKills" = "byLevel";
+
+  private renderLeaderboard(): void {
+    if (!this.lastLeaderboard) return;
+    const tabsRoot = document.querySelector<HTMLDivElement>("#leaderboard-tabs");
+    if (!tabsRoot) return;
+    tabsRoot.innerHTML = "";
+    const tabs = [
+      { id: "byLevel" as const, label: "Cấp" },
+      { id: "byGold" as const, label: "Vàng" },
+      { id: "byKills" as const, label: "PvP" }
+    ];
+    for (const t of tabs) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `quest-tab${this.activeLeaderboardTab === t.id ? " active" : ""}`;
+      btn.textContent = t.label;
+      btn.addEventListener("click", () => {
+        this.activeLeaderboardTab = t.id;
+        this.renderLeaderboard();
+      });
+      tabsRoot.appendChild(btn);
+    }
+    const rows = this.lastLeaderboard[this.activeLeaderboardTab];
+    const valueHead = document.querySelector<HTMLTableCellElement>("#leaderboard-value-head");
+    if (valueHead) valueHead.textContent = this.activeLeaderboardTab === "byLevel" ? "Cấp" : this.activeLeaderboardTab === "byGold" ? "Vàng" : "Hạ";
+    const tbody = document.querySelector<HTMLTableSectionElement>("#leaderboard-table tbody");
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="3" style="padding:18px;text-align:center;color:#8e9192">Chưa có ai trên bảng.</td></tr>`;
+      return;
+    }
+    rows.forEach((row, i) => {
+      const tr = document.createElement("tr");
+      const val = this.activeLeaderboardTab === "byLevel" ? row.level : this.activeLeaderboardTab === "byGold" ? row.gold : row.pvpKills;
+      tr.innerHTML = `<td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:${i === 0 ? "#ffd166" : "#bdbdbd"}">${i + 1}</td><td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${row.accountName}</td><td style="text-align:right;padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#ffd166">${val}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
   // ------- day / night cycle -------
 
   private dayOverlay?: Phaser.GameObjects.Rectangle;
@@ -368,8 +412,8 @@ export class GameScene extends Phaser.Scene {
 
   private createTownNpcs(worldMap: WorldMapPayload): void {
     const town = worldMap.landmarks.town;
-    type Npc = { sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; phrases: string[]; index: number };
-    const npcs: { texture: string; offset: { dx: number; dy: number }; name: string; phrases: string[] }[] = [
+    type Npc = { sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; phrases: string[]; index: number; offerReroll?: boolean };
+    const npcs: { texture: string; offset: { dx: number; dy: number }; name: string; phrases: string[]; offerReroll?: boolean }[] = [
       {
         texture: "npc-sage",
         offset: { dx: -3, dy: -3 },
@@ -378,8 +422,10 @@ export class GameScene extends Phaser.Scene {
           "Cốt lõi của sức mạnh nằm ở sự kiên trì.",
           "Vực Sâu giấu báu vật, nhưng cũng giấu tử thần.",
           "Hãy luyện skill cho thuần, đừng chỉ đeo nhiều.",
-          "Mỗi hầm mộ có Khắc Tinh canh giữ — đừng vội."
-        ]
+          "Mỗi hầm mộ có Khắc Tinh canh giữ — đừng vội.",
+          "Bạn muốn làm mới nhiệm vụ hằng ngày? Mất 100 vàng nhé."
+        ],
+        offerReroll: true
       },
       {
         texture: "npc-merchant",
@@ -421,16 +467,22 @@ export class GameScene extends Phaser.Scene {
         stroke: "#111",
         strokeThickness: 3
       }).setOrigin(0.5).setDepth(9);
-      const npc: Npc = { sprite, label: nameLabel, phrases: def.phrases, index: 0 };
+      const npc: Npc = { sprite, label: nameLabel, phrases: def.phrases, index: 0, offerReroll: def.offerReroll };
       sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
         if (!pointer.leftButtonDown()) return;
         this.showNpcDialogue(npc);
+        // Every 5th click on the Sage triggers the reroll prompt if applicable.
+        if (npc.offerReroll && npc.index % 5 === 0) {
+          if (confirm("Hiền Giả: Làm mới 3 nhiệm vụ hằng ngày với 100 vàng?")) {
+            this.socket.emit("rerollDailyQuests");
+          }
+        }
       });
       created.push(npc);
     }
   }
 
-  private showNpcDialogue(npc: { sprite: Phaser.GameObjects.Sprite; phrases: string[]; index: number }): void {
+  private showNpcDialogue(npc: { sprite: Phaser.GameObjects.Sprite; phrases: string[]; index: number; offerReroll?: boolean }): void {
     const phrase = npc.phrases[npc.index % npc.phrases.length];
     npc.index += 1;
     const px = npc.sprite.x;
@@ -651,6 +703,18 @@ export class GameScene extends Phaser.Scene {
     // Wire the arena toolbar button to fetch the leaderboard each time it opens.
     document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='arena-modal']").forEach((btn) => {
       btn.addEventListener("click", () => this.socket.emit("arenaLeaderboardRequest"));
+    });
+
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='leaderboard-modal']").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.socket.emit("leaderboardRequest");
+        this.activeLeaderboardTab = "byLevel";
+      });
+    });
+
+    this.socket.on("leaderboard", (payload) => {
+      this.lastLeaderboard = payload;
+      this.renderLeaderboard();
     });
 
     this.socket.on("arenaLeaderboard", (rows) => {

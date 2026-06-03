@@ -126,6 +126,7 @@
         <button class="toolbar-btn" type="button" data-modal="afk-modal" title="AFK" aria-label="AFK"><i class="material-symbols-outlined">hotel</i></button>
         <button class="toolbar-btn" type="button" data-modal="forge-modal" title="Lò Rèn" aria-label="Lò Rèn"><i class="material-symbols-outlined">construction</i></button>
         <button class="toolbar-btn" type="button" data-modal="arena-modal" title="Đấu Trường" aria-label="Đấu Trường"><i class="material-symbols-outlined">stadium</i></button>
+        <button class="toolbar-btn" type="button" data-modal="leaderboard-modal" title="Bảng Vinh Danh" aria-label="Bảng Vinh Danh"><i class="material-symbols-outlined">leaderboard</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -175,6 +176,19 @@
               <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="leaderboard-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header><h2>Bảng Vinh Danh</h2><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
+          <div class="game-modal-body">
+            <div id="leaderboard-tabs" class="quest-tabs"></div>
+            <table id="leaderboard-table" style="width:100%;border-collapse:collapse;font-size:13px">
+              <thead><tr><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #444">Hạng</th><th style="text-align:left;padding:6px 4px;border-bottom:1px solid #444">Người chơi</th><th id="leaderboard-value-head" style="text-align:right;padding:6px 4px;border-bottom:1px solid #444">Giá trị</th></tr></thead>
+              <tbody></tbody>
+            </table>
           </div>
         </div>
       </div>
