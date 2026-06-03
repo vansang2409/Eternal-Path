@@ -52,12 +52,16 @@ export interface Stats {
   exp: number;
   level: number;
   gold: number;
+  maxStamina?: number;
+  stamina?: number;
 }
 
 export interface ItemStats {
   attack?: number;
   defense?: number;
   maxHp?: number;
+  // Movement speed bonus as a percentage (e.g. 25 = +25% speed).
+  speed?: number;
 }
 
 export interface BaseItem {
@@ -77,6 +81,8 @@ export interface EquipmentItem extends BaseItem {
 export interface ConsumableItem extends BaseItem {
   kind: "consumable";
   heal: number;
+  /** Special use: teleport player to town spawn. */
+  recall?: boolean;
 }
 
 export interface MaterialItem extends BaseItem {
@@ -259,6 +265,7 @@ export interface ClientInput {
   left: boolean;
   right: boolean;
   moveTarget?: Vec2;
+  sprinting?: boolean;
 }
 
 export interface LoginPayload {

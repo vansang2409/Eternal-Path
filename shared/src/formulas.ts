@@ -1,6 +1,11 @@
 import type { AfkZone, Item, SkillId, Stats } from "./types.js";
 
 export const TILE_SIZE = 32;
+export const BASE_MAX_STAMINA = 100;
+export const SPRINT_DRAIN_PER_SECOND = 32;
+export const SPRINT_REGEN_PER_SECOND = 22;
+export const SPRINT_MULTIPLIER = 1.8;
+export const SPRINT_MIN_STAMINA_TO_START = 8;
 export const WORLD_WIDTH = 200;
 export const WORLD_HEIGHT = 150;
 export const WORLD_SEED = 1337;
@@ -108,7 +113,9 @@ export function baseStatsForLevel(level: number): Stats {
     hp: 110 + (level - 1) * 22,
     attack: 12 + (level - 1) * 4,
     defense: 5 + (level - 1) * 2,
-    gold: 0
+    gold: 0,
+    maxStamina: BASE_MAX_STAMINA,
+    stamina: BASE_MAX_STAMINA
   };
 }
 

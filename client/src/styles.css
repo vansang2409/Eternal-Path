@@ -964,6 +964,10 @@ h2 {
   content: "EXP";
 }
 
+.stamina::before {
+  content: "Thể lực";
+}
+
 .bar span {
   display: block;
   height: 100%;
@@ -988,6 +992,10 @@ h2 {
 
 .exp span {
   background-color: #1f58b7;
+}
+
+.stamina span {
+  background-color: #c8a948;
 }
 
 .stats {

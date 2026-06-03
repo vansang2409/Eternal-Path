@@ -1,12 +1,17 @@
 import type { Server, Socket } from "socket.io";
 import {
   ARENA_TILE_BOX,
+  BASE_MAX_STAMINA,
   BIOME_INFO,
   CLASS_CATALOG,
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
   INVENTORY_CAPACITY,
+  SPRINT_DRAIN_PER_SECOND,
+  SPRINT_MIN_STAMINA_TO_START,
+  SPRINT_MULTIPLIER,
+  SPRINT_REGEN_PER_SECOND,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -372,7 +377,21 @@ export class GameWorld {
     for (const slot of this.chestSlots) {
       if (slot.activeItemId) continue;
       if (now < slot.nextSpawnAt) continue;
-      const item = createLoot(slot.lootLevel + 2, "voidKnight", false, true);
+      // 18% chance the chest contains a Recall Scroll instead of equipment.
+      let item: Item | undefined;
+      if (Math.random() < 0.18) {
+        item = {
+          id: `scroll-${now}-${Math.random().toString(36).slice(2, 7)}`,
+          kind: "consumable",
+          name: "Cuộn Hồi Thành",
+          rarity: "rare",
+          heal: 0,
+          recall: true,
+          value: 80
+        };
+      } else {
+        item = createLoot(slot.lootLevel + 2, "voidKnight", false, true);
+      }
       if (!item) continue;
       const id = `${TREASURE_DROPPED_BY}-${slot.id}-${now}`;
       const groundItem: GroundItem = {
@@ -489,6 +508,9 @@ export class GameWorld {
       // Guard against saved positions on tiles that became unwalkable after
       // a world regen: snap them back to town spawn.
       const initialPosition = saved.position && this.isPositionWalkable(saved.position) ? { ...saved.position } : { ...townSpawn };
+      // Backfill stamina for saves predating the field.
+      if (saved.stats.maxStamina === undefined) saved.stats.maxStamina = BASE_MAX_STAMINA;
+      if (saved.stats.stamina === undefined) saved.stats.stamina = saved.stats.maxStamina;
       const player: PlayerState = {
         id: socket.id,
         email: resolvedEmail,
@@ -864,6 +886,16 @@ export class GameWorld {
       if (itemIndex < 0) return;
       const item = player.inventory.items[itemIndex];
       if (item.kind !== "consumable") return;
+      // Recall scroll: teleport to town spawn.
+      if (item.recall) {
+        player.inventory.items.splice(itemIndex, 1);
+        player.position = { ...townSpawn };
+        player.velocity = { x: 0, y: 0 };
+        socket.emit("player", player);
+        socket.emit("system", `Đã dùng ${item.name}, trở về thị trấn.`);
+        this.markDirty(player);
+        return;
+      }
       const before = player.stats.hp;
       player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + item.heal);
       const healed = player.stats.hp - before;
@@ -1083,15 +1115,36 @@ export class GameWorld {
         x: Number(input.right) - Number(input.left),
         y: Number(input.down) - Number(input.up)
       };
+      // Compute current effective speed: base + equipment speed bonus,
+      // and apply sprint multiplier if requested + sufficient stamina.
+      const maxStam = player.stats.maxStamina ?? BASE_MAX_STAMINA;
+      const curStam = player.stats.stamina ?? maxStam;
+      const speedBonusPct = equipmentSpeedBonusPct(player);
+      const baseSpeed = PLAYER_SPEED * (1 + speedBonusPct / 100);
+      const wantSprint = !!input.sprinting && curStam >= SPRINT_MIN_STAMINA_TO_START;
+      const sprinting = wantSprint && curStam > 0;
+      const moving = axis.x !== 0 || axis.y !== 0 || !!input.moveTarget;
+      const speed = sprinting && moving ? baseSpeed * SPRINT_MULTIPLIER : baseSpeed;
+
+      // Stamina update.
+      if (sprinting && moving) {
+        const next = Math.max(0, curStam - SPRINT_DRAIN_PER_SECOND * dt);
+        player.stats.stamina = next;
+      } else if (curStam < maxStam) {
+        const next = Math.min(maxStam, curStam + SPRINT_REGEN_PER_SECOND * dt);
+        player.stats.stamina = next;
+      }
+      if (player.stats.maxStamina === undefined) player.stats.maxStamina = maxStam;
+
       const manualLength = Math.hypot(axis.x, axis.y);
       if (manualLength > 0) {
-        player.velocity = { x: (axis.x / manualLength) * PLAYER_SPEED, y: (axis.y / manualLength) * PLAYER_SPEED };
+        player.velocity = { x: (axis.x / manualLength) * speed, y: (axis.y / manualLength) * speed };
       } else if (input.moveTarget) {
         const dx = input.moveTarget.x - player.position.x;
         const dy = input.moveTarget.y - player.position.y;
         const targetDistance = Math.hypot(dx, dy);
         if (targetDistance > 5) {
-          player.velocity = { x: (dx / targetDistance) * PLAYER_SPEED, y: (dy / targetDistance) * PLAYER_SPEED };
+          player.velocity = { x: (dx / targetDistance) * speed, y: (dy / targetDistance) * speed };
         } else {
           player.velocity = { x: 0, y: 0 };
         }
@@ -1362,6 +1415,21 @@ export class GameWorld {
     }
     if (monster.boss) {
       this.io.emit("bossAnnounce", { kind: "defeat", bossName: monster.name, accountName: player.accountName });
+      // World boss guarantees a Mount Pendant if the player still has bag space.
+      if (monster.type === "eternalWarden" && !isBagFull(player)) {
+        const mount: EquipmentItem = {
+          id: `mount-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          kind: "equipment",
+          name: "Bùa Cưỡi Gió",
+          rarity: "epic",
+          slot: "ring",
+          stats: { speed: 25, attack: 4, maxHp: 30 },
+          value: 600
+        };
+        player.inventory.items.push(mount);
+        this.sockets.get(player.id)?.emit("system", "Bạn nhận được Bùa Cưỡi Gió (+25% tốc độ).");
+        this.emitFloating(player.id, player.position, 0, "loot", mount.name);
+      }
     }
     // Material drop: 30% chance per kill (50% for elite, 100% for boss).
     this.tryDropMaterial(player, monster);
@@ -2161,6 +2229,16 @@ function removeItemStats(player: PlayerState, item: EquipmentItem): void {
 
 function isInTown(position: { x: number; y: number }): boolean {
   return position.x < 11 * TILE_SIZE && position.y < 11 * TILE_SIZE;
+}
+
+// Sum of movement speed bonuses (percentage) across all equipped items.
+function equipmentSpeedBonusPct(player: PlayerState): number {
+  let total = 0;
+  for (const item of Object.values(player.inventory.equipped)) {
+    if (!item) continue;
+    if (item.stats?.speed) total += item.stats.speed;
+  }
+  return total;
 }
 
 function isInArena(position: { x: number; y: number }): boolean {

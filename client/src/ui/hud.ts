@@ -121,6 +121,9 @@ export class Hud {
     document.querySelector("#player-name")!.textContent = `${player.accountName}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
     setBar("#hp-fill", "#hp-label", player.stats.hp, player.stats.maxHp, t("hp"));
     setBar("#exp-fill", "#exp-label", player.stats.exp, expToNextLevel(player.stats.level), t("exp"));
+    const maxStam = player.stats.maxStamina ?? 100;
+    const curStam = player.stats.stamina ?? maxStam;
+    setBar("#stamina-fill", "#stamina-label", Math.round(curStam), maxStam, "Thể lực");
     const canAllocate = player.unspentPoints > 0;
     document.querySelector("#stats")!.innerHTML = `
       ${canAllocate ? `<div class="stat-points-left">${t("statPointsLeft", { points: player.unspentPoints })}</div>` : ""}
@@ -918,6 +921,7 @@ function materialIcon(slot: EquipmentSlot): string {
 }
 
 function statLabel(stat: string): string {
+  if (stat === "speed") return "% tốc độ";
   if (stat === "maxHp") return t("maxHp");
   if (stat === "attack") return t("attack");
   if (stat === "defense") return t("defense");
