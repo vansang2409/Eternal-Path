@@ -333,7 +333,30 @@ export class GameScene extends Phaser.Scene {
   private dayOverlay?: Phaser.GameObjects.Rectangle;
   private lastDayPhase = "";
 
+  private currentDayPhase: string = "day";
+
+  private updateAmbientMood(): void {
+    if (!this.worldMap || !this.selfPlayer) return;
+    const tx = Math.floor(this.selfPlayer.position.x / TILE_SIZE);
+    const ty = Math.floor(this.selfPlayer.position.y / TILE_SIZE);
+    if (tx < 0 || ty < 0 || tx >= this.worldMap.width || ty >= this.worldMap.height) return;
+    const tile = this.worldMap.tiles[ty][tx] as TileId;
+    const phase = this.currentDayPhase;
+    let mood: import("../sound").AmbientMood = "forestDay";
+    if (tile === TileId.TownStone || tile === TileId.Road) mood = "townCalm";
+    else if (tile === TileId.Forest || tile === TileId.Grass) mood = phase === "night" ? "forestNight" : "forestDay";
+    else if (tile === TileId.Sand) mood = "desert";
+    else if (tile === TileId.Snow) mood = "snow";
+    else if (tile === TileId.Swamp) mood = "swamp";
+    else if (tile === TileId.Deep) mood = "deepDark";
+    else if (tile === TileId.DungeonFloor || tile === TileId.DungeonWall) mood = "dungeon";
+    else mood = phase === "night" ? "forestNight" : "forestDay";
+    soundManager.setAmbient(mood);
+  }
+
   private applyWorldTime(payload: { timeOfDay: number; phase: string }): void {
+    this.currentDayPhase = payload.phase;
+    this.updateAmbientMood();
     // Lazy-create a full-screen overlay rectangle that lives above the world
     // but below entities (depth -500 so map and entities stay visible).
     if (!this.dayOverlay) {
@@ -920,7 +943,14 @@ export class GameScene extends Phaser.Scene {
       this.redrawMinimap(snapshot);
       this.lastMinimapAt = now;
     }
+    // Re-check ambient mood roughly every 2 seconds (player tile may change).
+    if (now - this.lastAmbientCheck > 2000) {
+      this.updateAmbientMood();
+      this.lastAmbientCheck = now;
+    }
   }
+
+  private lastAmbientCheck = 0;
 
   private updateTargetPanel(snapshot = this.snapshotBuffer[this.snapshotBuffer.length - 1]): void {
     const targetId = this.selfPlayer?.targetId;

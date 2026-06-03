@@ -2,6 +2,21 @@ type SoundEffect = "hit" | "levelUp" | "loot" | "skill" | "modalOpen";
 
 const STORAGE_KEY = "soundMuted";
 const MASTER_GAIN = 0.08;
+const AMBIENT_GAIN = 0.018;
+
+// Ambient drone presets keyed by biome+phase mood. Each preset is a small
+// chord (2-3 tones) layered through a slow tremolo.
+export type AmbientMood = "townCalm" | "forestDay" | "forestNight" | "deepDark" | "desert" | "snow" | "swamp" | "dungeon";
+const AMBIENT_PRESETS: Record<AmbientMood, { tones: number[]; type: OscillatorType; tremoloHz: number }> = {
+  townCalm:    { tones: [220, 277, 330], type: "sine",     tremoloHz: 0.18 },
+  forestDay:   { tones: [196, 247, 294], type: "triangle", tremoloHz: 0.22 },
+  forestNight: { tones: [110, 147, 174], type: "sine",     tremoloHz: 0.12 },
+  deepDark:    { tones: [82, 110, 138],  type: "sawtooth", tremoloHz: 0.09 },
+  desert:      { tones: [233, 311],      type: "triangle", tremoloHz: 0.16 },
+  snow:        { tones: [261, 392, 523], type: "sine",     tremoloHz: 0.14 },
+  swamp:       { tones: [98, 130, 165],  type: "sine",     tremoloHz: 0.1 },
+  dungeon:     { tones: [73, 98, 110],   type: "sawtooth", tremoloHz: 0.08 }
+};
 
 type WebAudioWindow = Window & typeof globalThis & {
   webkitAudioContext?: typeof AudioContext;
@@ -11,6 +26,8 @@ class SoundManager {
   private context?: AudioContext;
   private muted = localStorage.getItem(STORAGE_KEY) === "true";
   private hasUserGesture = false;
+  private ambientNodes: Array<{ osc: OscillatorNode; gain: GainNode; lfo: OscillatorNode; lfoGain: GainNode }> = [];
+  private currentMood?: AmbientMood;
 
   constructor() {
     const unlock = () => {
@@ -29,10 +46,62 @@ class SoundManager {
     this.muted = muted;
     localStorage.setItem(STORAGE_KEY, String(muted));
     if (muted) {
+      this.stopAmbient();
       void this.context?.suspend();
     } else {
       void this.resume();
     }
+  }
+
+  setAmbient(mood: AmbientMood | undefined): void {
+    if (mood === this.currentMood) return;
+    this.currentMood = mood;
+    this.stopAmbient();
+    if (!mood) return;
+    if (this.muted || !this.hasUserGesture) return;
+    const context = this.ensureContext();
+    if (!context) return;
+    const preset = AMBIENT_PRESETS[mood];
+    const now = context.currentTime;
+    for (const freq of preset.tones) {
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.type = preset.type;
+      osc.frequency.value = freq;
+      // Slow tremolo to give the pad some life.
+      const lfo = context.createOscillator();
+      const lfoGain = context.createGain();
+      lfo.frequency.value = preset.tremoloHz;
+      lfoGain.gain.value = AMBIENT_GAIN * 0.35;
+      lfo.connect(lfoGain);
+      lfoGain.connect(gain.gain);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(AMBIENT_GAIN, now + 1.5);
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.start();
+      lfo.start();
+      this.ambientNodes.push({ osc, gain, lfo, lfoGain });
+    }
+  }
+
+  private stopAmbient(): void {
+    const context = this.context;
+    if (!context) {
+      this.ambientNodes = [];
+      return;
+    }
+    const now = context.currentTime;
+    for (const node of this.ambientNodes) {
+      try {
+        node.gain.gain.cancelScheduledValues(now);
+        node.gain.gain.setValueAtTime(node.gain.gain.value, now);
+        node.gain.gain.linearRampToValueAtTime(0, now + 0.6);
+        node.osc.stop(now + 0.8);
+        node.lfo.stop(now + 0.8);
+      } catch (_) { /* ignore */ }
+    }
+    this.ambientNodes = [];
   }
 
   toggleMuted(): boolean {
@@ -71,6 +140,12 @@ class SoundManager {
     if (this.muted || !this.hasUserGesture) return;
     const context = this.ensureContext();
     if (context?.state === "suspended") await context.resume();
+    // Reapply ambient after resume.
+    if (this.currentMood && this.ambientNodes.length === 0) {
+      const mood = this.currentMood;
+      this.currentMood = undefined; // force re-trigger
+      this.setAmbient(mood);
+    }
   }
 
   private playHit(context: AudioContext): void {
