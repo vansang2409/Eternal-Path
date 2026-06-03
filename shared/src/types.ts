@@ -123,6 +123,9 @@ export interface PlayerState {
   dailyQuestIds?: string[];
   dailyResetAt?: number;
   tutorialGiven?: boolean;
+  // Talent system — 1 point per level, spendable on skill ranks (0-3 each).
+  talentPoints?: number;
+  skillRanks?: Partial<Record<SkillId, number>>;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -339,6 +342,7 @@ export interface ClientToServerEvents {
   craftRecipe: (payload: { recipeId: string }) => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
+  upgradeSkill: (payload: { skillId: SkillId }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

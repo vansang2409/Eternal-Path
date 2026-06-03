@@ -6,6 +6,18 @@ export const SPRINT_DRAIN_PER_SECOND = 32;
 export const SPRINT_REGEN_PER_SECOND = 22;
 export const SPRINT_MULTIPLIER = 1.8;
 export const SPRINT_MIN_STAMINA_TO_START = 8;
+export const SKILL_MAX_RANK = 3;
+export const SKILL_RANK_BONUS_PER_RANK = 0.25; // +25% effectiveness per rank
+export const TALENT_POINTS_PER_LEVEL = 1;
+
+/**
+ * Compute the multiplier applied to a skill's primary effect (damage,
+ * heal percent, or lifesteal percent) given its current rank 0-3.
+ */
+export function skillRankMultiplier(rank: number | undefined): number {
+  const r = Math.max(0, Math.min(SKILL_MAX_RANK, rank ?? 0));
+  return 1 + r * SKILL_RANK_BONUS_PER_RANK;
+}
 export const WORLD_WIDTH = 200;
 export const WORLD_HEIGHT = 150;
 export const WORLD_SEED = 1337;

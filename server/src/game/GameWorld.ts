@@ -8,10 +8,13 @@ import {
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
   INVENTORY_CAPACITY,
+  SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
   SPRINT_MULTIPLIER,
   SPRINT_REGEN_PER_SECOND,
+  TALENT_POINTS_PER_LEVEL,
+  skillRankMultiplier,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -533,7 +536,9 @@ export class GameWorld {
         playerClass: saved.playerClass,
         dailyQuestIds: saved.dailyQuestIds,
         dailyResetAt: saved.dailyResetAt,
-        tutorialGiven: saved.tutorialGiven
+        tutorialGiven: saved.tutorialGiven,
+        talentPoints: saved.talentPoints ?? Math.max(0, saved.stats.level - 1) * TALENT_POINTS_PER_LEVEL,
+        skillRanks: saved.skillRanks ?? {}
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -877,6 +882,36 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã học ${skillLabel(skillId)}.`);
       this.bumpQuestProgress(player, ["learnSkill"]);
+    });
+
+    socket.on("upgradeSkill", ({ skillId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isSkillId(skillId)) {
+        socket.emit("system", "Kỹ năng không tồn tại.");
+        return;
+      }
+      if (!player.learnedSkills.includes(skillId)) {
+        socket.emit("system", "Bạn chưa học kỹ năng này.");
+        return;
+      }
+      const ranks = player.skillRanks ?? {};
+      const current = ranks[skillId] ?? 0;
+      if (current >= SKILL_MAX_RANK) {
+        socket.emit("system", `${skillLabel(skillId)} đã đạt cấp tối đa.`);
+        return;
+      }
+      const points = player.talentPoints ?? 0;
+      if (points < 1) {
+        socket.emit("system", "Không đủ điểm tài năng.");
+        return;
+      }
+      ranks[skillId] = current + 1;
+      player.skillRanks = ranks;
+      player.talentPoints = points - 1;
+      socket.emit("player", player);
+      socket.emit("system", `Nâng ${skillLabel(skillId)} lên cấp ${current + 1}/${SKILL_MAX_RANK}.`);
+      this.markDirty(player);
     });
 
     socket.on("useItem", async ({ itemId }) => {
@@ -1284,13 +1319,16 @@ export class GameWorld {
     }
     const info = SKILL_CATALOG[skillId];
     const label = skillLabel(skillId);
+    // Apply rank multiplier to damage / heal / lifesteal effectiveness.
+    const rank = player.skillRanks?.[skillId] ?? 0;
+    const rankMul = skillRankMultiplier(rank);
 
     if (info.effect === "healSelf") {
       if (player.stats.hp >= player.stats.maxHp) {
         this.sockets.get(player.id)?.emit("system", "Máu đã đầy.");
         return;
       }
-      const healAmount = Math.ceil(player.stats.maxHp * (info.healPercent ?? 0));
+      const healAmount = Math.ceil(player.stats.maxHp * (info.healPercent ?? 0) * rankMul);
       const before = player.stats.hp;
       player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + healAmount);
       const healed = player.stats.hp - before;
@@ -1309,10 +1347,10 @@ export class GameWorld {
       }
       player.skillCooldowns[skillId] = now + info.cooldownMs;
       const hpBeforeMonster = target.hp;
-      this.damageMonster(player, target, info.damageMultiplier ?? 1, now, label);
+      this.damageMonster(player, target, (info.damageMultiplier ?? 1) * rankMul, now, label);
       if (info.effect === "lifestealSingle") {
         const damageDealt = hpBeforeMonster - target.hp;
-        const drain = Math.max(1, Math.floor(damageDealt * (info.lifestealPercent ?? 0)));
+        const drain = Math.max(1, Math.floor(damageDealt * (info.lifestealPercent ?? 0) * rankMul));
         const before = player.stats.hp;
         player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp + drain);
         const healed = player.stats.hp - before;
@@ -1331,7 +1369,7 @@ export class GameWorld {
       return;
     }
     player.skillCooldowns[skillId] = now + info.cooldownMs;
-    for (const monster of targets) this.damageMonster(player, monster, info.damageMultiplier ?? 1, now, label);
+    for (const monster of targets) this.damageMonster(player, monster, (info.damageMultiplier ?? 1) * rankMul, now, label);
     this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
     this.sockets.get(player.id)?.emit("player", player);
   }
@@ -1341,7 +1379,10 @@ export class GameWorld {
     const result = grantExp(player.stats, exp);
     player.stats = result.stats;
     const levelsGained = Math.max(0, player.stats.level - previousLevel);
-    if (levelsGained > 0) player.unspentPoints += levelsGained * STAT_POINTS_PER_LEVEL;
+    if (levelsGained > 0) {
+      player.unspentPoints += levelsGained * STAT_POINTS_PER_LEVEL;
+      player.talentPoints = (player.talentPoints ?? 0) + levelsGained * TALENT_POINTS_PER_LEVEL;
+    }
     return levelsGained > 0;
   }
 

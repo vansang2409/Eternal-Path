@@ -281,6 +281,68 @@ body {
   color: var(--gold);
 }
 
+.talent-header {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  color: var(--text);
+  font-size: 12px;
+  background: rgba(28, 28, 28, 0.55);
+  border: 1px solid rgba(200, 169, 72, 0.4);
+  border-radius: 4px;
+}
+
+.talent-header strong {
+  color: var(--gold);
+}
+
+.talent-header .talent-points {
+  color: var(--gold-bright);
+  font-weight: 900;
+  font-size: 14px;
+}
+
+.talent-header .talent-hint {
+  color: #9b9b9b;
+  font-size: 11px;
+}
+
+.skill-rank-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(142, 145, 146, 0.25);
+  font-size: 11px;
+}
+
+.skill-rank {
+  color: var(--gold);
+}
+
+.skill-rank-max {
+  color: #8be78b;
+  font-weight: 700;
+}
+
+.skill-upgrade {
+  padding: 4px 10px;
+  color: #1d1500;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--gold-bright);
+  border: none;
+  border-radius: 3px;
+}
+
+.skill-upgrade:disabled {
+  color: #999;
+  background: #444;
+  cursor: not-allowed;
+}
+
 .quest-tabs {
   display: flex;
   gap: 4px;

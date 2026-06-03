@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, expToNextLevel } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, expToNextLevel } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -40,7 +40,8 @@ export class Hud {
     private readonly onToggleMuted: () => boolean,
     private readonly isMuted: () => boolean,
     private readonly onCraft: (recipeId: string) => void = () => {},
-    private readonly onSelectClass: (playerClass: PlayerClass) => void = () => {}
+    private readonly onSelectClass: (playerClass: PlayerClass) => void = () => {},
+    private readonly onUpgradeSkill: (skillId: SkillId) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -287,6 +288,13 @@ export class Hud {
       console.error("[hud] unknown playerClass:", playerClass);
       return;
     }
+    // Talent points header.
+    const talentPoints = this.player.talentPoints ?? 0;
+    const header = document.createElement("div");
+    header.className = "talent-header";
+    header.innerHTML = `<strong>Điểm tài năng:</strong> <span class="talent-points">${talentPoints}</span> <span class="talent-hint">— Mỗi cấp được +1, dùng để tăng cấp skill (+25% sức mạnh mỗi cấp, tối đa ${SKILL_MAX_RANK} cấp)</span>`;
+    root.appendChild(header);
+
     let appended = 0;
     for (const id of SKILL_IDS) {
       const classOk = classInfo.skills.includes(id);
@@ -309,15 +317,27 @@ export class Hud {
           return `<button type="button" data-slot="${slot}" class="${cls}">${key}</button>`;
         }).join("")}</div>`;
       }
+      // Skill rank upgrade row (only when learned).
+      const rank = this.player.skillRanks?.[id] ?? 0;
+      const talentPoints = this.player.talentPoints ?? 0;
+      const upgradeHtml = learned
+        ? `<div class="skill-rank-row">
+            <span class="skill-rank">Cấp: ${rank}/${SKILL_MAX_RANK}</span>
+            ${rank < SKILL_MAX_RANK ? `<button type="button" class="skill-upgrade" data-action="upgrade" ${talentPoints < 1 ? "disabled" : ""}>Tăng cấp (1 điểm)</button>` : `<span class="skill-rank-max">Tối đa</span>`}
+          </div>`
+        : "";
       card.innerHTML = `
         <div class="skill-card-head">
           <strong>${escapeHtml(t(skillNameKey(id)))}</strong>
           ${equippedSlot >= 0 ? `<span class="slot-tag">${keys[equippedSlot]}</span>` : ""}
         </div>
         <p>${escapeHtml(t(skillDescKey(id)))}</p>
-        <em>${t("levelShort")} ${info.requiredLevel} · CD ${(info.cooldownMs / 1000).toFixed(1)}s</em>
+        <em>${t("levelShort")} ${info.requiredLevel} · CD ${(info.cooldownMs / 1000).toFixed(1)}s${rank > 0 ? ` · +${rank * 25}% sức mạnh` : ""}</em>
         ${actionHtml}
+        ${upgradeHtml}
       `;
+      const upgradeBtn = card.querySelector<HTMLButtonElement>('[data-action="upgrade"]');
+      if (upgradeBtn) upgradeBtn.addEventListener("click", () => this.onUpgradeSkill(id));
       if (!learned && meetsLevel) {
         card.querySelector('[data-action="learn"]')!.addEventListener("click", () => this.onLearnSkill(id));
       } else if (learned) {
