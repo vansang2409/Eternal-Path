@@ -303,6 +303,62 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     ranged: true,
     rangedProjectileColor: 0x9bd2ff,
     rangedAttackRange: 240
+  },
+  // ───── Sprint 35: 4 new biome-locked species ─────
+  sandStalker: {
+    type: "sandStalker",
+    name: "Sand Stalker",
+    level: 4,
+    tint: 0xc2a857,
+    scale: 2.7,
+    hpMultiplier: 0.85,
+    attackMultiplier: 1.45,
+    defenseMultiplier: 0.85,
+    dropRate: 0.46,
+    preferredSlots: ["weapon", "boots"],
+    lootTheme: "Stalker"
+  },
+  frostWolfAlpha: {
+    type: "frostWolfAlpha",
+    name: "Frost Wolf Alpha",
+    level: 7,
+    tint: 0xeaf2ff,
+    scale: 3.2,
+    hpMultiplier: 1.55,
+    attackMultiplier: 1.55,
+    defenseMultiplier: 1.25,
+    dropRate: 0.58,
+    preferredSlots: ["armor", "boots"],
+    lootTheme: "AlphaFrost"
+  },
+  bogLurker: {
+    type: "bogLurker",
+    name: "Bog Lurker",
+    level: 5,
+    tint: 0x5c7e3a,
+    scale: 2.85,
+    hpMultiplier: 1.2,
+    attackMultiplier: 1.3,
+    defenseMultiplier: 1.1,
+    dropRate: 0.48,
+    preferredSlots: ["ring", "helmet"],
+    lootTheme: "Mire"
+  },
+  crystalWatcher: {
+    type: "crystalWatcher",
+    name: "Crystal Watcher",
+    level: 9,
+    tint: 0xd6b6ff,
+    scale: 3.05,
+    hpMultiplier: 1.6,
+    attackMultiplier: 1.85,
+    defenseMultiplier: 1.45,
+    dropRate: 0.66,
+    preferredSlots: ["armor", "ring"],
+    lootTheme: "Watcher",
+    ranged: true,
+    rangedProjectileColor: 0xcaa4ff,
+    rangedAttackRange: 230
   }
 };
 
