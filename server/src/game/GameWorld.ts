@@ -1608,6 +1608,20 @@ export class GameWorld {
         this.sockets.get(player.id)?.emit("system", "Bạn nhận được Bùa Cưỡi Gió (+25% tốc độ).");
         this.emitFloating(player.id, player.position, 0, "loot", mount.name);
         this.unlockAchievement(player, "mount-rider");
+        // Warden's Heart — endgame crafting material.
+        const heart: MaterialItem = {
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          kind: "material",
+          materialId: "wardenHeart",
+          name: MATERIAL_CATALOG.wardenHeart.name,
+          rarity: "epic",
+          value: MATERIAL_CATALOG.wardenHeart.value
+        };
+        if (!isBagFull(player)) {
+          player.inventory.items.push(heart);
+          this.sockets.get(player.id)?.emit("system", "Nhặt được Trái Tim Hộ Pháp.");
+          this.emitFloating(player.id, player.position, 0, "loot", heart.name);
+        }
       }
     }
     // Material drop: 30% chance per kill (50% for elite, 100% for boss).

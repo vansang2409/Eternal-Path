@@ -68,6 +68,13 @@ export const MATERIAL_CATALOG: Record<MaterialId, MaterialInfo> = {
     rarity: "epic",
     sources: ["voidKnight", "bloodHarpy", "ancientDrake", "elderHydra"],
     value: 70
+  },
+  wardenHeart: {
+    id: "wardenHeart",
+    name: "Trái Tim Hộ Pháp",
+    rarity: "epic",
+    sources: ["eternalWarden"],
+    value: 250
   }
 };
 
@@ -171,6 +178,61 @@ export const RECIPES: Recipe[] = [
     level: 10,
     themeFrom: "crystalGolem",
     cost: { crystalShard: 3, cursedBark: 2, emberHeart: 1 }
+  },
+  // ───── Endgame tier — require Warden's Heart ─────
+  {
+    id: "warden-blade",
+    name: "Kiếm Hộ Pháp",
+    slot: "weapon",
+    rarity: "epic",
+    level: 12,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 1, voidAsh: 5, crystalShard: 3 }
+  },
+  {
+    id: "warden-aegis",
+    name: "Khiên Vĩnh Cửu",
+    slot: "armor",
+    rarity: "epic",
+    level: 12,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 1, voidAsh: 4, frostShard: 3 }
+  },
+  {
+    id: "warden-crown",
+    name: "Vương Miện Hộ Pháp",
+    slot: "helmet",
+    rarity: "epic",
+    level: 12,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 1, crystalShard: 4, cursedBark: 2 }
+  },
+  {
+    id: "swift-boots",
+    name: "Giày Phong Thần",
+    slot: "boots",
+    rarity: "epic",
+    level: 11,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 1, frostShard: 4, wolfFang: 4 }
+  },
+  {
+    id: "warden-ring",
+    name: "Nhẫn Hộ Pháp",
+    slot: "ring",
+    rarity: "epic",
+    level: 12,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 2, voidAsh: 3, crystalShard: 2 }
+  },
+  {
+    id: "blood-ring",
+    name: "Nhẫn Huyết Vũ",
+    slot: "ring",
+    rarity: "epic",
+    level: 11,
+    themeFrom: "bloodHarpy",
+    cost: { voidAsh: 4, cursedBark: 3, emberHeart: 2 }
   }
 ];
 

@@ -12,7 +12,8 @@ export type MaterialId =
   | "cursedBark"
   | "frostShard"
   | "crystalShard"
-  | "voidAsh";
+  | "voidAsh"
+  | "wardenHeart";
 export type SkillId =
   | "powerStrike"
   | "cleave"
