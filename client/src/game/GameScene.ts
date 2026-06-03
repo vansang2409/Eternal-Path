@@ -1151,10 +1151,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private renderPlayer(player: PlayerState, position: Vec2): void {
+    // Pick the per-class sprite if the player has chosen a class; fall back
+    // to the legacy "player" texture otherwise.
+    const textureKey = player.playerClass === "warrior" ? "player-warrior"
+      : player.playerClass === "mage" ? "player-mage"
+      : player.playerClass === "ranger" ? "player-ranger"
+      : "player";
     let sprite = this.players.get(player.id);
     if (!sprite) {
       const ip = worldToIso(position.x, position.y);
-      sprite = this.add.sprite(ip.x, ip.y, "player").setScale(3).setDepth(ip.y);
+      // Class sprites are 12×14 (vs 8×8 fallback); use a smaller scale so
+      // they render at roughly the same on-screen size.
+      const scale = textureKey === "player" ? 3 : 2;
+      sprite = this.add.sprite(ip.x, ip.y, textureKey).setScale(scale).setDepth(ip.y);
       if (player.id !== this.selfId) {
         sprite.setInteractive({ useHandCursor: true });
         sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -1177,6 +1186,12 @@ export class GameScene extends Phaser.Scene {
     }
     const facing = player.id === this.selfId ? this.predictedSelfFacing : player.facing;
     const ip3 = worldToIso(position.x, position.y);
+    // Update the sprite's class texture if it changed (player picked a class
+    // mid-session). Skip if texture key is the same to avoid flicker.
+    if (sprite.texture.key !== textureKey) {
+      sprite.setTexture(textureKey);
+      sprite.setScale(textureKey === "player" ? 3 : 2);
+    }
     sprite.setPosition(ip3.x, ip3.y);
     sprite.setDepth(ip3.y);
     sprite.setFlipX(facing === "left");
@@ -1436,73 +1451,131 @@ export class GameScene extends Phaser.Scene {
     if (!info) return;
     const iso = worldToIso(position.x, position.y);
     const tgtIso = targetPosition ? worldToIso(targetPosition.x, targetPosition.y) : undefined;
+
     if (info.effect === "healSelf") {
-      for (let i = 0; i < 6; i += 1) {
-        const dot = this.add.circle(iso.x + (Math.random() - 0.5) * 22, iso.y + 8, 2.5, 0x8be78b, 0.95).setDepth(99997);
+      // Pulsing aura ring + rising sparkles + inner glow.
+      const aura = this.add.circle(iso.x, iso.y, 6, 0x8be78b, 0.45).setDepth(99996);
+      this.tweens.add({
+        targets: aura,
+        radius: 38,
+        alpha: 0,
+        duration: 700,
+        ease: "Cubic.Out",
+        onComplete: () => aura.destroy()
+      });
+      const ring1 = this.add.circle(iso.x, iso.y, 10, 0x8be78b, 0).setStrokeStyle(2, 0x8be78b, 0.95).setDepth(99997);
+      const ring2 = this.add.circle(iso.x, iso.y, 6, 0xffffff, 0).setStrokeStyle(1.5, 0xffffff, 0.85).setDepth(99997);
+      this.tweens.add({ targets: ring1, radius: 32, alpha: 0, duration: 560, onComplete: () => ring1.destroy() });
+      this.tweens.add({ targets: ring2, radius: 24, alpha: 0, duration: 440, delay: 80, onComplete: () => ring2.destroy() });
+      // 10 rising sparkles in 2 colors.
+      for (let i = 0; i < 10; i += 1) {
+        const color = i % 2 === 0 ? 0x8be78b : 0xeaffe0;
+        const dx = (Math.random() - 0.5) * 28;
+        const dot = this.add.circle(iso.x + dx, iso.y + 10, 1.6 + Math.random(), color, 0.95).setDepth(99998);
         this.tweens.add({
           targets: dot,
-          y: dot.y - 36 - Math.random() * 16,
+          y: dot.y - 32 - Math.random() * 22,
           alpha: 0,
-          duration: 600 + Math.random() * 200,
+          scale: 0.4,
+          duration: 700 + Math.random() * 250,
+          ease: "Cubic.Out",
           onComplete: () => dot.destroy()
         });
       }
-      const ring = this.add.circle(iso.x, iso.y, 8, 0x8be78b, 0).setStrokeStyle(2, 0x8be78b, 0.9).setDepth(99996);
-      this.tweens.add({
-        targets: ring,
-        radius: 28,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => ring.destroy()
-      });
       return;
     }
+
     if (info.effect === "damageAoe") {
       const radius = info.aoeRadius ?? 100;
-      const ring = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(99996);
-      this.tweens.add({
-        targets: ring,
-        radius,
-        alpha: 0,
-        duration: 380,
-        onComplete: () => ring.destroy()
-      });
-      const inner = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0.55).setDepth(99996);
-      this.tweens.add({
-        targets: inner,
-        radius: radius * 0.7,
-        alpha: 0,
-        duration: 320,
-        onComplete: () => inner.destroy()
-      });
+      // Inner shockwave that expands quickly.
+      const inner = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0.6).setDepth(99996);
+      this.tweens.add({ targets: inner, radius: radius * 0.65, alpha: 0, duration: 280, ease: "Cubic.Out", onComplete: () => inner.destroy() });
+      // Outer gold-rimmed ring.
+      const ring = this.add.circle(iso.x, iso.y, 6, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(99997);
+      this.tweens.add({ targets: ring, radius, alpha: 0, duration: 420, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+      // Secondary thinner ring trailing behind.
+      const ring2 = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0).setStrokeStyle(2, 0xff5d3c, 0.85).setDepth(99997);
+      this.tweens.add({ targets: ring2, radius: radius * 0.85, alpha: 0, duration: 360, delay: 60, onComplete: () => ring2.destroy() });
+      // 8 outward sparks.
+      for (let i = 0; i < 8; i += 1) {
+        const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.18;
+        const spark = this.add.circle(iso.x, iso.y, 2.5, 0xfff1a8, 1).setDepth(99998);
+        this.tweens.add({
+          targets: spark,
+          x: iso.x + Math.cos(ang) * radius * 0.9,
+          y: iso.y + Math.sin(ang) * radius * 0.9,
+          alpha: 0,
+          duration: 420,
+          ease: "Quad.Out",
+          onComplete: () => spark.destroy()
+        });
+      }
       return;
     }
+
     if (info.effect === "lifestealSingle" && tgtIso) {
-      const beam = this.add.graphics().setDepth(99997);
-      beam.lineStyle(3, 0xff5d7a, 0.95);
-      beam.lineBetween(iso.x, iso.y, tgtIso.x, tgtIso.y);
-      this.tweens.add({
-        targets: beam,
-        alpha: 0,
-        duration: 280,
-        onComplete: () => beam.destroy()
-      });
+      // Twisting red beam: 3 parallel lines + spiral particles.
+      const g = this.add.graphics().setDepth(99997);
+      g.lineStyle(4, 0xff5d7a, 0.95);
+      g.lineBetween(iso.x, iso.y, tgtIso.x, tgtIso.y);
+      g.lineStyle(2, 0xffb0c1, 0.9);
+      g.lineBetween(iso.x, iso.y - 4, tgtIso.x, tgtIso.y - 4);
+      g.lineStyle(2, 0xb33049, 0.9);
+      g.lineBetween(iso.x, iso.y + 4, tgtIso.x, tgtIso.y + 4);
+      this.tweens.add({ targets: g, alpha: 0, duration: 360, onComplete: () => g.destroy() });
+      const dx = tgtIso.x - iso.x;
+      const dy = tgtIso.y - iso.y;
+      const len = Math.hypot(dx, dy);
+      const nx = -dy / (len || 1);
+      const ny = dx / (len || 1);
+      for (let i = 0; i < 6; i += 1) {
+        const t = i / 6;
+        const sway = Math.sin(i * 1.3) * 6;
+        const px = iso.x + dx * t + nx * sway;
+        const py = iso.y + dy * t + ny * sway;
+        const drop = this.add.circle(px, py, 2.5, 0xff5d7a, 1).setDepth(99998);
+        this.tweens.add({
+          targets: drop,
+          x: iso.x + Math.cos(Math.random() * Math.PI * 2) * 8,
+          y: iso.y - Math.random() * 18,
+          alpha: 0,
+          duration: 380,
+          ease: "Quad.Out",
+          delay: i * 22,
+          onComplete: () => drop.destroy()
+        });
+      }
       return;
     }
+
+    // damageSingle — double slash with impact spark.
     if (tgtIso) {
       const slash = this.add.graphics().setDepth(99997);
-      slash.lineStyle(3, 0xfff1a8, 0.95);
-      const midX = (iso.x + tgtIso.x) / 2;
-      const midY = (iso.y + tgtIso.y) / 2;
-      slash.lineBetween(iso.x, iso.y, midX, midY);
+      slash.lineStyle(4, 0xfff1a8, 0.95);
+      slash.lineBetween(iso.x, iso.y, tgtIso.x, tgtIso.y);
       slash.lineStyle(2, 0xffd166, 0.95);
-      slash.lineBetween(midX, midY, tgtIso.x, tgtIso.y);
-      this.tweens.add({
-        targets: slash,
-        alpha: 0,
-        duration: 280,
-        onComplete: () => slash.destroy()
-      });
+      const dx = tgtIso.x - iso.x;
+      const dy = tgtIso.y - iso.y;
+      // Second slash offset perpendicular for a "double" feel.
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len * 4;
+      const ny = dx / len * 4;
+      slash.lineBetween(iso.x + nx, iso.y + ny, tgtIso.x + nx, tgtIso.y + ny);
+      this.tweens.add({ targets: slash, alpha: 0, duration: 280, onComplete: () => slash.destroy() });
+      // 5 outward sparks at impact.
+      for (let i = 0; i < 5; i += 1) {
+        const ang = Math.atan2(dy, dx) + (Math.random() - 0.5) * 1.6;
+        const spark = this.add.circle(tgtIso.x, tgtIso.y, 2, 0xfff1a8, 1).setDepth(99998);
+        this.tweens.add({
+          targets: spark,
+          x: tgtIso.x + Math.cos(ang) * 22,
+          y: tgtIso.y + Math.sin(ang) * 22,
+          alpha: 0,
+          duration: 280,
+          ease: "Quad.Out",
+          onComplete: () => spark.destroy()
+        });
+      }
     }
   }
 

@@ -16,6 +16,7 @@ export const ISO_TILE_W = 64;
 export const ISO_TILE_H = 32;
 
 export function createPixelArt(scene: Phaser.Scene): void {
+  // Default player (kept as fallback for legacy code paths).
   createTexture(scene, "player", [
     "..3333..",
     ".355553.",
@@ -26,6 +27,75 @@ export function createPixelArt(scene: Phaser.Scene): void {
     "..7..7..",
     ".77..77."
   ], palette());
+
+  // ───── Class-specific 12×12 character sprites ─────
+  // Color keys: K = dark outline, S = skin, E = eye, A = armor/cloth main,
+  // B = armor highlight, P = pant/leg, M = weapon/accent, G = trim.
+  const warriorPal: Record<string, string> = {
+    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
+    A: "#6e7173", B: "#9aa0a3", P: "#3b3b3b",
+    M: "#c9a64a", G: "#b73a48"
+  };
+  createTexture(scene, "player-warrior", [
+    "....KKKK....",
+    "...KAAAAK...",
+    "..KAABBAAK..",
+    "..KASESEAK..",
+    "..KAASSSAK..",
+    "..KAAAAAAK..",
+    "..KGAAAAAGK.",
+    ".KAABBBBAAK.",
+    ".KAABBBBAAK.",
+    ".KMABBBBAMK.",
+    "..KPPPPPP K.",
+    "..KPPP.PPK..",
+    "..KPP...PK..",
+    "..KP....PK.."
+  ], warriorPal);
+
+  const magePal: Record<string, string> = {
+    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
+    H: "#6e4c9b", h: "#8a4fdd", A: "#3b2670",
+    B: "#5a3990", G: "#e9c349", M: "#c4b186"
+  };
+  createTexture(scene, "player-mage", [
+    "....HH......",
+    "...HHHH.....",
+    "..HHHhhH....",
+    ".HHHhhhhH...",
+    "..KKKKKK....",
+    "..KSESEK....",
+    "..KSSSSK....",
+    "..KAAAAK....",
+    ".KAABBAAK...",
+    ".KABBBBAK...",
+    ".KAABBAAGK..",
+    "..KAAAAGK...",
+    "..KAA.AA....",
+    "..KA...A...."
+  ], magePal);
+
+  const rangerPal: Record<string, string> = {
+    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
+    H: "#2f6b3f", A: "#4f9a4d", B: "#6dba5d",
+    P: "#5b3a1e", G: "#a78d5a", M: "#c9a64a"
+  };
+  createTexture(scene, "player-ranger", [
+    "...HHHHHH...",
+    "..HHHHHHHH..",
+    "..HKSESEKH..",
+    "..HKSSSSKH..",
+    "..HKKKKKKH..",
+    "...AAAAAA...",
+    "..AABBBBAA..",
+    "..AABBBBAA..",
+    "..AABBBBAA..",
+    "..AAAAAA M..",
+    "..AAA.AA.M..",
+    "..APP.PP....",
+    "..PP...PP...",
+    "..PP...PP..."
+  ], rangerPal);
 
   createTexture(scene, "monster", [
     "..4444..",
@@ -188,7 +258,9 @@ function isInsideIsoDiamond(x: number, y: number): boolean {
 }
 
 function createTexture(scene: Phaser.Scene, key: string, pixels: string[], colors: Record<string, string>): void {
-  const canvas = scene.textures.createCanvas(key, 8, 8);
+  const height = pixels.length;
+  const width = Math.max(...pixels.map((row) => row.length));
+  const canvas = scene.textures.createCanvas(key, width, height);
   if (!canvas) return;
   const ctx = canvas.getContext();
   for (let y = 0; y < pixels.length; y += 1) {
