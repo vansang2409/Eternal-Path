@@ -767,6 +767,7 @@ export class GameWorld {
       }
       player.inventory.equipped[item.slot] = item;
       addItemStats(player, item);
+      this.recomputeSetBonus(player);
       socket.emit("player", player);
       socket.emit("system", `Đã trang bị ${item.name}.`);
       this.markDirty(player);
@@ -782,6 +783,7 @@ export class GameWorld {
       delete player.inventory.equipped[slot];
       player.inventory.items.push(item);
       removeItemStats(player, item);
+      this.recomputeSetBonus(player);
       socket.emit("player", player);
       socket.emit("system", `Đã tháo ${item.name}.`);
       this.markDirty(player);
@@ -2082,6 +2084,38 @@ export class GameWorld {
 
     this.sockets.get(target.id)?.emit("player", target);
     this.sockets.get(attacker.id)?.emit("player", attacker);
+  }
+
+  // Set bonus: tiered HP/ATK/DEF for wearing multiple items of same theme.
+  //   2 same theme -> +30 maxHp
+  //   3 same theme -> +60 maxHp, +4 attack
+  //   4 same theme -> +120 maxHp, +8 attack, +5 defense
+  private recomputeSetBonus(player: PlayerState): void {
+    const oldAtk = player.setBonusAttack ?? 0;
+    const oldDef = player.setBonusDefense ?? 0;
+    const oldHp = player.setBonusMaxHp ?? 0;
+    player.stats.attack -= oldAtk;
+    player.stats.defense -= oldDef;
+    player.stats.maxHp = Math.max(1, player.stats.maxHp - oldHp);
+
+    const counts = new Map<string, number>();
+    for (const item of Object.values(player.inventory.equipped)) {
+      if (!item || !item.themeId) continue;
+      counts.set(item.themeId, (counts.get(item.themeId) ?? 0) + 1);
+    }
+    let atk = 0, def = 0, hp = 0;
+    for (const count of counts.values()) {
+      if (count >= 4) { hp += 120; atk += 8; def += 5; }
+      else if (count >= 3) { hp += 60; atk += 4; }
+      else if (count >= 2) { hp += 30; }
+    }
+    player.setBonusAttack = atk;
+    player.setBonusDefense = def;
+    player.setBonusMaxHp = hp;
+    player.stats.attack += atk;
+    player.stats.defense += def;
+    player.stats.maxHp += hp;
+    player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp);
   }
 
   private snapshot(): WorldSnapshot {

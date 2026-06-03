@@ -43,7 +43,8 @@ export function createLoot(monsterLevel: number, monsterType = "forestSlime", el
       defense: monster.defenseMultiplier,
       maxHp: monster.hpMultiplier
     }),
-    value
+    value,
+    themeId: monster.lootTheme
   };
 
   return item;

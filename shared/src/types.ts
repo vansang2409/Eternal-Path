@@ -79,6 +79,9 @@ export interface EquipmentItem extends BaseItem {
   stats: ItemStats;
   /** How many times this item has been enchanted (re-rolled). */
   enchantCount?: number;
+  /** Theme/set the item belongs to — when 2+ items of the same theme are
+   *  equipped, the player gets a set bonus. */
+  themeId?: string;
 }
 
 export interface ConsumableItem extends BaseItem {
@@ -133,6 +136,12 @@ export interface PlayerState {
   totalKills?: number;
   chestsOpened?: number;
   itemsCrafted?: number;
+  // Currently applied set bonus stats (subtracted before each equip change
+  // and re-added after, so the player's stat sheet always reflects the
+  // active set tier without double-counting).
+  setBonusAttack?: number;
+  setBonusDefense?: number;
+  setBonusMaxHp?: number;
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
 }
