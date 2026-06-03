@@ -1201,6 +1201,7 @@ export class GameWorld {
     this.updateTownHealing(deltaMs, now);
     this.updateMonsters(deltaMs, now);
     this.updateCombat(now);
+    this.updateStatusEffects(now);
     this.updateRespawns(now);
     this.cleanupGroundItems(now);
     this.maintainTreasureChests(now);
@@ -1298,8 +1299,10 @@ export class GameWorld {
         const dx = target.position.x - monster.position.x;
         const dy = target.position.y - monster.position.y;
         const len = Math.hypot(dx, dy) || 1;
+        const slowMul = freezeSlowFor(monster);
+        const effectiveSpeed = MONSTER_SPEED * slowMul;
         monster.velocity = distance(monster.position, target.position) > MONSTER_ATTACK_RANGE
-          ? { x: (dx / len) * MONSTER_SPEED, y: (dy / len) * MONSTER_SPEED }
+          ? { x: (dx / len) * effectiveSpeed, y: (dy / len) * effectiveSpeed }
           : { x: 0, y: 0 };
       } else if (previousTarget && isInTown(previousTarget.position)) {
         this.returningToSpawn.add(monster.id);
@@ -1413,6 +1416,7 @@ export class GameWorld {
       player.skillCooldowns[skillId] = now + info.cooldownMs;
       const hpBeforeMonster = target.hp;
       this.damageMonster(player, target, (info.damageMultiplier ?? 1) * rankMul, now, label);
+      this.applySkillEffect(target, info.appliesEffect, now);
       if (info.effect === "lifestealSingle") {
         const damageDealt = hpBeforeMonster - target.hp;
         const drain = Math.max(1, Math.floor(damageDealt * (info.lifestealPercent ?? 0) * rankMul));
@@ -1434,9 +1438,61 @@ export class GameWorld {
       return;
     }
     player.skillCooldowns[skillId] = now + info.cooldownMs;
-    for (const monster of targets) this.damageMonster(player, monster, (info.damageMultiplier ?? 1) * rankMul, now, label);
+    for (const monster of targets) {
+      this.damageMonster(player, monster, (info.damageMultiplier ?? 1) * rankMul, now, label);
+      this.applySkillEffect(monster, info.appliesEffect, now);
+    }
     this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
     this.sockets.get(player.id)?.emit("player", player);
+  }
+
+  // Attach a status effect to a monster, replacing the same-kind effect if
+  // any (so multiple burns from the same skill don't stack indefinitely).
+  private applySkillEffect(monster: MonsterState, apply: import("@mmorpg/shared").SkillStatusApply | undefined, now: number): void {
+    if (!apply) return;
+    const effects = monster.activeEffects ?? [];
+    const filtered = effects.filter((e) => e.kind !== apply.kind);
+    filtered.push({
+      kind: apply.kind,
+      endsAt: now + apply.durationMs,
+      tickDamage: apply.tickDamage,
+      lastTickAt: apply.tickDamage ? now : undefined,
+      slowMultiplier: apply.slowMultiplier
+    });
+    monster.activeEffects = filtered;
+  }
+
+  // Per-tick processing of status effects: apply DOT damage, expire timers,
+  // and remove dead monsters.
+  private updateStatusEffects(now: number): void {
+    for (const monster of this.monsters) {
+      if (!monster.activeEffects || monster.activeEffects.length === 0) continue;
+      if (monster.respawnsAt) {
+        monster.activeEffects = [];
+        continue;
+      }
+      const remaining: typeof monster.activeEffects = [];
+      for (const eff of monster.activeEffects) {
+        if (now >= eff.endsAt) continue; // expired
+        // DOT: tick every 1 second.
+        if (eff.tickDamage && now - (eff.lastTickAt ?? 0) >= 1000) {
+          monster.hp = Math.max(0, monster.hp - eff.tickDamage);
+          eff.lastTickAt = now;
+          this.emitFloating(monster.id, monster.position, eff.tickDamage, "damage", `${eff.tickDamage} ${eff.kind === "burn" ? "🔥" : "🩸"}`);
+          if (monster.hp <= 0) {
+            // Credit kill to the most recent attacker via existing system.
+            const player = monster.targetPlayerId ? this.players.get(monster.targetPlayerId) : undefined;
+            if (player) this.killMonster(player, monster, now);
+            else {
+              monster.respawnsAt = now + monster.respawnDurationMs;
+              monster.velocity = { x: 0, y: 0 };
+            }
+          }
+        }
+        remaining.push(eff);
+      }
+      monster.activeEffects = remaining;
+    }
   }
 
   private grantExpAndStatPoints(player: PlayerState, exp: number): boolean {
@@ -2342,6 +2398,19 @@ function removeItemStats(player: PlayerState, item: EquipmentItem): void {
   player.stats.defense -= item.stats.defense ?? 0;
   player.stats.maxHp = Math.max(1, player.stats.maxHp - (item.stats.maxHp ?? 0));
   player.stats.hp = Math.min(player.stats.hp, player.stats.maxHp);
+}
+
+// Lowest slowMultiplier from active freeze effects (smaller = slower).
+// Returns 1 when no freeze is active.
+function freezeSlowFor(monster: MonsterState): number {
+  if (!monster.activeEffects) return 1;
+  let mul = 1;
+  for (const e of monster.activeEffects) {
+    if (e.kind === "freeze" && e.slowMultiplier !== undefined && e.slowMultiplier < mul) {
+      mul = e.slowMultiplier;
+    }
+  }
+  return mul;
 }
 
 function isInTown(position: { x: number; y: number }): boolean {

@@ -157,6 +157,16 @@ export interface LeaderboardPayload {
   byKills: LeaderboardRow[];
 }
 
+export interface MonsterStatusEffect {
+  kind: "burn" | "bleed" | "freeze";
+  endsAt: number;
+  // For DOT: damage per second.
+  tickDamage?: number;
+  lastTickAt?: number;
+  // For freeze: movement speed multiplier.
+  slowMultiplier?: number;
+}
+
 export interface MonsterState {
   id: string;
   type: string;
@@ -177,6 +187,7 @@ export interface MonsterState {
   respawnsAt?: number;
   respawnDurationMs: number;
   lastAttackAt: number;
+  activeEffects?: MonsterStatusEffect[];
 }
 
 export interface FloatingTextEvent {

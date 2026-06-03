@@ -1180,7 +1180,14 @@ export class GameScene extends Phaser.Scene {
     sprite.setTexture(monster.respawnsAt ? "dead" : "monster");
     sprite.setAlpha(monster.respawnsAt ? 0.35 : 1);
     const definition = getMonsterDefinition(monster.type);
-    sprite.setTint(monster.boss ? 0xfff1a8 : monster.elite ? 0xffd36b : definition.tint);
+    // Status effect tints override the base definition tint:
+    // burn -> orange/red, bleed -> magenta, freeze -> cyan.
+    const effects = monster.activeEffects ?? [];
+    let tint = monster.boss ? 0xfff1a8 : monster.elite ? 0xffd36b : definition.tint;
+    if (effects.some((e) => e.kind === "burn")) tint = 0xff6a3c;
+    else if (effects.some((e) => e.kind === "freeze")) tint = 0x9bd2ff;
+    else if (effects.some((e) => e.kind === "bleed")) tint = 0xd94b88;
+    sprite.setTint(tint);
     sprite.setScale(monster.boss ? definition.scale : monster.elite ? definition.scale * 1.18 : definition.scale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });

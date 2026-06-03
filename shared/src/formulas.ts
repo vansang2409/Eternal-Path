@@ -61,6 +61,17 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 
+export type StatusEffectKind = "burn" | "bleed" | "freeze";
+
+export interface SkillStatusApply {
+  kind: StatusEffectKind;
+  durationMs: number;
+  // For DOT effects: damage per tick (1s tick interval).
+  tickDamage?: number;
+  // For freeze: movement speed multiplier (e.g. 0.5 = 50% slow).
+  slowMultiplier?: number;
+}
+
 export interface SkillInfo {
   id: SkillId;
   cooldownMs: number;
@@ -70,6 +81,7 @@ export interface SkillInfo {
   healPercent?: number;
   lifestealPercent?: number;
   requiredLevel: number;
+  appliesEffect?: SkillStatusApply;
 }
 
 export const SKILL_CATALOG: Record<SkillId, SkillInfo> = {
@@ -82,13 +94,17 @@ export const SKILL_CATALOG: Record<SkillId, SkillInfo> = {
   swiftBlade: { id: "swiftBlade", cooldownMs: 2500, effect: "damageSingle", damageMultiplier: 1.2, requiredLevel: 4 },
   greaterHeal: { id: "greaterHeal", cooldownMs: 25000, effect: "healSelf", healPercent: 0.50, requiredLevel: 5 },
   lifedrain: { id: "lifedrain", cooldownMs: 8000, effect: "lifestealSingle", damageMultiplier: 1.4, lifestealPercent: 0.50, requiredLevel: 5 },
-  flameBurst: { id: "flameBurst", cooldownMs: 9000, effect: "damageAoe", damageMultiplier: 1.6, aoeRadius: 100, requiredLevel: 6 },
+  flameBurst: { id: "flameBurst", cooldownMs: 9000, effect: "damageAoe", damageMultiplier: 1.6, aoeRadius: 100, requiredLevel: 6,
+    appliesEffect: { kind: "burn", durationMs: 4000, tickDamage: 9 } },
   thunderStrike: { id: "thunderStrike", cooldownMs: 12000, effect: "damageSingle", damageMultiplier: 2.5, requiredLevel: 6 },
-  icicleStorm: { id: "icicleStorm", cooldownMs: 11000, effect: "damageAoe", damageMultiplier: 1.2, aoeRadius: 140, requiredLevel: 7 },
-  shadowAssault: { id: "shadowAssault", cooldownMs: 7000, effect: "damageSingle", damageMultiplier: 2.3, requiredLevel: 8 },
+  icicleStorm: { id: "icicleStorm", cooldownMs: 11000, effect: "damageAoe", damageMultiplier: 1.2, aoeRadius: 140, requiredLevel: 7,
+    appliesEffect: { kind: "freeze", durationMs: 2500, slowMultiplier: 0.45 } },
+  shadowAssault: { id: "shadowAssault", cooldownMs: 7000, effect: "damageSingle", damageMultiplier: 2.3, requiredLevel: 8,
+    appliesEffect: { kind: "bleed", durationMs: 4000, tickDamage: 7 } },
   healingWave: { id: "healingWave", cooldownMs: 18000, effect: "healSelf", healPercent: 0.40, requiredLevel: 8 },
   divineLight: { id: "divineLight", cooldownMs: 15000, effect: "damageSingle", damageMultiplier: 3.0, requiredLevel: 10 },
-  voidNova: { id: "voidNova", cooldownMs: 14000, effect: "damageAoe", damageMultiplier: 1.5, aoeRadius: 160, requiredLevel: 12 }
+  voidNova: { id: "voidNova", cooldownMs: 14000, effect: "damageAoe", damageMultiplier: 1.5, aoeRadius: 160, requiredLevel: 12,
+    appliesEffect: { kind: "burn", durationMs: 5000, tickDamage: 12 } }
 };
 
 export const SKILL_IDS = Object.keys(SKILL_CATALOG) as SkillId[];
