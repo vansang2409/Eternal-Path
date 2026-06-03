@@ -574,6 +574,54 @@ body {
   cursor: not-allowed;
 }
 
+#top-banner-stack {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.top-banner {
+  padding: 10px 26px;
+  color: #1d1500;
+  font-family: Literata, Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  background: linear-gradient(to bottom, #ffd166, #c8a948);
+  border: 2px solid #fff1a8;
+  border-radius: 8px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: top-banner-in 0.35s forwards;
+}
+
+.top-banner.achievement {
+  color: #f3e7bf;
+  background: linear-gradient(to bottom, #6e4c9b, #3b2670);
+  border-color: #c79bff;
+}
+
+.top-banner.fade-out {
+  animation: top-banner-out 0.4s forwards;
+}
+
+@keyframes top-banner-in {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes top-banner-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-20px); }
+}
+
 #boss-hud {
   position: fixed;
   top: 18px;

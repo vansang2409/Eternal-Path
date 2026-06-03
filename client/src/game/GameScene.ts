@@ -286,6 +286,19 @@ export class GameScene extends Phaser.Scene {
     return out;
   }
 
+  // ------- top banner notifications -------
+
+  private showTopBanner(text: string, kind: "level" | "achievement", durationMs: number): void {
+    const stack = document.querySelector("#top-banner-stack");
+    if (!stack) return;
+    const banner = document.createElement("div");
+    banner.className = `top-banner${kind === "achievement" ? " achievement" : ""}`;
+    banner.textContent = text;
+    stack.appendChild(banner);
+    setTimeout(() => banner.classList.add("fade-out"), durationMs);
+    setTimeout(() => banner.remove(), durationMs + 500);
+  }
+
   // ------- boss HUD -------
 
   private updateBossHud(snapshot: WorldSnapshot): void {
@@ -753,7 +766,16 @@ export class GameScene extends Phaser.Scene {
           }
         }
       }
-      if (event.kind === "level") soundManager.play("levelUp");
+      if (event.kind === "level") {
+        soundManager.play("levelUp");
+        if (event.entityId === this.selfId) {
+          this.showTopBanner(`🎉 LEVEL ${event.amount}!`, "level", 2000);
+        }
+      }
+    });
+
+    this.socket.on("achievementUnlocked", (payload) => {
+      this.showTopBanner(`🏆 ${payload.title}`, "achievement", 3000);
     });
 
     this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
