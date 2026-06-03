@@ -1,4 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { dirname } from "node:path";
 import type pg from "pg";
 import { DEFAULT_AFK_ZONE, SKILL_LOADOUT_SIZE, baseStatsForLevel, isAfkZone, isPlayerClass, isSkillId } from "@mmorpg/shared";
 import type { AfkZone, EquipmentItem, InventoryState, Item, PlayerClass, PlayerState, SkillId, Stats, Vec2 } from "@mmorpg/shared";
@@ -28,6 +30,59 @@ interface SavedPlayer {
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
+
+// Filesystem persistence — write the in-memory store to a JSON file periodically
+// so the world state survives server restarts when Postgres isn't connected.
+const FS_SAVE_PATH = process.env.MEMORY_SAVE_PATH || "data/saves.json";
+const FS_SAVE_INTERVAL_MS = 30 * 1000;
+let fsDirty = false;
+let fsTimer: NodeJS.Timeout | undefined;
+
+function loadFromDisk(): void {
+  try {
+    if (!existsSync(FS_SAVE_PATH)) return;
+    const raw = readFileSync(FS_SAVE_PATH, "utf8");
+    const json = JSON.parse(raw) as { saves: Array<[string, SavedPlayer]>; auth: Array<[string, string]> };
+    if (Array.isArray(json.saves)) {
+      for (const [k, v] of json.saves) memorySaves.set(k, v);
+    }
+    if (Array.isArray(json.auth)) {
+      for (const [k, v] of json.auth) memoryAuth.set(k, v);
+    }
+    console.log(`[fs-persist] Loaded ${memorySaves.size} player saves + ${memoryAuth.size} auth entries from ${FS_SAVE_PATH}`);
+  } catch (err) {
+    console.warn(`[fs-persist] Failed to load ${FS_SAVE_PATH}:`, err);
+  }
+}
+
+function flushToDisk(): void {
+  if (!fsDirty) return;
+  try {
+    const dir = dirname(FS_SAVE_PATH);
+    if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const payload = {
+      saves: [...memorySaves.entries()],
+      auth: [...memoryAuth.entries()]
+    };
+    writeFileSync(FS_SAVE_PATH, JSON.stringify(payload), "utf8");
+    fsDirty = false;
+  } catch (err) {
+    console.warn(`[fs-persist] Failed to write ${FS_SAVE_PATH}:`, err);
+  }
+}
+
+function markFsDirty(): void {
+  fsDirty = true;
+  if (!fsTimer) {
+    fsTimer = setInterval(flushToDisk, FS_SAVE_INTERVAL_MS);
+    // Make sure we flush on process exit.
+    process.on("SIGINT", () => { flushToDisk(); process.exit(0); });
+    process.on("SIGTERM", () => { flushToDisk(); process.exit(0); });
+  }
+}
+
+// Load any pre-existing state once at module import time.
+loadFromDisk();
 const memoryAuth = new Map<string, string>();
 
 export class PlayerRepository {
@@ -38,6 +93,7 @@ export class PlayerRepository {
       const existing = memoryAuth.get(email);
       if (existing) return { ok: verifyPassword(password, existing) };
       memoryAuth.set(email, hashPassword(password));
+      markFsDirty();
       return { ok: true };
     }
 
@@ -69,6 +125,7 @@ export class PlayerRepository {
       const existing = memoryAuth.get(email);
       if (existing) return { ok: verifyPassword(password, existing) };
       memoryAuth.set(email, hashPassword(password));
+      markFsDirty();
       return { ok: true };
     }
   }
@@ -186,6 +243,7 @@ export class PlayerRepository {
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined
     };
     memorySaves.set(player.email, saved);
+    markFsDirty();
 
     if (!this.pool) return;
 
