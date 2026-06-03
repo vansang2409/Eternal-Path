@@ -1274,6 +1274,8 @@ export class GameScene extends Phaser.Scene {
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
     sprite.setPosition(iso.x, iso.y);
     sprite.setDepth(iso.y);
+    // Face direction of movement (or last facing if stationary).
+    if (monster.velocity.x !== 0) sprite.setFlipX(monster.velocity.x < 0);
     const name = `${monster.boss ? `${t("bossPrefix")} ` : monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
     this.monsterLabels.get(monster.id)
       ?.setText(`${t("levelShort")} ${monster.level} ${name}`)
