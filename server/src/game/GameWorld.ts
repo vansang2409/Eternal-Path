@@ -1354,7 +1354,9 @@ export class GameWorld {
         const len = Math.hypot(dx, dy) || 1;
         const slowMul = freezeSlowFor(monster);
         const effectiveSpeed = MONSTER_SPEED * slowMul;
-        monster.velocity = distance(monster.position, target.position) > MONSTER_ATTACK_RANGE
+        const defForChase = getMonsterDefinition(monster.type);
+        const wantRange = defForChase.ranged ? (defForChase.rangedAttackRange ?? 200) - 30 : MONSTER_ATTACK_RANGE;
+        monster.velocity = distance(monster.position, target.position) > wantRange
           ? { x: (dx / len) * effectiveSpeed, y: (dy / len) * effectiveSpeed }
           : { x: 0, y: 0 };
       } else if (previousTarget && isInTown(previousTarget.position)) {
@@ -1412,13 +1414,24 @@ export class GameWorld {
         monster.velocity = { x: 0, y: 0 };
         continue;
       }
-      if (!player || distance(monster.position, player.position) > MONSTER_ATTACK_RANGE) continue;
+      const def = getMonsterDefinition(monster.type);
+      const effectiveRange = def.ranged ? (def.rangedAttackRange ?? 200) : MONSTER_ATTACK_RANGE;
+      if (!player || distance(monster.position, player.position) > effectiveRange) continue;
       if (Date.now() - monster.lastAttackAt < MONSTER_ATTACK_COOLDOWN_MS) continue;
 
       monster.lastAttackAt = Date.now();
       const result = rollDamage(monster.attack, player.stats.defense, monster.level - player.stats.level);
       player.stats.hp = Math.max(0, player.stats.hp - result.damage);
       this.emitFloating(player.id, player.position, result.damage, "damage");
+      // Visual projectile for ranged casters.
+      if (def.ranged) {
+        this.io.emit("monsterProjectile", {
+          sourceId: monster.id,
+          sourcePosition: { ...monster.position },
+          targetPosition: { ...player.position },
+          color: def.rangedProjectileColor ?? 0xff8a4f
+        });
+      }
       if (player.stats.hp <= 0) {
         player.position = { ...townSpawn };
         player.stats.hp = Math.ceil(player.stats.maxHp * 0.65);

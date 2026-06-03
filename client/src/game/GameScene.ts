@@ -782,6 +782,10 @@ export class GameScene extends Phaser.Scene {
       this.playSkillVFX(skillId, position, targetPosition);
     });
 
+    this.socket.on("monsterProjectile", ({ sourcePosition, targetPosition, color }) => {
+      this.playMonsterProjectile(sourcePosition, targetPosition, color);
+    });
+
     this.socket.on("worldTime", (payload) => this.applyWorldTime(payload));
 
     this.socket.on("arenaKill", ({ killerName, victimName }) => {
@@ -1379,6 +1383,25 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.hud.log(t("selectPlayerToInvite"));
     }
+  }
+
+  // Travel a small glowing orb from `from` to `to` in iso space.
+  private playMonsterProjectile(from: Vec2, to: Vec2, color: number): void {
+    const a = worldToIso(from.x, from.y);
+    const b = worldToIso(to.x, to.y);
+    const orb = this.add.circle(a.x, a.y, 4, color, 0.95).setDepth(99989);
+    const ring = this.add.circle(a.x, a.y, 6, color, 0).setStrokeStyle(1, color, 0.6).setDepth(99988);
+    this.tweens.add({
+      targets: [orb, ring],
+      x: b.x,
+      y: b.y,
+      duration: 280,
+      ease: "Cubic.Out",
+      onComplete: () => {
+        orb.destroy();
+        ring.destroy();
+      }
+    });
   }
 
   private playDeathPoof(position: Vec2, big: boolean): void {

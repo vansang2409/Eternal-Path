@@ -12,6 +12,12 @@ export interface MonsterDefinition {
   dropRate: number;
   preferredSlots: EquipmentSlot[];
   lootTheme: string;
+  /** When true, the monster engages from distance using a projectile. */
+  ranged?: boolean;
+  /** Pixel color of the cast projectile (for client VFX). */
+  rangedProjectileColor?: number;
+  /** Optional override of attack range (pixels). Defaults to MONSTER_ATTACK_RANGE for melee. */
+  rangedAttackRange?: number;
 }
 
 export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
@@ -143,7 +149,10 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     defenseMultiplier: 1,
     dropRate: 0.5,
     preferredSlots: ["ring", "weapon"],
-    lootTheme: "Ashen"
+    lootTheme: "Ashen",
+    ranged: true,
+    rangedProjectileColor: 0xff8a4f,
+    rangedAttackRange: 200
   },
   frostRevenant: {
     type: "frostRevenant",
@@ -182,7 +191,10 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     defenseMultiplier: 1,
     dropRate: 0.54,
     preferredSlots: ["weapon", "boots"],
-    lootTheme: "Bloodwing"
+    lootTheme: "Bloodwing",
+    ranged: true,
+    rangedProjectileColor: 0xff4f7a,
+    rangedAttackRange: 220
   },
   ancientDrake: {
     type: "ancientDrake",
@@ -287,7 +299,10 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     defenseMultiplier: 1.2,
     dropRate: 0.62,
     preferredSlots: ["weapon", "ring", "helmet"],
-    lootTheme: "Crystal"
+    lootTheme: "Crystal",
+    ranged: true,
+    rangedProjectileColor: 0x9bd2ff,
+    rangedAttackRange: 240
   }
 };
 

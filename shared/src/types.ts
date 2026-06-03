@@ -357,6 +357,7 @@ export interface ServerToClientEvents {
   shopStock: (items: ShopItem[]) => void;
   system: (message: string) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
+  monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
   arenaKill: (event: { killerName: string; victimName: string }) => void;
   worldTime: (payload: WorldTime) => void;
