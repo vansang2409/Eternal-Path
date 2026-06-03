@@ -41,7 +41,8 @@ export class Hud {
     private readonly isMuted: () => boolean,
     private readonly onCraft: (recipeId: string) => void = () => {},
     private readonly onSelectClass: (playerClass: PlayerClass) => void = () => {},
-    private readonly onUpgradeSkill: (skillId: SkillId) => void = () => {}
+    private readonly onUpgradeSkill: (skillId: SkillId) => void = () => {},
+    private readonly onEnchant: (itemId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -174,6 +175,8 @@ export class Hud {
     this.renderAfkZone();
     this.renderAchievements();
     this.renderForgeRecipes();
+    this.renderForgeEnchant();
+    this.wireForgeTabs();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -215,6 +218,73 @@ export class Hud {
       btn.disabled = !canCraft;
       btn.textContent = canCraft ? "Chế tạo" : "Thiếu nguyên liệu";
       btn.addEventListener("click", () => this.onCraft(recipe.id));
+      card.appendChild(btn);
+      root.appendChild(card);
+    }
+  }
+
+  private wiredForgeTabs = false;
+  private wireForgeTabs(): void {
+    if (this.wiredForgeTabs) return;
+    this.wiredForgeTabs = true;
+    document.querySelectorAll<HTMLButtonElement>("#forge-tabs [data-forge-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.forgeTab!;
+        document.querySelectorAll<HTMLButtonElement>("#forge-tabs [data-forge-tab]").forEach((b) => {
+          b.classList.toggle("active", b.dataset.forgeTab === target);
+        });
+        const recipes = document.querySelector<HTMLDivElement>("#forge-recipes");
+        const enchant = document.querySelector<HTMLDivElement>("#forge-enchant");
+        if (target === "craft") {
+          recipes?.classList.remove("hidden");
+          enchant?.classList.add("hidden");
+        } else {
+          recipes?.classList.add("hidden");
+          enchant?.classList.remove("hidden");
+        }
+      });
+    });
+  }
+
+  private renderForgeEnchant(): void {
+    const root = document.querySelector<HTMLDivElement>("#forge-enchant");
+    if (!root || !this.player) return;
+    root.innerHTML = "";
+    const owned = this.materialCounts();
+    const intro = document.createElement("p");
+    intro.style.cssText = "margin:0 0 12px;color:#bdbdbd;font-size:12px";
+    intro.textContent = "Tinh luyện trang bị Hiếm (3x Crystal Shard) hoặc Sử Thi (5x Void Ash). Stats sẽ re-roll trong khoảng ±30%.";
+    root.appendChild(intro);
+    const equippableItems = this.player.inventory.items.filter((it) => it.kind === "equipment" && (it.rarity === "rare" || it.rarity === "epic"));
+    if (equippableItems.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "padding:18px;text-align:center;color:#8e9192";
+      empty.textContent = "Bạn không có trang bị Hiếm hoặc Sử Thi nào trong túi.";
+      root.appendChild(empty);
+      return;
+    }
+    for (const item of equippableItems) {
+      if (item.kind !== "equipment") continue;
+      const mat: MaterialId = item.rarity === "epic" ? "voidAsh" : "crystalShard";
+      const need = item.rarity === "epic" ? 5 : 3;
+      const have = owned.get(mat) ?? 0;
+      const ok = have >= need;
+      const card = document.createElement("div");
+      card.className = `forge-recipe rarity-${item.rarity}`;
+      const statText = Object.entries(item.stats).map(([k, v]) => `+${v} ${statLabel(k)}`).join(" · ");
+      card.innerHTML = `
+        <div class="forge-name">${escapeHtml(item.name)} <small style="color:#8e9192">(${item.rarity})</small> ${item.enchantCount ? `<small style='color:#ffd166'>· tinh luyện ${item.enchantCount} lần</small>` : ""}</div>
+        <div style="font-size:12px;color:#cfcfcf;margin-bottom:6px">${statText}</div>
+        <div class="forge-cost">
+          <span class="${ok ? "ok" : "missing"}">${MATERIAL_CATALOG[mat].name}: ${have}/${need}</span>
+        </div>
+      `;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forge-craft";
+      btn.disabled = !ok;
+      btn.textContent = ok ? "Tinh luyện" : "Thiếu nguyên liệu";
+      btn.addEventListener("click", () => this.onEnchant(item.id));
       card.appendChild(btn);
       root.appendChild(card);
     }

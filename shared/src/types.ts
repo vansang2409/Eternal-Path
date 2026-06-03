@@ -76,6 +76,8 @@ export interface EquipmentItem extends BaseItem {
   kind: "equipment";
   slot: EquipmentSlot;
   stats: ItemStats;
+  /** How many times this item has been enchanted (re-rolled). */
+  enchantCount?: number;
 }
 
 export interface ConsumableItem extends BaseItem {
@@ -386,6 +388,7 @@ export interface ClientToServerEvents {
   upgradeSkill: (payload: { skillId: SkillId }) => void;
   leaderboardRequest: () => void;
   rerollDailyQuests: () => void;
+  enchantItem: (payload: { itemId: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

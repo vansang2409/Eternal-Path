@@ -1016,6 +1016,16 @@ export class GameWorld {
       this.craftRecipe(player, recipeId);
     });
 
+    socket.on("enchantItem", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Cần về thị trấn để tinh luyện.");
+        return;
+      }
+      this.enchantItem(player, itemId);
+    });
+
     socket.on("selectClass", ({ playerClass }) => {
       const player = this.players.get(socket.id);
       if (!player) {
@@ -1630,6 +1640,58 @@ export class GameWorld {
     };
     player.inventory.items.push(item);
     this.emitFloating(player.id, player.position, 0, "loot", info.name);
+  }
+
+  // Re-roll stats on a rare/epic equipment item the player owns.
+  // Cost: 3x crystalShard if rare, 5x voidAsh if epic. Each successful
+  // enchantment randomises stat values within ~30% of original budget.
+  private enchantItem(player: PlayerState, itemId: string): void {
+    const idx = player.inventory.items.findIndex((it) => it.id === itemId);
+    if (idx < 0) {
+      this.sockets.get(player.id)?.emit("system", "Không tìm thấy vật phẩm trong túi.");
+      return;
+    }
+    const item = player.inventory.items[idx];
+    if (item.kind !== "equipment") {
+      this.sockets.get(player.id)?.emit("system", "Chỉ tinh luyện được trang bị.");
+      return;
+    }
+    if (item.rarity !== "rare" && item.rarity !== "epic") {
+      this.sockets.get(player.id)?.emit("system", "Chỉ tinh luyện được trang bị Hiếm hoặc Sử Thi.");
+      return;
+    }
+    const requiredMaterial: MaterialId = item.rarity === "epic" ? "voidAsh" : "crystalShard";
+    const requiredQty = item.rarity === "epic" ? 5 : 3;
+    const matIndices = player.inventory.items
+      .map((it, i) => it.kind === "material" && (it as MaterialItem).materialId === requiredMaterial ? i : -1)
+      .filter((i) => i >= 0);
+    if (matIndices.length < requiredQty) {
+      this.sockets.get(player.id)?.emit("system", `Cần ${requiredQty} ${MATERIAL_CATALOG[requiredMaterial].name} để tinh luyện.`);
+      return;
+    }
+    // Consume materials (descending index).
+    const toRemove = matIndices.slice(0, requiredQty).sort((a, b) => b - a);
+    for (const i of toRemove) player.inventory.items.splice(i, 1);
+    // Re-roll stats: keep slot/rarity/name, multiply each existing stat by
+    // a per-stat random factor between 0.7 and 1.3 to deliver variance.
+    const newStats: { attack?: number; defense?: number; maxHp?: number; speed?: number } = {};
+    if (item.stats.attack) newStats.attack = Math.max(1, Math.round(item.stats.attack * (0.7 + Math.random() * 0.6)));
+    if (item.stats.defense) newStats.defense = Math.max(1, Math.round(item.stats.defense * (0.7 + Math.random() * 0.6)));
+    if (item.stats.maxHp) newStats.maxHp = Math.max(1, Math.round(item.stats.maxHp * (0.7 + Math.random() * 0.6)));
+    if (item.stats.speed) newStats.speed = Math.max(1, Math.round(item.stats.speed * (0.7 + Math.random() * 0.6)));
+    // If the item is currently equipped, refresh derived stats.
+    const equippedItem = player.inventory.equipped[item.slot];
+    const isEquipped = equippedItem?.id === item.id;
+    if (isEquipped && equippedItem) {
+      removeItemStats(player, equippedItem);
+    }
+    item.stats = newStats;
+    item.enchantCount = (item.enchantCount ?? 0) + 1;
+    if (isEquipped) addItemStats(player, item);
+    this.sockets.get(player.id)?.emit("player", player);
+    this.sockets.get(player.id)?.emit("system", `Đã tinh luyện ${item.name} (lần ${item.enchantCount}).`);
+    this.emitFloating(player.id, player.position, 0, "loot", `+Tinh luyện`);
+    this.markDirty(player);
   }
 
   private craftRecipe(player: PlayerState, recipeId: string): void {

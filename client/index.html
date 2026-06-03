@@ -282,7 +282,14 @@
       <div id="forge-modal" class="game-modal hidden" role="dialog" aria-modal="true">
         <div class="game-modal-card wide">
           <header><h2 id="forge-title">Lò Rèn</h2><span id="forge-hint">Cần đứng ở thị trấn</span><button class="modal-close" type="button" aria-label="Đóng">×</button></header>
-          <div class="game-modal-body"><div id="forge-recipes"></div></div>
+          <div class="game-modal-body">
+            <div id="forge-tabs" class="quest-tabs">
+              <button type="button" class="quest-tab active" data-forge-tab="craft">Chế Tạo</button>
+              <button type="button" class="quest-tab" data-forge-tab="enchant">Tinh Luyện</button>
+            </div>
+            <div id="forge-recipes"></div>
+            <div id="forge-enchant" class="hidden"></div>
+          </div>
         </div>
       </div>
 
