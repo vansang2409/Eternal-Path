@@ -781,6 +781,8 @@ export class GameScene extends Phaser.Scene {
     // to retype credentials. If the token is no longer valid, the server emits
     // a system error which falls back to the manual login form.
     this.socket.on("connect", () => {
+      const stats = document.querySelector<HTMLDivElement>("#login-stats");
+      if (stats) stats.textContent = "✓ Đã kết nối máy chủ — sẵn sàng vào game.";
       if (this.loggedIn) return;
       const savedToken = localStorage.getItem("sessionToken");
       if (savedToken) this.socket.emit("login", { token: savedToken });

@@ -11,9 +11,24 @@
     <div id="app">
       <div id="game">
         <div id="login-overlay">
+          <div class="login-stars"></div>
           <form id="login-form" class="login-box">
-            <h1>Linh Vực</h1>
-            <p id="login-copy">Nhập email để bắt đầu hành trình.</p>
+            <h1>⚔ Linh Vực <span class="login-sub">Eternal Path</span></h1>
+            <p id="login-copy">MMORPG 2D — chiến đấu, săn báu vật, chế tạo, đấu trường.</p>
+            <div class="login-class-preview">
+              <div class="login-class">
+                <div class="login-class-icon warrior">⚔</div>
+                <span>Chiến Binh</span>
+              </div>
+              <div class="login-class">
+                <div class="login-class-icon mage">✨</div>
+                <span>Pháp Sư</span>
+              </div>
+              <div class="login-class">
+                <div class="login-class-icon ranger">🏹</div>
+                <span>Du Hiệp</span>
+              </div>
+            </div>
             <label id="email-label" for="email-input">Email</label>
             <input id="email-input" type="email" autocomplete="email" required placeholder="you@example.com" />
             <label id="name-label" for="name-input">Tên nhân vật</label>
@@ -22,6 +37,7 @@
             <input id="password-input" type="password" autocomplete="current-password" minlength="4" required placeholder="••••••" />
             <button id="login-button" type="submit">Vào game</button>
             <div id="login-error"></div>
+            <div class="login-stats" id="login-stats">Đang kết nối...</div>
           </form>
         </div>
       </div>
