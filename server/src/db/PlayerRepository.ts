@@ -42,6 +42,9 @@ interface SavedPlayer {
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
+// memoryAuth must be declared before loadFromDisk() runs since the helper
+// accesses both maps.
+const memoryAuth = new Map<string, string>();
 
 // Filesystem persistence — write the in-memory store to a JSON file periodically
 // so the world state survives server restarts when Postgres isn't connected.
