@@ -127,6 +127,17 @@ export class GameScene extends Phaser.Scene {
     );
     this.socket = createSocket();
     this.registerSocketEvents();
+    this.hud.setPrivateMessageHandler((to, message) => this.socket.emit("privateMessage", { to, message }));
+    this.hud.setFriendHandlers(
+      (name) => this.socket.emit("addFriend", { name }),
+      (name) => this.socket.emit("removeFriend", { name })
+    );
+    this.socket.on("privateMessageReceived", ({ from, message }) => {
+      this.hud.appendPrivateMessage(from, message);
+    });
+    this.socket.on("friendList", (rows) => {
+      this.hud.log(`Bạn bè (${rows.filter((r) => r.online).length}/${rows.length} online): ${rows.map((r) => `${r.online ? "🟢" : "⚪"} ${r.name}`).join(", ") || "(trống)"}`, "log-line");
+    });
 
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();

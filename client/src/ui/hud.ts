@@ -686,28 +686,63 @@ export class Hud {
   //  /help        — list commands in the log
   //  /me <text>   — emote (broadcast as a chat message prefixed with *)
   //  /clear       — clear chat history
+  private privateMessageHandler?: (to: string, message: string) => void;
+  private friendAddHandler?: (name: string) => void;
+  private friendRemoveHandler?: (name: string) => void;
+
+  setPrivateMessageHandler(handler: (to: string, message: string) => void): void {
+    this.privateMessageHandler = handler;
+  }
+  setFriendHandlers(add: (name: string) => void, remove: (name: string) => void): void {
+    this.friendAddHandler = add;
+    this.friendRemoveHandler = remove;
+  }
+
   private handleSlashCommand(raw: string): void {
     const [cmd, ...rest] = raw.slice(1).split(/\s+/);
     const arg = rest.join(" ").trim();
     if (cmd === "help") {
       const lines = [
         "/help — danh sách lệnh",
-        "/me <text> — phát emote (vd: /me chào mọi người)",
+        "/me <text> — phát emote",
+        "/w <tên> <tin> — nhắn riêng",
+        "/friend <tên> — thêm bạn",
+        "/unfriend <tên> — bỏ bạn",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
       return;
     }
-    if (cmd === "me" && arg) {
-      this.onChat(`* ${arg}`);
+    if (cmd === "me" && arg) { this.onChat(`* ${arg}`); return; }
+    if ((cmd === "w" || cmd === "whisper" || cmd === "tell")) {
+      const [target, ...msgRest] = rest;
+      const msg = msgRest.join(" ").trim();
+      if (!target || !msg) { this.log("Cú pháp: /w <tên người chơi> <tin nhắn>", "log-line"); return; }
+      this.privateMessageHandler?.(target, msg);
       return;
     }
+    if (cmd === "friend" && arg) { this.friendAddHandler?.(arg); return; }
+    if (cmd === "unfriend" && arg) { this.friendRemoveHandler?.(arg); return; }
     if (cmd === "clear") {
       const root = document.querySelector("#chat-messages");
       if (root) root.innerHTML = "";
       return;
     }
     this.log(`Lệnh không hợp lệ: ${cmd}. Gõ /help để xem danh sách.`, "log-line");
+  }
+
+  appendPrivateMessage(from: string, message: string): void {
+    const root = document.querySelector("#chat-messages");
+    if (!root) return;
+    const line = document.createElement("div");
+    line.className = "chat-line";
+    line.style.color = "#cdb6ff";
+    const time = new Date();
+    const hh = time.getHours().toString().padStart(2, "0");
+    const mm = time.getMinutes().toString().padStart(2, "0");
+    line.innerHTML = `<time class="chat-time">${hh}:${mm}</time><strong>[Riêng] ${escapeHtml(from)}</strong><span>${escapeHtml(message)}</span>`;
+    root.append(line);
+    root.scrollTop = root.scrollHeight;
   }
 
   setChatHistory(messages: ChatMessage[]): void {

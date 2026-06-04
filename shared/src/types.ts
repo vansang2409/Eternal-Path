@@ -158,6 +158,7 @@ export interface PlayerState {
   battlePassClaimedPremium?: number[];
   battlePassSeason?: number;
   titles?: string[];
+  friends?: string[];
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
 }
@@ -387,6 +388,8 @@ export interface ServerToClientEvents {
   arenaKill: (event: { killerName: string; victimName: string }) => void;
   worldTime: (payload: WorldTime) => void;
   leaderboard: (payload: LeaderboardPayload) => void;
+  friendList: (payload: { name: string; online: boolean }[]) => void;
+  privateMessageReceived: (payload: { from: string; message: string; sentAt: number }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -425,6 +428,9 @@ export interface ClientToServerEvents {
   claimDailyReward: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
+  addFriend: (payload: { name: string }) => void;
+  removeFriend: (payload: { name: string }) => void;
+  privateMessage: (payload: { to: string; message: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

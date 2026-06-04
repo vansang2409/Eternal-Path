@@ -573,7 +573,8 @@ export class GameWorld {
         battlePassClaimedFree: saved.battlePassClaimedFree ?? [],
         battlePassClaimedPremium: saved.battlePassClaimedPremium ?? [],
         battlePassSeason: saved.battlePassSeason ?? 1,
-        titles: saved.titles ?? []
+        titles: saved.titles ?? [],
+        friends: saved.friends ?? []
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -590,6 +591,7 @@ export class GameWorld {
       this.emitQuestList(player);
       socket.emit("shopStock", this.shopStock);
       socket.emit("chatHistory", this.chatMessages);
+      this.emitFriendList(player);
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
     });
 
@@ -1008,6 +1010,47 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", "Đã trang bị cosmetic.");
       this.markDirty(player);
+    });
+
+    socket.on("addFriend", ({ name }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const cleanName = String(name ?? "").trim().slice(0, 20);
+      if (!cleanName || cleanName === player.accountName) return;
+      const friends = player.friends ?? [];
+      if (friends.includes(cleanName)) {
+        socket.emit("system", `${cleanName} đã có trong danh sách bạn.`);
+        return;
+      }
+      friends.push(cleanName);
+      player.friends = friends;
+      socket.emit("system", `Đã thêm ${cleanName} vào danh sách bạn.`);
+      this.emitFriendList(player);
+      this.markDirty(player);
+    });
+
+    socket.on("removeFriend", ({ name }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const friends = (player.friends ?? []).filter((n) => n !== name);
+      player.friends = friends;
+      socket.emit("system", `Đã xoá ${name}.`);
+      this.emitFriendList(player);
+      this.markDirty(player);
+    });
+
+    socket.on("privateMessage", ({ to, message }) => {
+      const sender = this.players.get(socket.id);
+      if (!sender) return;
+      const cleanMsg = String(message ?? "").trim().slice(0, 200);
+      if (!cleanMsg) return;
+      const recipient = [...this.players.values()].find((p) => p.accountName === to);
+      if (!recipient) {
+        socket.emit("system", `${to} không online.`);
+        return;
+      }
+      this.sockets.get(recipient.id)?.emit("privateMessageReceived", { from: sender.accountName, message: cleanMsg, sentAt: Date.now() });
+      socket.emit("privateMessageReceived", { from: `→ ${to}`, message: cleanMsg, sentAt: Date.now() });
     });
 
     socket.on("buyBattlePassPremium", () => {
@@ -2320,6 +2363,12 @@ export class GameWorld {
   }
 
   // Grant battle-pass exp and roll over tier levels. Caps at the catalog max.
+  private emitFriendList(player: PlayerState): void {
+    const online = new Set([...this.players.values()].map((p) => p.accountName));
+    const rows = (player.friends ?? []).map((name) => ({ name, online: online.has(name) }));
+    this.sockets.get(player.id)?.emit("friendList", rows);
+  }
+
   private grantBattlePassExp(player: PlayerState, amount: number): void {
     if (amount <= 0) return;
     const maxLevel = BATTLE_PASS_TIERS.length;
