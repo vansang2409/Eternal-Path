@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+**/dist
+**/.cache
+*.log
+.git
+.github
+data
+client/.vite

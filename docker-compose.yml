@@ -1,0 +1,36 @@
+services:
+  game:
+    build: .
+    image: eternal-path:latest
+    container_name: eternal-path
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      # Uncomment when you connect a Postgres database.
+      # - DATABASE_URL=postgres://postgres:postgres@db:5432/eternal_path
+    volumes:
+      - eternal-path-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 4s
+      retries: 4
+
+  # Uncomment when persisting to Postgres instead of the JSON file.
+  # db:
+  #   image: postgres:16-alpine
+  #   container_name: eternal-path-db
+  #   environment:
+  #     - POSTGRES_DB=eternal_path
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #   volumes:
+  #     - eternal-path-db:/var/lib/postgresql/data
+  #   restart: unless-stopped
+
+volumes:
+  eternal-path-data:
+  # eternal-path-db:
