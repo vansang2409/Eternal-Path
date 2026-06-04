@@ -172,6 +172,20 @@ export class Hud {
     const maxStam = player.stats.maxStamina ?? 100;
     const curStam = player.stats.stamina ?? maxStam;
     setBar("#stamina-fill", "#stamina-label", Math.round(curStam), maxStam, "Thể lực");
+    // Currency badge row.
+    let badgeRow = document.querySelector<HTMLDivElement>("#currency-row");
+    if (!badgeRow) {
+      const playerPanel = document.querySelector(".player-panel");
+      if (playerPanel) {
+        badgeRow = document.createElement("div");
+        badgeRow.id = "currency-row";
+        badgeRow.style.cssText = "display:flex;gap:10px;align-items:center;margin-top:6px;font-size:12px";
+        playerPanel.appendChild(badgeRow);
+      }
+    }
+    if (badgeRow) {
+      badgeRow.innerHTML = `<span style="color:#ffd166">${player.stats.gold} 🪙</span><span style="color:#cdb6ff">${player.gems ?? 0} 💎</span>`;
+    }
     const canAllocate = player.unspentPoints > 0;
     document.querySelector("#stats")!.innerHTML = `
       ${canAllocate ? `<div class="stat-points-left">${t("statPointsLeft", { points: player.unspentPoints })}</div>` : ""}
