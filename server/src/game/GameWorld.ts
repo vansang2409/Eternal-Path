@@ -582,7 +582,30 @@ export class GameWorld {
     });
 
     socket.on("input", (input) => {
-      if (this.players.has(socket.id)) this.inputs.set(socket.id, input);
+      if (!this.players.has(socket.id)) return;
+      // Anti-cheat: validate input shape so a malicious client can't push
+      // arbitrary moveTarget coordinates or impossible booleans.
+      if (!input || typeof input !== "object") return;
+      const safeInput = {
+        seq: Number(input.seq) || 0,
+        up: !!input.up,
+        down: !!input.down,
+        left: !!input.left,
+        right: !!input.right,
+        sprinting: !!input.sprinting,
+        moveTarget: undefined as { x: number; y: number } | undefined
+      };
+      if (input.moveTarget && typeof input.moveTarget.x === "number" && typeof input.moveTarget.y === "number") {
+        // Bound moveTarget to the world rectangle so a tampered client can't
+        // teleport-via-moveTarget into negative tile space or off the map.
+        const worldW = this.worldMap.width * TILE_SIZE;
+        const worldH = this.worldMap.height * TILE_SIZE;
+        safeInput.moveTarget = {
+          x: Math.max(0, Math.min(worldW, input.moveTarget.x)),
+          y: Math.max(0, Math.min(worldH, input.moveTarget.y))
+        };
+      }
+      this.inputs.set(socket.id, safeInput);
     });
 
     socket.on("setAutoRetarget", ({ enabled }) => {
@@ -1289,6 +1312,13 @@ export class GameWorld {
     socket.on("chatMessage", ({ message }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
+      // Anti-cheat: bound message length + reject high-frequency spam beyond
+      // the existing 900ms cooldown window.
+      if (typeof message !== "string") return;
+      if (message.length > 200) {
+        socket.emit("system", "Tin nhắn quá dài.");
+        return;
+      }
       const now = Date.now();
       if (now - (this.chatCooldowns.get(socket.id) ?? 0) < 900) {
         socket.emit("system", "Chat đang hồi, chờ một chút nhé.");
@@ -1394,6 +1424,18 @@ export class GameWorld {
         x: player.position.x + player.velocity.x * dt,
         y: player.position.y + player.velocity.y * dt
       };
+      // Anti-cheat: cap how far a player can move per tick. Even with full
+      // speed + sprint + max speed gear, the player should never exceed
+      // ~400 px/sec. Reject any candidate that violates this.
+      const maxMovePerTick = 400 * dt + 4; // px allowance per tick
+      const dxc = candidate.x - player.position.x;
+      const dyc = candidate.y - player.position.y;
+      if (Math.hypot(dxc, dyc) > maxMovePerTick) {
+        // Snap movement to the legal max in the chosen direction.
+        const len = Math.hypot(dxc, dyc) || 1;
+        candidate.x = player.position.x + (dxc / len) * maxMovePerTick;
+        candidate.y = player.position.y + (dyc / len) * maxMovePerTick;
+      }
       player.position = this.resolveMovement(player.position, candidate);
       player.facing = facingFromAxis(player.velocity, player.facing);
     }
