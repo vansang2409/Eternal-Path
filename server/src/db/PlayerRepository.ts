@@ -98,7 +98,6 @@ function markFsDirty(): void {
 
 // Load any pre-existing state once at module import time.
 loadFromDisk();
-const memoryAuth = new Map<string, string>();
 
 export class PlayerRepository {
   constructor(private readonly pool?: pg.Pool) {}
