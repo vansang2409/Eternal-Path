@@ -68,6 +68,10 @@ export class GameScene extends Phaser.Scene {
   private authoritativeSelfPosition?: Vec2;
   private loggedIn = false;
   private formCaptureHandlers: Array<{ type: string; handler: EventListener }> = [];
+  // Touch controls: joystick axis (-1..1) and per-skill touch flags.
+  private touchAxis = { x: 0, y: 0 };
+  private touchKeyDown: Record<"F" | "Q" | "W" | "E" | "R", boolean> = { F: false, Q: false, W: false, E: false, R: false };
+  private isTouchDevice = false;
   private worldMap?: WorldMapPayload;
   private mapBuilt = false;
   private minimapCanvas?: HTMLCanvasElement;
@@ -120,6 +124,7 @@ export class GameScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
+    this.setupTouchControls();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
     this.input.mouse?.disableContextMenu();
@@ -143,20 +148,23 @@ export class GameScene extends Phaser.Scene {
       this.renderBufferedWorld(time);
       return;
     }
+    // Merge touch joystick into directional axis (8-way threshold).
+    const tx = this.touchAxis.x;
+    const ty = this.touchAxis.y;
     const input: ClientInput = {
       seq: this.seq++,
-      up: false,
-      down: false,
-      left: false,
-      right: false,
+      up: tx === 0 && ty < -0.3 ? true : ty < -0.3,
+      down: ty > 0.3,
+      left: tx < -0.3,
+      right: tx > 0.3,
       moveTarget: this.moveTarget ? { x: this.moveTarget.x, y: this.moveTarget.y } : undefined,
       sprinting: this.cursors.SHIFT?.isDown ?? false
     };
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.F)) this.useFirstPotion();
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.Q)) this.useSkillSlot(0);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.W)) this.useSkillSlot(1);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.E)) this.useSkillSlot(2);
-    if (Phaser.Input.Keyboard.JustDown(this.cursors.R)) this.useSkillSlot(3);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.F) || this.consumeTouchTap("F")) this.useFirstPotion();
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.Q) || this.consumeTouchTap("Q")) this.useSkillSlot(0);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.W) || this.consumeTouchTap("W")) this.useSkillSlot(1);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.E) || this.consumeTouchTap("E")) this.useSkillSlot(2);
+    if (Phaser.Input.Keyboard.JustDown(this.cursors.R) || this.consumeTouchTap("R")) this.useSkillSlot(3);
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
@@ -360,6 +368,86 @@ export class GameScene extends Phaser.Scene {
       const val = this.activeLeaderboardTab === "byLevel" ? row.level : this.activeLeaderboardTab === "byGold" ? row.gold : row.pvpKills;
       tr.innerHTML = `<td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:${i === 0 ? "#ffd166" : "#bdbdbd"}">${i + 1}</td><td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${row.accountName}</td><td style="text-align:right;padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#ffd166">${val}</td>`;
       tbody.appendChild(tr);
+    });
+  }
+
+  // ------- touch controls -------
+
+  private touchTapEdges: Set<"F" | "Q" | "W" | "E" | "R"> = new Set();
+
+  private consumeTouchTap(key: "F" | "Q" | "W" | "E" | "R"): boolean {
+    if (this.touchTapEdges.has(key)) {
+      this.touchTapEdges.delete(key);
+      return true;
+    }
+    return false;
+  }
+
+  private setupTouchControls(): void {
+    this.isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const root = document.querySelector<HTMLDivElement>("#touch-controls");
+    if (!root) return;
+    if (!this.isTouchDevice) {
+      root.classList.add("hidden");
+      return;
+    }
+    root.classList.remove("hidden");
+
+    // Joystick.
+    const joystick = document.querySelector<HTMLDivElement>("#touch-joystick");
+    const knob = document.querySelector<HTMLDivElement>("#touch-joystick-knob");
+    if (joystick && knob) {
+      let activePointer: number | undefined;
+      const rect = () => joystick.getBoundingClientRect();
+      const maxR = 50;
+      const reset = () => {
+        this.touchAxis = { x: 0, y: 0 };
+        knob.style.transform = "translate(-50%, -50%)";
+      };
+      const handleMove = (clientX: number, clientY: number) => {
+        const r = rect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        let dx = clientX - cx;
+        let dy = clientY - cy;
+        const len = Math.hypot(dx, dy);
+        if (len > maxR) {
+          dx = (dx / len) * maxR;
+          dy = (dy / len) * maxR;
+        }
+        knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+        this.touchAxis = { x: dx / maxR, y: dy / maxR };
+      };
+      joystick.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        if (activePointer !== undefined) return;
+        activePointer = e.pointerId;
+        joystick.setPointerCapture(e.pointerId);
+        handleMove(e.clientX, e.clientY);
+      });
+      joystick.addEventListener("pointermove", (e) => {
+        if (activePointer !== e.pointerId) return;
+        e.preventDefault();
+        handleMove(e.clientX, e.clientY);
+      });
+      const release = (e: PointerEvent) => {
+        if (activePointer !== e.pointerId) return;
+        activePointer = undefined;
+        try { joystick.releasePointerCapture(e.pointerId); } catch (_) { /* noop */ }
+        reset();
+      };
+      joystick.addEventListener("pointerup", release);
+      joystick.addEventListener("pointercancel", release);
+    }
+
+    // Action buttons.
+    document.querySelectorAll<HTMLButtonElement>(".touch-btn[data-touch-key]").forEach((btn) => {
+      const key = btn.dataset.touchKey as "F" | "Q" | "W" | "E" | "R";
+      const fire = (e: Event) => {
+        e.preventDefault();
+        this.touchTapEdges.add(key);
+      };
+      btn.addEventListener("pointerdown", fire);
     });
   }
 
