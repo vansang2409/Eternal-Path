@@ -9,3 +9,4 @@ export * from "./crafting.js";
 export * from "./classes.js";
 export * from "./cosmetics.js";
 export * from "./battlepass.js";
+export * from "./vip.js";

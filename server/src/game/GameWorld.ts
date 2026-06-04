@@ -22,6 +22,11 @@ import {
   BATTLE_PASS_EXP_PER_TIER,
   BATTLE_PASS_PREMIUM_PRICE,
   BATTLE_PASS_TIERS,
+  VIP_DAILY_GEMS,
+  VIP_EXP_MULTIPLIER,
+  VIP_GOLD_MULTIPLIER,
+  VIP_PACKAGES,
+  isVipActive,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -574,7 +579,9 @@ export class GameWorld {
         battlePassClaimedPremium: saved.battlePassClaimedPremium ?? [],
         battlePassSeason: saved.battlePassSeason ?? 1,
         titles: saved.titles ?? [],
-        friends: saved.friends ?? []
+        friends: saved.friends ?? [],
+        vipUntil: saved.vipUntil,
+        vipLastDailyDate: saved.vipLastDailyDate
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -1051,6 +1058,47 @@ export class GameWorld {
       }
       this.sockets.get(recipient.id)?.emit("privateMessageReceived", { from: sender.accountName, message: cleanMsg, sentAt: Date.now() });
       socket.emit("privateMessageReceived", { from: `→ ${to}`, message: cleanMsg, sentAt: Date.now() });
+    });
+
+    socket.on("buyVip", ({ days }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const pkg = VIP_PACKAGES.find((p) => p.days === days);
+      if (!pkg) {
+        socket.emit("system", "Gói VIP không hợp lệ.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < pkg.gemPrice) {
+        socket.emit("system", `Cần ${pkg.gemPrice} 💎 để mua ${pkg.label} (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - pkg.gemPrice;
+      const now = Date.now();
+      const base = isVipActive(player.vipUntil, now) ? (player.vipUntil ?? now) : now;
+      player.vipUntil = base + pkg.days * 24 * 60 * 60 * 1000;
+      socket.emit("player", player);
+      socket.emit("system", `🌟 Đã kích hoạt ${pkg.label}! VIP hết hạn: ${new Date(player.vipUntil).toLocaleDateString("vi-VN")}.`);
+      this.markDirty(player);
+    });
+
+    socket.on("claimVipDaily", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isVipActive(player.vipUntil)) {
+        socket.emit("system", "Bạn cần là VIP đang còn hạn để nhận thưởng hằng ngày.");
+        return;
+      }
+      const today = new Date().toISOString().slice(0, 10);
+      if (player.vipLastDailyDate === today) {
+        socket.emit("system", "Hôm nay bạn đã nhận thưởng VIP rồi.");
+        return;
+      }
+      player.gems = (player.gems ?? 0) + VIP_DAILY_GEMS;
+      player.vipLastDailyDate = today;
+      socket.emit("player", player);
+      socket.emit("system", `🌟 Nhận thưởng VIP: +${VIP_DAILY_GEMS} 💎.`);
+      this.markDirty(player);
     });
 
     socket.on("buyBattlePassPremium", () => {
@@ -1839,7 +1887,9 @@ export class GameWorld {
 
   private grantExpAndStatPoints(player: PlayerState, exp: number): boolean {
     const previousLevel = player.stats.level;
-    const result = grantExp(player.stats, exp);
+    // VIP bonus: +20% exp.
+    const boosted = isVipActive(player.vipUntil) ? Math.round(exp * VIP_EXP_MULTIPLIER) : exp;
+    const result = grantExp(player.stats, boosted);
     player.stats = result.stats;
     const levelsGained = Math.max(0, player.stats.level - previousLevel);
     if (levelsGained > 0) {
@@ -1880,7 +1930,8 @@ export class GameWorld {
     this.returningToSpawn.delete(monster.id);
 
     const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
-    const gold = goldForMonster(monster);
+    let gold = goldForMonster(monster);
+    if (isVipActive(player.vipUntil)) gold = Math.round(gold * VIP_GOLD_MULTIPLIER);
     player.stats.gold += gold;
     for (const recipient of this.expRecipientsFor(player)) {
       const leveled = this.grantExpAndStatPoints(recipient, exp);

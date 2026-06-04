@@ -39,6 +39,8 @@ interface SavedPlayer {
   battlePassSeason?: number;
   titles?: string[];
   friends?: string[];
+  vipUntil?: number;
+  vipLastDailyDate?: string;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -266,7 +268,9 @@ export class PlayerRepository {
       battlePassClaimedPremium: player.battlePassClaimedPremium ? [...player.battlePassClaimedPremium] : undefined,
       battlePassSeason: player.battlePassSeason,
       titles: player.titles ? [...player.titles] : undefined,
-      friends: player.friends ? [...player.friends] : undefined
+      friends: player.friends ? [...player.friends] : undefined,
+      vipUntil: player.vipUntil,
+      vipLastDailyDate: player.vipLastDailyDate
     };
     memorySaves.set(player.email, saved);
     markFsDirty();

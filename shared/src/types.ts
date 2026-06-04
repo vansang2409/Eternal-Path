@@ -159,6 +159,10 @@ export interface PlayerState {
   battlePassSeason?: number;
   titles?: string[];
   friends?: string[];
+  /** Timestamp (ms) when VIP expires. Past this the player is no longer VIP. */
+  vipUntil?: number;
+  /** Last day (YYYY-MM-DD UTC) the VIP daily gem was claimed. */
+  vipLastDailyDate?: string;
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
 }
@@ -431,6 +435,8 @@ export interface ClientToServerEvents {
   addFriend: (payload: { name: string }) => void;
   removeFriend: (payload: { name: string }) => void;
   privateMessage: (payload: { to: string; message: string }) => void;
+  buyVip: (payload: { days: number }) => void;
+  claimVipDaily: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;
