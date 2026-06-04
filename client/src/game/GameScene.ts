@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import {
   ARENA_TILE_BOX,
   BIOME_INFO,
+  COSMETICS,
   PLAYER_SPEED,
   SKILL_CATALOG,
   TILE_SIZE,
@@ -117,7 +118,10 @@ export class GameScene extends Phaser.Scene {
       (recipeId) => this.socket.emit("craftRecipe", { recipeId }),
       (playerClass) => this.socket.emit("selectClass", { playerClass }),
       (skillId) => this.socket.emit("upgradeSkill", { skillId }),
-      (itemId) => this.socket.emit("enchantItem", { itemId })
+      (itemId) => this.socket.emit("enchantItem", { itemId }),
+      (cosmeticId) => this.socket.emit("buyCosmetic", { cosmeticId }),
+      (cosmeticId) => this.socket.emit("equipCosmetic", { cosmeticId }),
+      () => this.socket.emit("claimDailyReward")
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -1283,6 +1287,14 @@ export class GameScene extends Phaser.Scene {
     sprite.setPosition(ip3.x, ip3.y);
     sprite.setDepth(ip3.y);
     sprite.setFlipX(facing === "left");
+    // Apply cosmetic skin tint when the player has one active.
+    if (player.activeCosmeticSkin) {
+      const tint = cosmeticSkinTint(player.activeCosmeticSkin);
+      if (tint !== undefined) sprite.setTint(tint);
+      else sprite.clearTint();
+    } else {
+      sprite.clearTint();
+    }
     if (player.id !== this.selfId) {
       sprite.disableInteractive();
       sprite.setInteractive({ useHandCursor: true });
@@ -1706,6 +1718,11 @@ function rarityColor(rarity: "common" | "rare" | "epic"): number {
 }
 
 // Minimap palette per biome (RGB triplets).
+function cosmeticSkinTint(cosmeticId: string): number | undefined {
+  const c = COSMETICS.find((x) => x.id === cosmeticId && x.type === "skinTint");
+  return c?.color;
+}
+
 function minimapColorFor(tile: TileId): [number, number, number] {
   switch (tile) {
     case TileId.Grass: return [79, 154, 77];

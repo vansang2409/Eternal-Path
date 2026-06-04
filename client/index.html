@@ -146,6 +146,7 @@
         <button class="toolbar-btn" type="button" data-modal="forge-modal" title="Lò Rèn" aria-label="Lò Rèn"><i class="material-symbols-outlined">construction</i></button>
         <button class="toolbar-btn" type="button" data-modal="arena-modal" title="Đấu Trường" aria-label="Đấu Trường"><i class="material-symbols-outlined">stadium</i></button>
         <button class="toolbar-btn" type="button" data-modal="leaderboard-modal" title="Bảng Vinh Danh" aria-label="Bảng Vinh Danh"><i class="material-symbols-outlined">leaderboard</i></button>
+        <button class="toolbar-btn" type="button" data-modal="gem-shop-modal" title="Cửa Hàng Gem" aria-label="Cửa Hàng Gem"><i class="material-symbols-outlined">diamond</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -195,6 +196,24 @@
               <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="gem-shop-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header>
+            <h2>Cửa Hàng Gem</h2>
+            <span id="gem-balance" style="color:#cdb6ff">💎 0</span>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;padding:10px 12px;background:rgba(60,40,90,0.3);border:1px solid rgba(199,155,255,0.4);border-radius:4px">
+              <strong style="color:#cdb6ff">Thưởng Hằng Ngày</strong>
+              <span style="color:#bdbdbd;font-size:12px">Nhận 8 Gem mỗi 20 giờ</span>
+              <button id="claim-daily-btn" type="button" style="margin-left:auto;padding:6px 14px;color:#1d1500;font-weight:700;background:linear-gradient(to bottom,#c79bff,#6e4c9b);border:none;border-radius:4px;cursor:pointer">Nhận</button>
+            </div>
+            <div id="gem-shop-items"></div>
           </div>
         </div>
       </div>

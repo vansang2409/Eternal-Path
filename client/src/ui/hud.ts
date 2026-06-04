@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, expToNextLevel } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, expToNextLevel } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -42,7 +42,10 @@ export class Hud {
     private readonly onCraft: (recipeId: string) => void = () => {},
     private readonly onSelectClass: (playerClass: PlayerClass) => void = () => {},
     private readonly onUpgradeSkill: (skillId: SkillId) => void = () => {},
-    private readonly onEnchant: (itemId: string) => void = () => {}
+    private readonly onEnchant: (itemId: string) => void = () => {},
+    private readonly onBuyCosmetic: (cosmeticId: string) => void = () => {},
+    private readonly onEquipCosmetic: (cosmeticId: string | null) => void = () => {},
+    private readonly onClaimDaily: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -183,6 +186,7 @@ export class Hud {
     this.renderForgeRecipes();
     this.renderForgeEnchant();
     this.wireForgeTabs();
+    this.renderGemShop();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -518,6 +522,69 @@ export class Hud {
 
   announceDrop(accountName: string, itemName: string, rarity: Rarity): void {
     this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
+  }
+
+  private gemShopWired = false;
+  private renderGemShop(): void {
+    if (!this.player) return;
+    const gemBalance = document.querySelector<HTMLSpanElement>("#gem-balance");
+    if (gemBalance) gemBalance.textContent = `💎 ${this.player.gems ?? 0}`;
+    const root = document.querySelector<HTMLDivElement>("#gem-shop-items");
+    if (!root) return;
+    root.innerHTML = "";
+    const owned = new Set(this.player.cosmetics ?? []);
+    const active = this.player.activeCosmeticSkin;
+    for (const cosmetic of COSMETICS) {
+      const card = document.createElement("div");
+      card.className = "gem-shop-card";
+      const isOwned = owned.has(cosmetic.id);
+      const isActive = active === cosmetic.id;
+      const colorHex = `#${cosmetic.color.toString(16).padStart(6, "0")}`;
+      const isAchUnlock = cosmetic.gemPrice === 0;
+      card.innerHTML = `
+        <div class="gem-shop-swatch" style="background:${colorHex}"></div>
+        <div class="gem-shop-info">
+          <strong>${escapeHtml(cosmetic.name)} ${cosmetic.featured ? "<span style='color:#ffd166;font-size:10px'>★ NỔI BẬT</span>" : ""}</strong>
+          <p>${escapeHtml(cosmetic.description)}</p>
+          <small style="color:#8e9192">${cosmetic.type === "skinTint" ? "Tô màu nhân vật" : "Đổi màu hiệu ứng kỹ năng"}</small>
+        </div>
+        <div class="gem-shop-action"></div>
+      `;
+      const actionEl = card.querySelector<HTMLDivElement>(".gem-shop-action")!;
+      if (isActive) {
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Đang dùng — Tắt";
+        removeBtn.className = "gem-shop-equip-btn active";
+        removeBtn.addEventListener("click", () => this.onEquipCosmetic(null));
+        actionEl.appendChild(removeBtn);
+      } else if (isOwned) {
+        const equipBtn = document.createElement("button");
+        equipBtn.textContent = "Dùng";
+        equipBtn.className = "gem-shop-equip-btn";
+        equipBtn.addEventListener("click", () => this.onEquipCosmetic(cosmetic.id));
+        actionEl.appendChild(equipBtn);
+      } else if (isAchUnlock) {
+        const lock = document.createElement("span");
+        lock.textContent = "Mở qua thành tựu";
+        lock.style.cssText = "color:#9b9b9b;font-size:11px";
+        actionEl.appendChild(lock);
+      } else {
+        const buyBtn = document.createElement("button");
+        buyBtn.textContent = `💎 ${cosmetic.gemPrice}`;
+        buyBtn.className = "gem-shop-buy-btn";
+        buyBtn.disabled = (this.player.gems ?? 0) < cosmetic.gemPrice;
+        buyBtn.addEventListener("click", () => this.onBuyCosmetic(cosmetic.id));
+        actionEl.appendChild(buyBtn);
+      }
+      root.appendChild(card);
+    }
+
+    // Wire daily reward once.
+    if (!this.gemShopWired) {
+      this.gemShopWired = true;
+      const dailyBtn = document.querySelector<HTMLButtonElement>("#claim-daily-btn");
+      dailyBtn?.addEventListener("click", () => this.onClaimDaily());
+    }
   }
 
   // Add a small collapse / expand button to each bottom-HUD panel so the

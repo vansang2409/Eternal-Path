@@ -17,9 +17,12 @@ import {
   dayPhaseAt,
   skillRankMultiplier,
   timeOfDay,
+  DAILY_CLAIM_INTERVAL_MS,
+  DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
+  getCosmetic,
   getRecipe,
   isPlayerClass,
   materialDropForMonster,
@@ -554,7 +557,11 @@ export class GameWorld {
         totalKills: saved.totalKills ?? 0,
         chestsOpened: saved.chestsOpened ?? 0,
         itemsCrafted: saved.itemsCrafted ?? 0,
-        skillLoadouts: saved.skillLoadouts ?? [[], [], []]
+        skillLoadouts: saved.skillLoadouts ?? [[], [], []],
+        gems: saved.gems ?? 0,
+        cosmetics: saved.cosmetics ?? [],
+        activeCosmeticSkin: saved.activeCosmeticSkin,
+        lastDailyClaimAt: saved.lastDailyClaimAt
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -915,6 +922,72 @@ export class GameWorld {
       player.skillLoadouts = loadouts;
       socket.emit("player", player);
       socket.emit("system", `Đã lưu loadout ${slot + 1}.`);
+      this.markDirty(player);
+    });
+
+    socket.on("buyCosmetic", ({ cosmeticId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const cosmetic = getCosmetic(cosmeticId);
+      if (!cosmetic) {
+        socket.emit("system", "Vật phẩm cosmetic không tồn tại.");
+        return;
+      }
+      if ((player.cosmetics ?? []).includes(cosmeticId)) {
+        socket.emit("system", "Bạn đã sở hữu vật phẩm này.");
+        return;
+      }
+      if (cosmetic.gemPrice === 0) {
+        socket.emit("system", "Vật phẩm này chỉ mở qua thành tựu.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < cosmetic.gemPrice) {
+        socket.emit("system", `Cần ${cosmetic.gemPrice} Gem (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - cosmetic.gemPrice;
+      const owned = [...(player.cosmetics ?? []), cosmeticId];
+      player.cosmetics = owned;
+      socket.emit("player", player);
+      socket.emit("system", `Đã mua ${cosmetic.name}.`);
+      this.markDirty(player);
+    });
+
+    socket.on("equipCosmetic", ({ cosmeticId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (cosmeticId === null) {
+        player.activeCosmeticSkin = undefined;
+        socket.emit("player", player);
+        socket.emit("system", "Đã tắt cosmetic.");
+        this.markDirty(player);
+        return;
+      }
+      if (!(player.cosmetics ?? []).includes(cosmeticId)) {
+        socket.emit("system", "Bạn chưa sở hữu vật phẩm này.");
+        return;
+      }
+      player.activeCosmeticSkin = cosmeticId;
+      socket.emit("player", player);
+      socket.emit("system", "Đã trang bị cosmetic.");
+      this.markDirty(player);
+    });
+
+    socket.on("claimDailyReward", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const now = Date.now();
+      const last = player.lastDailyClaimAt ?? 0;
+      if (now - last < DAILY_CLAIM_INTERVAL_MS) {
+        const remainingHours = ((DAILY_CLAIM_INTERVAL_MS - (now - last)) / 3600000).toFixed(1);
+        socket.emit("system", `Cần chờ ${remainingHours} giờ nữa mới nhận được thưởng hằng ngày.`);
+        return;
+      }
+      player.gems = (player.gems ?? 0) + DAILY_GEM_REWARD;
+      player.lastDailyClaimAt = now;
+      socket.emit("player", player);
+      socket.emit("system", `Nhận thưởng hằng ngày: +${DAILY_GEM_REWARD} Gem.`);
       this.markDirty(player);
     });
 

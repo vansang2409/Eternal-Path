@@ -27,6 +27,10 @@ interface SavedPlayer {
   chestsOpened?: number;
   itemsCrafted?: number;
   skillLoadouts?: Array<SkillId[]>;
+  gems?: number;
+  cosmetics?: string[];
+  activeCosmeticSkin?: string;
+  lastDailyClaimAt?: number;
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -240,7 +244,11 @@ export class PlayerRepository {
       totalKills: player.totalKills,
       chestsOpened: player.chestsOpened,
       itemsCrafted: player.itemsCrafted,
-      skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined
+      skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
+      gems: player.gems,
+      cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
+      activeCosmeticSkin: player.activeCosmeticSkin,
+      lastDailyClaimAt: player.lastDailyClaimAt
     };
     memorySaves.set(player.email, saved);
     markFsDirty();

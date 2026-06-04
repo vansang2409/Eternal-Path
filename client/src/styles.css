@@ -281,6 +281,73 @@ body {
   color: var(--gold);
 }
 
+.gem-shop-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: rgba(28, 28, 28, 0.6);
+  border: 1px solid rgba(199, 155, 255, 0.3);
+  border-radius: 6px;
+}
+
+.gem-shop-swatch {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  box-shadow: inset -3px -3px 6px rgba(0, 0, 0, 0.45);
+}
+
+.gem-shop-info {
+  flex: 1;
+}
+
+.gem-shop-info strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--gold);
+  font-size: 14px;
+}
+
+.gem-shop-info p {
+  margin: 0 0 4px;
+  color: #d6dddf;
+  font-size: 12px;
+}
+
+.gem-shop-action {
+  flex: 0 0 auto;
+}
+
+.gem-shop-buy-btn,
+.gem-shop-equip-btn {
+  padding: 6px 14px;
+  color: #1d1500;
+  font-weight: 700;
+  font-size: 12px;
+  background: linear-gradient(to bottom, #c79bff, #6e4c9b);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.gem-shop-equip-btn {
+  background: linear-gradient(to bottom, #ffd166, #c8a948);
+}
+
+.gem-shop-equip-btn.active {
+  background: linear-gradient(to bottom, #8be78b, #4f9a4d);
+}
+
+.gem-shop-buy-btn:disabled {
+  color: #999;
+  background: #444;
+  cursor: not-allowed;
+}
+
 .loadout-bar {
   display: flex;
   align-items: center;

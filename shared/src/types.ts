@@ -142,6 +142,14 @@ export interface PlayerState {
   setBonusAttack?: number;
   setBonusDefense?: number;
   setBonusMaxHp?: number;
+  // Premium currency for cosmetic shop (separate from gold).
+  gems?: number;
+  // Cosmetics the player has unlocked.
+  cosmetics?: string[];
+  // Active cosmetic skin id (overrides default sprite tint).
+  activeCosmeticSkin?: string;
+  // Last daily login reward claim timestamp (server ms).
+  lastDailyClaimAt?: number;
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
 }
@@ -404,6 +412,9 @@ export interface ClientToServerEvents {
   enchantItem: (payload: { itemId: string }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
+  buyCosmetic: (payload: { cosmeticId: string }) => void;
+  equipCosmetic: (payload: { cosmeticId: string | null }) => void;
+  claimDailyReward: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;
