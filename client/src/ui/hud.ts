@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, describeBattlePassReward, expToNextLevel } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, describeBattlePassReward, expToNextLevel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -47,7 +47,9 @@ export class Hud {
     private readonly onEquipCosmetic: (cosmeticId: string | null) => void = () => {},
     private readonly onClaimDaily: () => void = () => {},
     private readonly onBuyBattlePass: () => void = () => {},
-    private readonly onClaimBattlePass: (tier: number, track: "free" | "premium") => void = () => {}
+    private readonly onClaimBattlePass: (tier: number, track: "free" | "premium") => void = () => {},
+    private readonly onBuyVip: (days: number) => void = () => {},
+    private readonly onClaimVipDaily: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -163,7 +165,8 @@ export class Hud {
     this.player = player;
     this.updateClassModal(player);
     const classLabel = player.playerClass ? ` [${CLASS_CATALOG[player.playerClass].name}]` : "";
-    document.querySelector("#player-name")!.textContent = `${player.accountName}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
+    const vipBadge = isVipActive(player.vipUntil) ? " 🌟" : "";
+    document.querySelector("#player-name")!.textContent = `${player.accountName}${vipBadge}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
     setBar("#hp-fill", "#hp-label", player.stats.hp, player.stats.maxHp, t("hp"));
     setBar("#exp-fill", "#exp-label", player.stats.exp, expToNextLevel(player.stats.level), t("exp"));
     const maxStam = player.stats.maxStamina ?? 100;
@@ -190,6 +193,7 @@ export class Hud {
     this.wireForgeTabs();
     this.renderGemShop();
     this.renderBattlePass();
+    this.renderVipModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -525,6 +529,49 @@ export class Hud {
 
   announceDrop(accountName: string, itemName: string, rarity: Rarity): void {
     this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
+  }
+
+  private vipWired = false;
+  private renderVipModal(): void {
+    if (!this.player) return;
+    const balance = document.querySelector<HTMLSpanElement>("#vip-balance");
+    if (balance) balance.textContent = `💎 ${this.player.gems ?? 0}`;
+    const status = document.querySelector<HTMLDivElement>("#vip-status");
+    if (status) {
+      const active = isVipActive(this.player.vipUntil);
+      const days = vipRemainingDays(this.player.vipUntil);
+      if (active) {
+        status.innerHTML = `<strong style="color:#ffd166">🌟 VIP đang hoạt động</strong> — còn ${days} ngày <button id="vip-claim-daily" type="button" style="margin-left:auto;padding:6px 14px;color:#1d1500;font-weight:700;background:linear-gradient(to bottom,#ffd166,#c8a948);border:none;border-radius:4px;cursor:pointer">Nhận 30 💎 hôm nay</button>`;
+        status.style.display = "flex";
+        status.style.alignItems = "center";
+        status.style.gap = "10px";
+      } else {
+        status.innerHTML = `<strong style="color:#8e9192">Hiện không phải VIP</strong> — chọn gói bên dưới để kích hoạt buff.`;
+      }
+    }
+    const root = document.querySelector<HTMLDivElement>("#vip-packages");
+    if (!root) return;
+    root.innerHTML = "";
+    for (const pkg of VIP_PACKAGES) {
+      const card = document.createElement("div");
+      card.style.cssText = "display:flex;align-items:center;gap:12px;padding:12px;margin-bottom:10px;background:rgba(28,28,28,0.6);border:1px solid rgba(255,209,102,0.3);border-radius:6px";
+      const canAfford = (this.player.gems ?? 0) >= pkg.gemPrice;
+      card.innerHTML = `
+        <div style="flex:1">
+          <strong style="color:#ffd166">${pkg.label}</strong>
+          <p style="margin:4px 0 0;color:#bdbdbd;font-size:12px">${pkg.description}</p>
+        </div>
+        <button type="button" data-vip-days="${pkg.days}" ${canAfford ? "" : "disabled"} style="padding:10px 16px;color:#1d1500;font-weight:700;background:${canAfford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#444"};border:none;border-radius:4px;cursor:${canAfford ? "pointer" : "not-allowed"}">💎 ${pkg.gemPrice}</button>
+      `;
+      card.querySelector<HTMLButtonElement>("[data-vip-days]")?.addEventListener("click", () => this.onBuyVip(pkg.days));
+      root.appendChild(card);
+    }
+    if (!this.vipWired) {
+      this.vipWired = true;
+      document.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).id === "vip-claim-daily") this.onClaimVipDaily();
+      });
+    }
   }
 
   private bpWired = false;

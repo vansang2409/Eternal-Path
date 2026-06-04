@@ -164,6 +164,7 @@
         <button class="toolbar-btn" type="button" data-modal="leaderboard-modal" title="Bảng Vinh Danh" aria-label="Bảng Vinh Danh"><i class="material-symbols-outlined">leaderboard</i></button>
         <button class="toolbar-btn" type="button" data-modal="gem-shop-modal" title="Cửa Hàng Gem" aria-label="Cửa Hàng Gem"><i class="material-symbols-outlined">diamond</i></button>
         <button class="toolbar-btn" type="button" data-modal="battle-pass-modal" title="Battle Pass" aria-label="Battle Pass"><i class="material-symbols-outlined">military_tech</i></button>
+        <button class="toolbar-btn" type="button" data-modal="vip-modal" title="VIP" aria-label="VIP" style="color:#ffd166"><i class="material-symbols-outlined">workspace_premium</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -213,6 +214,29 @@
               <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="vip-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header>
+            <h2>🌟 Vương Tộc VIP</h2>
+            <span id="vip-balance" style="color:#cdb6ff">💎 0</span>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div id="vip-status" style="padding:12px;margin-bottom:14px;background:linear-gradient(to right,rgba(200,169,72,0.2),rgba(110,76,155,0.2));border:1px solid rgba(255,209,102,0.4);border-radius:6px"></div>
+            <div style="margin-bottom:12px">
+              <strong style="color:#ffd166">Quyền lợi VIP</strong>
+              <ul style="margin:6px 0 0;padding-left:22px;color:#d6dddf;font-size:12px;line-height:1.6">
+                <li>+20% EXP từ tất cả nguồn</li>
+                <li>+20% Vàng khi giết quái</li>
+                <li>30 💎 mỗi ngày — bấm Nhận</li>
+                <li>Danh hiệu VIP cạnh tên (gói 90 ngày)</li>
+              </ul>
+            </div>
+            <div id="vip-packages"></div>
           </div>
         </div>
       </div>
