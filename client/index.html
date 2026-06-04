@@ -163,6 +163,7 @@
         <button class="toolbar-btn" type="button" data-modal="arena-modal" title="Đấu Trường" aria-label="Đấu Trường"><i class="material-symbols-outlined">stadium</i></button>
         <button class="toolbar-btn" type="button" data-modal="leaderboard-modal" title="Bảng Vinh Danh" aria-label="Bảng Vinh Danh"><i class="material-symbols-outlined">leaderboard</i></button>
         <button class="toolbar-btn" type="button" data-modal="gem-shop-modal" title="Cửa Hàng Gem" aria-label="Cửa Hàng Gem"><i class="material-symbols-outlined">diamond</i></button>
+        <button class="toolbar-btn" type="button" data-modal="battle-pass-modal" title="Battle Pass" aria-label="Battle Pass"><i class="material-symbols-outlined">military_tech</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -212,6 +213,30 @@
               <button class="afk-zone-button" type="button" data-afk-zone="midlands">Midlands</button>
               <button class="afk-zone-button" type="button" data-afk-zone="deeplands">Deeplands</button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="battle-pass-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header>
+            <h2>🎟 Battle Pass — Mùa 1</h2>
+            <span id="bp-level" style="color:#ffd166">Cấp 0</span>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div id="bp-progress-bar" style="margin-bottom:14px;height:18px;background:#1a1a1a;border-radius:999px;overflow:hidden;position:relative">
+              <span id="bp-progress-fill" style="display:block;height:100%;width:0%;background:linear-gradient(to right,#c8a948,#ffd166);transition:width 200ms linear"></span>
+              <label id="bp-progress-label" style="position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:800">0 / 200</label>
+            </div>
+            <div id="bp-premium-banner" style="margin-bottom:14px;padding:12px;background:linear-gradient(to right,rgba(120,80,200,0.3),rgba(60,30,100,0.3));border:1px solid rgba(199,155,255,0.5);border-radius:6px;display:flex;align-items:center;gap:12px">
+              <div style="flex:1">
+                <strong style="color:#cdb6ff;font-size:14px">Mở Battle Pass Premium</strong>
+                <p style="margin:4px 0 0;color:#bdbdbd;font-size:12px">Mở khoá tất cả phần thưởng track Premium ở mỗi cấp.</p>
+              </div>
+              <button id="bp-buy-premium" type="button" style="padding:10px 18px;color:#1d1500;font-weight:700;background:linear-gradient(to bottom,#c79bff,#6e4c9b);border:none;border-radius:4px;cursor:pointer">💎 500 — Kích Hoạt</button>
+            </div>
+            <div id="bp-tiers"></div>
           </div>
         </div>
       </div>

@@ -31,6 +31,13 @@ interface SavedPlayer {
   cosmetics?: string[];
   activeCosmeticSkin?: string;
   lastDailyClaimAt?: number;
+  battlePassExp?: number;
+  battlePassLevel?: number;
+  battlePassPremium?: boolean;
+  battlePassClaimedFree?: number[];
+  battlePassClaimedPremium?: number[];
+  battlePassSeason?: number;
+  titles?: string[];
 }
 
 const memorySaves = new Map<string, SavedPlayer>();
@@ -248,7 +255,14 @@ export class PlayerRepository {
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
       activeCosmeticSkin: player.activeCosmeticSkin,
-      lastDailyClaimAt: player.lastDailyClaimAt
+      lastDailyClaimAt: player.lastDailyClaimAt,
+      battlePassExp: player.battlePassExp,
+      battlePassLevel: player.battlePassLevel,
+      battlePassPremium: player.battlePassPremium,
+      battlePassClaimedFree: player.battlePassClaimedFree ? [...player.battlePassClaimedFree] : undefined,
+      battlePassClaimedPremium: player.battlePassClaimedPremium ? [...player.battlePassClaimedPremium] : undefined,
+      battlePassSeason: player.battlePassSeason,
+      titles: player.titles ? [...player.titles] : undefined
     };
     memorySaves.set(player.email, saved);
     markFsDirty();

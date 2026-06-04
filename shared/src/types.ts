@@ -150,6 +150,14 @@ export interface PlayerState {
   activeCosmeticSkin?: string;
   // Last daily login reward claim timestamp (server ms).
   lastDailyClaimAt?: number;
+  // Battle pass progression for the current season.
+  battlePassExp?: number;
+  battlePassLevel?: number;
+  battlePassPremium?: boolean;
+  battlePassClaimedFree?: number[];
+  battlePassClaimedPremium?: number[];
+  battlePassSeason?: number;
+  titles?: string[];
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
 }
@@ -415,6 +423,8 @@ export interface ClientToServerEvents {
   buyCosmetic: (payload: { cosmeticId: string }) => void;
   equipCosmetic: (payload: { cosmeticId: string | null }) => void;
   claimDailyReward: () => void;
+  buyBattlePassPremium: () => void;
+  claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

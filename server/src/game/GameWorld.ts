@@ -17,6 +17,11 @@ import {
   dayPhaseAt,
   skillRankMultiplier,
   timeOfDay,
+  BATTLE_PASS_EXP_PER_KILL,
+  BATTLE_PASS_EXP_PER_QUEST,
+  BATTLE_PASS_EXP_PER_TIER,
+  BATTLE_PASS_PREMIUM_PRICE,
+  BATTLE_PASS_TIERS,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -561,7 +566,14 @@ export class GameWorld {
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
         activeCosmeticSkin: saved.activeCosmeticSkin,
-        lastDailyClaimAt: saved.lastDailyClaimAt
+        lastDailyClaimAt: saved.lastDailyClaimAt,
+        battlePassExp: saved.battlePassExp ?? 0,
+        battlePassLevel: saved.battlePassLevel ?? 0,
+        battlePassPremium: saved.battlePassPremium ?? false,
+        battlePassClaimedFree: saved.battlePassClaimedFree ?? [],
+        battlePassClaimedPremium: saved.battlePassClaimedPremium ?? [],
+        battlePassSeason: saved.battlePassSeason ?? 1,
+        titles: saved.titles ?? []
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
       this.players.set(socket.id, player);
@@ -705,6 +717,7 @@ export class GameWorld {
       if (leveled) this.emitFloating(player.id, player.position, player.stats.level, "level", `Level ${player.stats.level}`);
       if (leveled) this.checkLevelAchievements(player);
       this.updateReachLevelQuests(player);
+      this.grantBattlePassExp(player, BATTLE_PASS_EXP_PER_QUEST);
       socket.emit("player", player);
       socket.emit("system", `Hoàn tất nhiệm vụ: ${template.title} (+${template.rewardGold} vàng, +${template.rewardExp} kinh nghiệm).`);
       this.emitQuestList(player);
@@ -994,6 +1007,99 @@ export class GameWorld {
       player.activeCosmeticSkin = cosmeticId;
       socket.emit("player", player);
       socket.emit("system", "Đã trang bị cosmetic.");
+      this.markDirty(player);
+    });
+
+    socket.on("buyBattlePassPremium", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.battlePassPremium) {
+        socket.emit("system", "Bạn đã sở hữu Battle Pass Premium mùa này.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < BATTLE_PASS_PREMIUM_PRICE) {
+        socket.emit("system", `Cần ${BATTLE_PASS_PREMIUM_PRICE} 💎 để mở Premium (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - BATTLE_PASS_PREMIUM_PRICE;
+      player.battlePassPremium = true;
+      socket.emit("player", player);
+      socket.emit("system", "🎉 Đã kích hoạt Battle Pass Premium!");
+      this.markDirty(player);
+    });
+
+    socket.on("claimBattlePassTier", ({ tier, track }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const tierDef = BATTLE_PASS_TIERS.find((t) => t.level === tier);
+      if (!tierDef) return;
+      const currentLevel = player.battlePassLevel ?? 0;
+      if (tier > currentLevel) {
+        socket.emit("system", `Chưa đạt cấp ${tier}.`);
+        return;
+      }
+      if (track === "premium" && !player.battlePassPremium) {
+        socket.emit("system", "Cần mua Premium để nhận phần thưởng này.");
+        return;
+      }
+      const claimedList = track === "free" ? (player.battlePassClaimedFree ??= []) : (player.battlePassClaimedPremium ??= []);
+      if (claimedList.includes(tier)) {
+        socket.emit("system", "Đã nhận phần thưởng này.");
+        return;
+      }
+      const reward = track === "free" ? tierDef.freeReward : tierDef.premiumReward;
+      // Grant the reward.
+      switch (reward.kind) {
+        case "gold":
+          player.stats.gold += reward.amount;
+          break;
+        case "gem":
+          player.gems = (player.gems ?? 0) + reward.amount;
+          break;
+        case "scroll": {
+          if (isBagFull(player)) { socket.emit("system", BAG_FULL_MESSAGE); return; }
+          for (let i = 0; i < reward.amount; i += 1) {
+            const scroll: Item = {
+              id: `scroll-bp-${Date.now()}-${i}`,
+              kind: "consumable",
+              name: "Cuộn Hồi Thành",
+              rarity: "rare",
+              heal: 0,
+              recall: true,
+              value: 80
+            };
+            player.inventory.items.push(scroll);
+            if (isBagFull(player)) break;
+          }
+          break;
+        }
+        case "material": {
+          if (!reward.materialId) break;
+          const info = MATERIAL_CATALOG[reward.materialId];
+          for (let i = 0; i < reward.amount; i += 1) {
+            if (isBagFull(player)) break;
+            const item: MaterialItem = {
+              id: `mat-bp-${Date.now()}-${i}`,
+              kind: "material",
+              materialId: reward.materialId,
+              name: info.name,
+              rarity: info.rarity,
+              value: info.value
+            };
+            player.inventory.items.push(item);
+          }
+          break;
+        }
+        case "title":
+          if (reward.title) {
+            (player.titles ??= []).push(reward.title);
+          }
+          break;
+      }
+      claimedList.push(tier);
+      socket.emit("player", player);
+      socket.emit("system", `Đã nhận phần thưởng ${track === "premium" ? "Premium" : "Free"} cấp ${tier}.`);
       this.markDirty(player);
     });
 
@@ -1746,6 +1852,8 @@ export class GameWorld {
     }
     this.updateQuestProgressForKill(player, monster);
     player.totalKills = (player.totalKills ?? 0) + 1;
+    // Battle Pass exp from kills — silently accrue, leveling auto.
+    this.grantBattlePassExp(player, BATTLE_PASS_EXP_PER_KILL);
     this.unlockAchievement(player, "first-blood");
     if (player.totalKills >= 100) this.unlockAchievement(player, "kill-100");
     if (player.totalKills >= 500) this.unlockAchievement(player, "kill-500");
@@ -2209,6 +2317,25 @@ export class GameWorld {
 
     this.sockets.get(target.id)?.emit("player", target);
     this.sockets.get(attacker.id)?.emit("player", attacker);
+  }
+
+  // Grant battle-pass exp and roll over tier levels. Caps at the catalog max.
+  private grantBattlePassExp(player: PlayerState, amount: number): void {
+    if (amount <= 0) return;
+    const maxLevel = BATTLE_PASS_TIERS.length;
+    player.battlePassExp = (player.battlePassExp ?? 0) + amount;
+    let level = player.battlePassLevel ?? 0;
+    while (level < maxLevel && (player.battlePassExp ?? 0) >= BATTLE_PASS_EXP_PER_TIER) {
+      player.battlePassExp! -= BATTLE_PASS_EXP_PER_TIER;
+      level += 1;
+    }
+    if (level >= maxLevel) {
+      player.battlePassExp = 0; // cap
+    }
+    if (level !== player.battlePassLevel) {
+      player.battlePassLevel = level;
+      this.sockets.get(player.id)?.emit("system", `🎟 Battle Pass cấp ${level} — vào tab Battle Pass nhận thưởng!`);
+    }
   }
 
   // Set bonus: tiered HP/ATK/DEF for wearing multiple items of same theme.

@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, expToNextLevel } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, describeBattlePassReward, expToNextLevel } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -45,7 +45,9 @@ export class Hud {
     private readonly onEnchant: (itemId: string) => void = () => {},
     private readonly onBuyCosmetic: (cosmeticId: string) => void = () => {},
     private readonly onEquipCosmetic: (cosmeticId: string | null) => void = () => {},
-    private readonly onClaimDaily: () => void = () => {}
+    private readonly onClaimDaily: () => void = () => {},
+    private readonly onBuyBattlePass: () => void = () => {},
+    private readonly onClaimBattlePass: (tier: number, track: "free" | "premium") => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -187,6 +189,7 @@ export class Hud {
     this.renderForgeEnchant();
     this.wireForgeTabs();
     this.renderGemShop();
+    this.renderBattlePass();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -522,6 +525,64 @@ export class Hud {
 
   announceDrop(accountName: string, itemName: string, rarity: Rarity): void {
     this.log(t("rareDropAnnouncement", { name: accountName, item: itemName }), `announcement announcement-${rarity} ${rarityClass[rarity]}`);
+  }
+
+  private bpWired = false;
+  private renderBattlePass(): void {
+    if (!this.player) return;
+    const level = this.player.battlePassLevel ?? 0;
+    const exp = this.player.battlePassExp ?? 0;
+    const premium = this.player.battlePassPremium === true;
+    const claimedFree = new Set(this.player.battlePassClaimedFree ?? []);
+    const claimedPremium = new Set(this.player.battlePassClaimedPremium ?? []);
+    const levelEl = document.querySelector<HTMLSpanElement>("#bp-level");
+    if (levelEl) levelEl.textContent = `Cấp ${level}${premium ? " — PREMIUM ★" : ""}`;
+    const fill = document.querySelector<HTMLSpanElement>("#bp-progress-fill");
+    if (fill) fill.style.width = `${Math.min(100, (exp / BATTLE_PASS_EXP_PER_TIER) * 100)}%`;
+    const label = document.querySelector<HTMLLabelElement>("#bp-progress-label");
+    if (label) label.textContent = `${exp} / ${BATTLE_PASS_EXP_PER_TIER}`;
+    const banner = document.querySelector<HTMLDivElement>("#bp-premium-banner");
+    if (banner) banner.style.display = premium ? "none" : "flex";
+    const root = document.querySelector<HTMLDivElement>("#bp-tiers");
+    if (!root) return;
+    root.innerHTML = "";
+    for (const tier of BATTLE_PASS_TIERS) {
+      const unlocked = tier.level <= level;
+      const row = document.createElement("div");
+      row.style.cssText = `display:grid;grid-template-columns:60px 1fr 1fr;gap:10px;padding:10px;margin-bottom:8px;background:rgba(28,28,28,0.55);border:1px solid ${unlocked ? "rgba(255,209,102,0.5)" : "rgba(142,145,146,0.25)"};border-radius:4px`;
+      const tierBadge = document.createElement("div");
+      tierBadge.style.cssText = `display:grid;place-items:center;font-size:18px;font-weight:900;color:${unlocked ? "#ffd166" : "#777"};border:2px solid ${unlocked ? "#ffd166" : "#444"};border-radius:50%`;
+      tierBadge.textContent = `${tier.level}`;
+      row.appendChild(tierBadge);
+      // Free
+      const freeCol = document.createElement("div");
+      freeCol.innerHTML = `<small style="color:#8e9192">FREE</small><div style="margin-top:4px;color:#d6dddf">${describeBattlePassReward(tier.freeReward)}</div>`;
+      const fBtn = document.createElement("button");
+      fBtn.type = "button";
+      fBtn.textContent = claimedFree.has(tier.level) ? "Đã nhận" : "Nhận";
+      fBtn.disabled = !unlocked || claimedFree.has(tier.level);
+      fBtn.style.cssText = `margin-top:4px;padding:4px 10px;color:#1d1500;font-size:11px;font-weight:700;background:${claimedFree.has(tier.level) ? "#444" : "#ffd166"};border:none;border-radius:3px;cursor:${claimedFree.has(tier.level) ? "default" : "pointer"}`;
+      fBtn.addEventListener("click", () => this.onClaimBattlePass(tier.level, "free"));
+      freeCol.appendChild(fBtn);
+      row.appendChild(freeCol);
+      // Premium
+      const premCol = document.createElement("div");
+      const lockIcon = premium ? "" : ` 🔒`;
+      premCol.innerHTML = `<small style="color:#c79bff">PREMIUM${lockIcon}</small><div style="margin-top:4px;color:#d6dddf">${describeBattlePassReward(tier.premiumReward)}</div>`;
+      const pBtn = document.createElement("button");
+      pBtn.type = "button";
+      pBtn.textContent = claimedPremium.has(tier.level) ? "Đã nhận" : "Nhận";
+      pBtn.disabled = !unlocked || !premium || claimedPremium.has(tier.level);
+      pBtn.style.cssText = `margin-top:4px;padding:4px 10px;color:#fff;font-size:11px;font-weight:700;background:${claimedPremium.has(tier.level) ? "#444" : premium ? "#6e4c9b" : "#3a3a3a"};border:none;border-radius:3px;cursor:${premium && !claimedPremium.has(tier.level) ? "pointer" : "default"}`;
+      pBtn.addEventListener("click", () => this.onClaimBattlePass(tier.level, "premium"));
+      premCol.appendChild(pBtn);
+      row.appendChild(premCol);
+      root.appendChild(row);
+    }
+    if (!this.bpWired) {
+      this.bpWired = true;
+      document.querySelector<HTMLButtonElement>("#bp-buy-premium")?.addEventListener("click", () => this.onBuyBattlePass());
+    }
   }
 
   private gemShopWired = false;
