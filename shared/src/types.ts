@@ -1,3 +1,5 @@
+import type { GuildChatPayload, GuildInvitePayload, GuildView } from "./guild.js";
+
 export type Direction = "up" | "down" | "left" | "right";
 
 export type Rarity = "common" | "rare" | "epic";
@@ -165,6 +167,11 @@ export interface PlayerState {
   vipLastDailyDate?: string;
   // Up to 3 saved skill loadouts, each an array of 4 skill ids.
   skillLoadouts?: Array<SkillId[]>;
+  // Guild membership (runtime; the authoritative record lives in the guild
+  // store keyed by accountName). Tag rides the snapshot so every client can
+  // render [TAG] next to names without needing the guild registry.
+  guildId?: string;
+  guildTag?: string;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -394,6 +401,9 @@ export interface ServerToClientEvents {
   leaderboard: (payload: LeaderboardPayload) => void;
   friendList: (payload: { name: string; online: boolean }[]) => void;
   privateMessageReceived: (payload: { from: string; message: string; sentAt: number }) => void;
+  guildUpdate: (payload: GuildView | null) => void;
+  guildInvite: (payload: GuildInvitePayload) => void;
+  guildChatMessage: (payload: GuildChatPayload) => void;
 }
 
 export interface ClientToServerEvents {
@@ -437,6 +447,14 @@ export interface ClientToServerEvents {
   privateMessage: (payload: { to: string; message: string }) => void;
   buyVip: (payload: { days: number }) => void;
   claimVipDaily: () => void;
+  createGuild: (payload: { name: string; tag: string }) => void;
+  guildInvitePlayer: (payload: { name: string }) => void;
+  acceptGuildInvite: (payload: { guildId: string }) => void;
+  leaveGuild: () => void;
+  kickGuildMember: (payload: { accountName: string }) => void;
+  promoteGuildMember: (payload: { accountName: string }) => void;
+  setGuildMotd: (payload: { motd: string }) => void;
+  guildChat: (payload: { message: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

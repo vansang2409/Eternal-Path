@@ -165,6 +165,7 @@
         <button class="toolbar-btn" type="button" data-modal="gem-shop-modal" title="Cửa Hàng Gem" aria-label="Cửa Hàng Gem"><i class="material-symbols-outlined">diamond</i></button>
         <button class="toolbar-btn" type="button" data-modal="battle-pass-modal" title="Battle Pass" aria-label="Battle Pass"><i class="material-symbols-outlined">military_tech</i></button>
         <button class="toolbar-btn" type="button" data-modal="vip-modal" title="VIP" aria-label="VIP" style="color:#ffd166"><i class="material-symbols-outlined">workspace_premium</i></button>
+        <button class="toolbar-btn" type="button" data-modal="guild-modal" title="Guild (U)" aria-label="Guild"><i class="material-symbols-outlined">castle</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -237,6 +238,18 @@
               </ul>
             </div>
             <div id="vip-packages"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="guild-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header>
+            <h2>🏰 Guild</h2>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div id="guild-body"></div>
           </div>
         </div>
       </div>
@@ -346,13 +359,17 @@
               <p>Click vào người chơi khác để chọn target, sau đó nhấn <b>"Mời mục tiêu"</b> trong panel Tổ Đội. Tối đa 4 người, share EXP khi cùng đánh trong tầm.</p>
             </div>
             <div class="help-section">
+              <h3>🏰 Guild</h3>
+              <p>Nhấn <b>U</b> mở bảng Guild. Lập guild với <b>5000 vàng</b> — tag hiện cạnh tên mọi thành viên, tối đa 20 người. Chat guild bằng <b>/g &lt;tin&gt;</b>, mời bằng <b>/ginvite &lt;tên&gt;</b>, nhận lời mời bằng <b>/gaccept</b>. Hội Trưởng thăng Sĩ Quan bằng nút ⭐; Sĩ Quan được mời + trục xuất thành viên.</p>
+            </div>
+            <div class="help-section">
               <h3>🗺️ Minimap &amp; Khám phá</h3>
               <p>Góc trên-phải hiện minimap toàn bản đồ. Chấm vàng = bạn, đỏ = quái, hồng = boss, kim = rương, cyan = player khác. 3 dấu hồng cố định = lối vào hầm — vào đó để đánh <b>Khắc Tinh</b> drop epic.</p>
             </div>
             <div class="help-section">
               <h3>⌨️ Phím tắt</h3>
               <p>
-                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
+                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>U</b> Guild · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
               </p>
               <p>
                 <b>Shift</b> chạy nhanh (tốn thể lực) · <b>F</b> dùng bình máu · <b>Q W E R</b> dùng skill · <b>Click phải</b> đi tới vị trí · <b>Click trái</b> chọn target / nhặt loot.

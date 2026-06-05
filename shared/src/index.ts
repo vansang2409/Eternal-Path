@@ -10,3 +10,4 @@ export * from "./classes.js";
 export * from "./cosmetics.js";
 export * from "./battlepass.js";
 export * from "./vip.js";
+export * from "./guild.js";

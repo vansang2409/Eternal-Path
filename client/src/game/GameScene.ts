@@ -140,6 +140,22 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("friendList", (rows) => {
       this.hud.log(`Bạn bè (${rows.filter((r) => r.online).length}/${rows.length} online): ${rows.map((r) => `${r.online ? "🟢" : "⚪"} ${r.name}`).join(", ") || "(trống)"}`, "log-line");
     });
+    this.hud.setGuildHandlers({
+      create: (name, tag) => this.socket.emit("createGuild", { name, tag }),
+      invite: (name) => this.socket.emit("guildInvitePlayer", { name }),
+      accept: (guildId) => this.socket.emit("acceptGuildInvite", { guildId }),
+      leave: () => this.socket.emit("leaveGuild"),
+      kick: (accountName) => this.socket.emit("kickGuildMember", { accountName }),
+      promote: (accountName) => this.socket.emit("promoteGuildMember", { accountName }),
+      motd: (motd) => this.socket.emit("setGuildMotd", { motd }),
+      chat: (message) => this.socket.emit("guildChat", { message })
+    });
+    this.socket.on("guildUpdate", (view) => this.hud.setGuild(view));
+    this.socket.on("guildInvite", (payload) => {
+      this.hud.showGuildInvite(payload);
+      this.showTopBanner(`🏰 ${payload.from} mời vào [${payload.tag}] ${payload.guildName} — gõ /gaccept`, "achievement", 5000);
+    });
+    this.socket.on("guildChatMessage", (payload) => this.hud.appendGuildChat(payload));
 
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
@@ -1281,7 +1297,7 @@ export class GameScene extends Phaser.Scene {
       }
       this.players.set(player.id, sprite);
       const ip2 = worldToIso(position.x, position.y);
-      const name = this.add.text(ip2.x, ip2.y - 34, player.accountName, {
+      const name = this.add.text(ip2.x, ip2.y - 34, this.displayName(player), {
         fontFamily: "monospace",
         fontSize: "12px",
         color: player.id === this.selfId ? "#a8d8ff" : "#f1f1f1",
@@ -1317,7 +1333,7 @@ export class GameScene extends Phaser.Scene {
       sprite.setInteractive({ useHandCursor: true });
     }
     const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
-    this.names.get(player.id)?.setText(player.accountName).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2);
+    this.names.get(player.id)?.setText(this.displayName(player)).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2);
     // Iso depth sort: bar + gear must follow sprite's depth, otherwise the
     // fixed (12,13) depth set at creation puts them under the sprite once
     // ip3.y exceeds those values (which it always does in a 200x150 world).
@@ -1325,6 +1341,11 @@ export class GameScene extends Phaser.Scene {
     this.playerEquipment.get(player.id)?.setDepth(ip3.y + 0.5);
     this.drawPlayerBar(player, ip3);
     this.drawPlayerEquipment(player, ip3, facing);
+  }
+
+  /** Name label text: guild tag prefix when the player belongs to a guild. */
+  private displayName(player: PlayerState): string {
+    return player.guildTag ? `[${player.guildTag}] ${player.accountName}` : player.accountName;
   }
 
   private drawPlayerEquipment(player: PlayerState, position: Vec2, facing: Direction): void {

@@ -27,6 +27,13 @@ import {
   VIP_GOLD_MULTIPLIER,
   VIP_PACKAGES,
   isVipActive,
+  GUILD_CREATE_COST_GOLD,
+  GUILD_INVITE_TTL_MS,
+  GUILD_MAX_MEMBERS,
+  GUILD_MOTD_MAX,
+  canManageGuild,
+  sanitizeGuildName,
+  sanitizeGuildTag,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -84,6 +91,8 @@ import type {
   MonsterState,
   PlayerState,
   ChatMessage,
+  GuildRecord,
+  GuildView,
   PartyView,
   QuestListPayload,
   QuestView,
@@ -96,6 +105,7 @@ import type {
   WorldSnapshot
 } from "@mmorpg/shared";
 import type { PlayerRepository } from "../db/PlayerRepository.js";
+import { guildStore } from "../db/GuildStore.js";
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type GameServerSocket = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -322,6 +332,8 @@ export class GameWorld {
   private readonly parties = new Map<string, Party>();
   private readonly playerParty = new Map<string, string>();
   private readonly pendingInvites = new Map<string, string>();
+  // Pending guild invites keyed by invitee accountName.
+  private readonly guildInvites = new Map<string, { guildId: string; expiresAt: number }>();
   private readonly sessions = new Map<string, { email: string; accountName: string }>();
   private readonly dirtyPlayers = new Set<string>();
   private readonly shopStock: ShopItem[] = createShopStock();
@@ -584,6 +596,12 @@ export class GameWorld {
         vipLastDailyDate: saved.vipLastDailyDate
       };
       player.equippedSkills = sanitizeEquippedSkills(saved.equippedSkills, player.learnedSkills);
+      // Restore guild membership from the authoritative guild store.
+      const guild = guildStore.findByMember(player.accountName);
+      if (guild) {
+        player.guildId = guild.id;
+        player.guildTag = guild.tag;
+      }
       this.players.set(socket.id, player);
       this.sockets.set(socket.id, socket);
       this.activeQuests.set(socket.id, []);
@@ -599,6 +617,9 @@ export class GameWorld {
       socket.emit("shopStock", this.shopStock);
       socket.emit("chatHistory", this.chatMessages);
       this.emitFriendList(player);
+      // Push guild roster to the player and refresh online flags for mates.
+      if (player.guildId) this.emitGuildUpdate(player.guildId);
+      else socket.emit("guildUpdate", null);
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
     });
 
@@ -1101,6 +1122,206 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Dev-only cheat for automated smoke tests. Never enabled in production
+    // (requires explicit DEV_CHEATS=1 env; not set in Dockerfile/compose).
+    if (process.env.DEV_CHEATS === "1") {
+      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.stats.gold += Math.max(0, Number(payload?.gold) || 0);
+        player.gems = (player.gems ?? 0) + Math.max(0, Number(payload?.gems) || 0);
+        socket.emit("player", player);
+      });
+    }
+
+    socket.on("createGuild", ({ name, tag }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.guildId) {
+        socket.emit("system", "Bạn đã ở trong một guild. Rời guild trước khi lập guild mới.");
+        return;
+      }
+      const cleanName = sanitizeGuildName(name);
+      const cleanTag = sanitizeGuildTag(tag);
+      if (!cleanName) {
+        socket.emit("system", "Tên guild phải dài 3-20 ký tự.");
+        return;
+      }
+      if (!cleanTag) {
+        socket.emit("system", "Tag guild phải gồm 2-4 chữ/số (vd: DN, EP1).");
+        return;
+      }
+      if (guildStore.findByNameOrTag(cleanName, cleanTag)) {
+        socket.emit("system", "Tên hoặc tag guild đã tồn tại. Chọn tên khác nhé.");
+        return;
+      }
+      if (player.stats.gold < GUILD_CREATE_COST_GOLD) {
+        socket.emit("system", `Cần ${GUILD_CREATE_COST_GOLD} vàng để lập guild (đang có ${player.stats.gold}).`);
+        return;
+      }
+      player.stats.gold -= GUILD_CREATE_COST_GOLD;
+      const record: GuildRecord = {
+        id: `guild-${Date.now()}-${Math.floor(Math.random() * 1e4)}`,
+        name: cleanName,
+        tag: cleanTag,
+        motd: "Chào mừng đến với guild!",
+        createdAt: Date.now(),
+        members: [{ accountName: player.accountName, rank: "leader", joinedAt: Date.now() }]
+      };
+      guildStore.upsert(record);
+      player.guildId = record.id;
+      player.guildTag = record.tag;
+      socket.emit("player", player);
+      this.emitGuildUpdate(record.id);
+      this.io.emit("system", `🏰 Guild [${record.tag}] ${record.name} vừa được thành lập bởi ${player.accountName}!`);
+      this.markDirty(player);
+    });
+
+    socket.on("guildInvitePlayer", ({ name }) => {
+      const inviter = this.players.get(socket.id);
+      if (!inviter || !inviter.guildId) return;
+      const guild = guildStore.get(inviter.guildId);
+      if (!guild) return;
+      const inviterRank = guild.members.find((m) => m.accountName === inviter.accountName)?.rank;
+      if (!canManageGuild(inviterRank)) {
+        socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được mời thành viên.");
+        return;
+      }
+      if (guild.members.length >= GUILD_MAX_MEMBERS) {
+        socket.emit("system", `Guild đã đầy (${GUILD_MAX_MEMBERS} thành viên).`);
+        return;
+      }
+      const cleanName = String(name ?? "").trim().slice(0, 20);
+      const target = [...this.players.values()].find((p) => p.accountName === cleanName);
+      if (!target) {
+        socket.emit("system", `${cleanName} không online.`);
+        return;
+      }
+      if (target.guildId) {
+        socket.emit("system", `${cleanName} đã ở trong một guild khác.`);
+        return;
+      }
+      this.guildInvites.set(target.accountName, { guildId: guild.id, expiresAt: Date.now() + GUILD_INVITE_TTL_MS });
+      this.sockets.get(target.id)?.emit("guildInvite", {
+        guildId: guild.id,
+        guildName: guild.name,
+        tag: guild.tag,
+        from: inviter.accountName
+      });
+      socket.emit("system", `Đã gửi lời mời guild tới ${cleanName}.`);
+    });
+
+    socket.on("acceptGuildInvite", ({ guildId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.guildId) {
+        socket.emit("system", "Bạn đã ở trong một guild.");
+        return;
+      }
+      const invite = this.guildInvites.get(player.accountName);
+      if (!invite || invite.guildId !== guildId || invite.expiresAt < Date.now()) {
+        socket.emit("system", "Lời mời guild không còn hiệu lực.");
+        return;
+      }
+      const guild = guildStore.get(guildId);
+      if (!guild) {
+        socket.emit("system", "Guild không còn tồn tại.");
+        return;
+      }
+      if (guild.members.length >= GUILD_MAX_MEMBERS) {
+        socket.emit("system", "Guild đã đầy.");
+        return;
+      }
+      this.guildInvites.delete(player.accountName);
+      guild.members.push({ accountName: player.accountName, rank: "member", joinedAt: Date.now() });
+      guildStore.markDirty();
+      player.guildId = guild.id;
+      player.guildTag = guild.tag;
+      socket.emit("player", player);
+      this.emitGuildUpdate(guild.id);
+      this.broadcastGuildSystem(guild, `${player.accountName} đã gia nhập guild! 🎉`);
+      this.markDirty(player);
+    });
+
+    socket.on("leaveGuild", () => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      this.removeFromGuild(player.accountName, player.guildId, "leave");
+    });
+
+    socket.on("kickGuildMember", ({ accountName }) => {
+      const actor = this.players.get(socket.id);
+      if (!actor || !actor.guildId) return;
+      const guild = guildStore.get(actor.guildId);
+      if (!guild) return;
+      const actorRank = guild.members.find((m) => m.accountName === actor.accountName)?.rank;
+      const targetMember = guild.members.find((m) => m.accountName === accountName);
+      if (!targetMember || targetMember.accountName === actor.accountName) return;
+      // Officers can only kick plain members; the leader can kick anyone.
+      const allowed =
+        actorRank === "leader" ||
+        (actorRank === "officer" && targetMember.rank === "member");
+      if (!allowed) {
+        socket.emit("system", "Bạn không có quyền trục xuất thành viên này.");
+        return;
+      }
+      this.removeFromGuild(accountName, guild.id, "kick", actor.accountName);
+    });
+
+    socket.on("promoteGuildMember", ({ accountName }) => {
+      const actor = this.players.get(socket.id);
+      if (!actor || !actor.guildId) return;
+      const guild = guildStore.get(actor.guildId);
+      if (!guild) return;
+      const actorRank = guild.members.find((m) => m.accountName === actor.accountName)?.rank;
+      if (actorRank !== "leader") {
+        socket.emit("system", "Chỉ Hội Trưởng mới được thăng/giáng chức.");
+        return;
+      }
+      const member = guild.members.find((m) => m.accountName === accountName);
+      if (!member || member.rank === "leader") return;
+      member.rank = member.rank === "member" ? "officer" : "member";
+      guildStore.markDirty();
+      this.emitGuildUpdate(guild.id);
+      this.broadcastGuildSystem(
+        guild,
+        member.rank === "officer"
+          ? `${accountName} được thăng chức Sĩ Quan ⭐`
+          : `${accountName} bị giáng xuống Thành Viên.`
+      );
+    });
+
+    socket.on("setGuildMotd", ({ motd }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (!canManageGuild(rank)) {
+        socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được đổi thông báo guild.");
+        return;
+      }
+      guild.motd = String(motd ?? "").trim().slice(0, GUILD_MOTD_MAX);
+      guildStore.markDirty();
+      this.emitGuildUpdate(guild.id);
+    });
+
+    socket.on("guildChat", ({ message }) => {
+      const sender = this.players.get(socket.id);
+      if (!sender || !sender.guildId) {
+        socket.emit("system", "Bạn chưa ở trong guild nào. Gõ U để mở bảng guild.");
+        return;
+      }
+      const guild = guildStore.get(sender.guildId);
+      if (!guild) return;
+      const cleanMsg = String(message ?? "").trim().slice(0, 200);
+      if (!cleanMsg) return;
+      const payload = { from: sender.accountName, tag: guild.tag, message: cleanMsg, sentAt: Date.now() };
+      for (const p of this.players.values()) {
+        if (p.guildId === guild.id) this.sockets.get(p.id)?.emit("guildChatMessage", payload);
+      }
+    });
+
     socket.on("buyBattlePassPremium", () => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -1540,7 +1761,10 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (player) await this.saveNow(player);
       this.removeFromParty(socket.id);
+      const guildId = player?.guildId;
       this.players.delete(socket.id);
+      // After removal, refresh online flags for remaining guildmates.
+      if (guildId) this.emitGuildUpdate(guildId);
       this.sockets.delete(socket.id);
       this.inputs.delete(socket.id);
       this.chatCooldowns.delete(socket.id);
@@ -2418,6 +2642,97 @@ export class GameWorld {
     const online = new Set([...this.players.values()].map((p) => p.accountName));
     const rows = (player.friends ?? []).map((name) => ({ name, online: online.has(name) }));
     this.sockets.get(player.id)?.emit("friendList", rows);
+  }
+
+  /** Build the client-facing view of a guild with live presence info. */
+  private guildView(guild: GuildRecord): GuildView {
+    const onlineByName = new Map([...this.players.values()].map((p) => [p.accountName, p]));
+    // Leader first, then officers, then members; online before offline.
+    const rankOrder = { leader: 0, officer: 1, member: 2 } as const;
+    const members = [...guild.members]
+      .sort((a, b) => rankOrder[a.rank] - rankOrder[b.rank] || a.joinedAt - b.joinedAt)
+      .map((m) => {
+        const live = onlineByName.get(m.accountName);
+        return {
+          accountName: m.accountName,
+          rank: m.rank,
+          level: live?.stats.level ?? 0,
+          online: !!live,
+          playerClass: live?.playerClass
+        };
+      });
+    return {
+      id: guild.id,
+      name: guild.name,
+      tag: guild.tag,
+      motd: guild.motd,
+      createdAt: guild.createdAt,
+      members,
+      maxMembers: GUILD_MAX_MEMBERS
+    };
+  }
+
+  /** Send the fresh roster to every online member of a guild. */
+  private emitGuildUpdate(guildId: string): void {
+    const guild = guildStore.get(guildId);
+    if (!guild) return;
+    const view = this.guildView(guild);
+    for (const p of this.players.values()) {
+      if (p.guildId === guildId) this.sockets.get(p.id)?.emit("guildUpdate", view);
+    }
+  }
+
+  private broadcastGuildSystem(guild: GuildRecord, message: string): void {
+    for (const p of this.players.values()) {
+      if (p.guildId === guild.id) this.sockets.get(p.id)?.emit("system", `🏰 [${guild.tag}] ${message}`);
+    }
+  }
+
+  /**
+   * Remove a member from a guild, handling leadership succession and
+   * disband-on-empty. `reason` controls the system messages.
+   */
+  private removeFromGuild(accountName: string, guildId: string, reason: "leave" | "kick", actorName?: string): void {
+    const guild = guildStore.get(guildId);
+    if (!guild) return;
+    const member = guild.members.find((m) => m.accountName === accountName);
+    if (!member) return;
+    guild.members = guild.members.filter((m) => m.accountName !== accountName);
+
+    // Clear runtime state on the online player, if any.
+    const live = [...this.players.values()].find((p) => p.accountName === accountName);
+    if (live) {
+      live.guildId = undefined;
+      live.guildTag = undefined;
+      this.sockets.get(live.id)?.emit("player", live);
+      this.sockets.get(live.id)?.emit("guildUpdate", null);
+      this.sockets.get(live.id)?.emit(
+        "system",
+        reason === "kick" ? `Bạn đã bị ${actorName ?? "guild"} trục xuất khỏi [${guild.tag}] ${guild.name}.` : `Bạn đã rời [${guild.tag}] ${guild.name}.`
+      );
+      this.markDirty(live);
+    }
+
+    if (guild.members.length === 0) {
+      guildStore.remove(guild.id);
+      this.io.emit("system", `🏰 Guild [${guild.tag}] ${guild.name} đã giải tán.`);
+      return;
+    }
+
+    // Leadership succession: oldest officer, else oldest member.
+    if (member.rank === "leader") {
+      const next =
+        guild.members.filter((m) => m.rank === "officer").sort((a, b) => a.joinedAt - b.joinedAt)[0] ??
+        guild.members.slice().sort((a, b) => a.joinedAt - b.joinedAt)[0];
+      next.rank = "leader";
+      this.broadcastGuildSystem(guild, `${next.accountName} trở thành Hội Trưởng mới 👑`);
+    }
+    guildStore.markDirty();
+    this.broadcastGuildSystem(
+      guild,
+      reason === "kick" ? `${accountName} đã bị trục xuất khỏi guild.` : `${accountName} đã rời guild.`
+    );
+    this.emitGuildUpdate(guild.id);
   }
 
   private grantBattlePassExp(player: PlayerState, amount: number): void {

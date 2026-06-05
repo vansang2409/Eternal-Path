@@ -1,5 +1,5 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, describeBattlePassReward, expToNextLevel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_CREATE_COST_GOLD, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildView, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -16,6 +16,8 @@ export class Hud {
   private party: PartyView | null = null;
   private pendingInvitePartyId?: string;
   private offlineRewardsOpen = false;
+  private guild: GuildView | null = null;
+  private pendingGuildInvite?: GuildInvitePayload;
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -108,6 +110,7 @@ export class Hud {
       g: "afk-modal",
       j: "forge-modal",         // 'j' for jewel/forge
       b: "leaderboard-modal",   // 'b' for bảng vinh danh
+      u: "guild-modal",         // 'u' for guild/union
       "?": "help-modal"
     };
     window.addEventListener("keydown", (event) => {
@@ -208,6 +211,7 @@ export class Hud {
     this.renderGemShop();
     this.renderBattlePass();
     this.renderVipModal();
+    this.renderGuildModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -759,6 +763,142 @@ export class Hud {
     this.friendRemoveHandler = remove;
   }
 
+  // ----- Guild (Sprint 56) -----
+
+  private guildHandlers?: {
+    create: (name: string, tag: string) => void;
+    invite: (name: string) => void;
+    accept: (guildId: string) => void;
+    leave: () => void;
+    kick: (accountName: string) => void;
+    promote: (accountName: string) => void;
+    motd: (motd: string) => void;
+    chat: (message: string) => void;
+  };
+
+  setGuildHandlers(handlers: NonNullable<Hud["guildHandlers"]>): void {
+    this.guildHandlers = handlers;
+  }
+
+  setGuild(view: GuildView | null): void {
+    this.guild = view;
+    this.renderGuildModal();
+  }
+
+  showGuildInvite(payload: GuildInvitePayload): void {
+    this.pendingGuildInvite = payload;
+    this.log(`🏰 ${payload.from} mời bạn vào guild [${payload.tag}] ${payload.guildName} — gõ /gaccept để tham gia (hết hạn sau 60s).`, "log-line");
+  }
+
+  consumePendingGuildInvite(): GuildInvitePayload | undefined {
+    const invite = this.pendingGuildInvite;
+    this.pendingGuildInvite = undefined;
+    return invite;
+  }
+
+  appendGuildChat(payload: GuildChatPayload): void {
+    const root = document.querySelector("#chat-messages");
+    if (!root) return;
+    const line = document.createElement("div");
+    line.className = "chat-line";
+    line.style.color = "#9be7a8";
+    const time = new Date(payload.sentAt);
+    const hh = time.getHours().toString().padStart(2, "0");
+    const mm = time.getMinutes().toString().padStart(2, "0");
+    line.innerHTML = `<time class="chat-time">${hh}:${mm}</time><strong>[${escapeHtml(payload.tag)}] ${escapeHtml(payload.from)}</strong><span>${escapeHtml(payload.message)}</span>`;
+    root.append(line);
+    while (root.childElementCount > 50) root.firstElementChild?.remove();
+    root.scrollTop = root.scrollHeight;
+  }
+
+  private renderGuildModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#guild-body");
+    if (!body) return;
+    const g = this.guild;
+    if (!g) {
+      const gold = this.player?.stats.gold ?? 0;
+      const canAfford = gold >= GUILD_CREATE_COST_GOLD;
+      body.innerHTML = `
+        <p style="color:#d6dddf;font-size:13px;line-height:1.6">Bạn chưa ở trong guild nào. Lập guild riêng với <strong style="color:#ffd166">${GUILD_CREATE_COST_GOLD} 🪙</strong> (đang có ${gold}), hoặc chờ lời mời từ guild khác.</p>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <input id="guild-create-name" type="text" maxlength="20" placeholder="Tên guild (3-20 ký tự)" style="flex:2;min-width:160px;padding:8px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+          <input id="guild-create-tag" type="text" maxlength="4" placeholder="TAG (2-4)" style="flex:1;min-width:80px;padding:8px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1;text-transform:uppercase" />
+          <button id="guild-create-btn" type="button" ${canAfford ? "" : "disabled"} style="padding:8px 18px;color:#1d1500;font-weight:700;background:${canAfford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#444"};border:none;border-radius:4px;cursor:${canAfford ? "pointer" : "not-allowed"}">🏰 Lập Guild</button>
+        </div>
+        <p style="color:#8e9192;font-size:11px;margin-top:10px">Tag hiển thị cạnh tên mọi thành viên, vd: <strong>[DN] ${escapeHtml(this.player?.accountName ?? "Hero")}</strong>. Chat guild bằng <strong>/g &lt;tin nhắn&gt;</strong>.</p>`;
+      body.querySelector<HTMLButtonElement>("#guild-create-btn")?.addEventListener("click", () => {
+        const name = body.querySelector<HTMLInputElement>("#guild-create-name")?.value ?? "";
+        const tag = body.querySelector<HTMLInputElement>("#guild-create-tag")?.value ?? "";
+        this.guildHandlers?.create(name, tag);
+      });
+      return;
+    }
+
+    const me = g.members.find((m) => m.accountName === this.player?.accountName);
+    const canManage = canManageGuild(me?.rank);
+    const isLeader = me?.rank === "leader";
+    const onlineCount = g.members.filter((m) => m.online).length;
+    const rows = g.members
+      .map((m) => {
+        const cls = m.playerClass ? ` · ${CLASS_CATALOG[m.playerClass].name}` : "";
+        const level = m.online ? `Lv ${m.level}${cls}` : "offline";
+        const kickable =
+          me && m.accountName !== me.accountName &&
+          (isLeader || (me.rank === "officer" && m.rank === "member"));
+        const promotable = isLeader && m.rank !== "leader";
+        return `<tr>
+          <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${m.online ? "🟢" : "⚪"} ${escapeHtml(m.accountName)}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#cdb6ff">${guildRankLabel(m.rank)}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#8e9192">${level}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;text-align:right;white-space:nowrap">
+            ${promotable ? `<button type="button" data-guild-promote="${escapeHtml(m.accountName)}" title="Thăng/giáng chức" style="padding:3px 8px;margin-right:4px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#ffd166;cursor:pointer">⭐</button>` : ""}
+            ${kickable ? `<button type="button" data-guild-kick="${escapeHtml(m.accountName)}" title="Trục xuất" style="padding:3px 8px;background:#402c2c;border:1px solid #5a3939;border-radius:4px;color:#ff8181;cursor:pointer">✕</button>` : ""}
+          </td>
+        </tr>`;
+      })
+      .join("");
+    body.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h3 style="margin:0;color:#ffd166">[${escapeHtml(g.tag)}] ${escapeHtml(g.name)}</h3>
+        <span style="color:#8e9192;font-size:12px">${g.members.length}/${g.maxMembers} thành viên · ${onlineCount} online</span>
+      </div>
+      <div id="guild-motd-row" style="display:flex;gap:8px;align-items:center;margin:10px 0;padding:10px;background:rgba(110,76,155,0.15);border:1px solid rgba(199,155,255,0.35);border-radius:6px">
+        <span style="font-size:13px;color:#e8dcff;flex:1">📜 ${escapeHtml(g.motd || "(chưa có thông báo)")}</span>
+        ${canManage ? `<button id="guild-motd-edit" type="button" style="padding:4px 10px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#cdb6ff;cursor:pointer">Sửa</button>` : ""}
+      </div>
+      ${canManage ? `<div style="display:flex;gap:8px;margin-bottom:10px">
+        <input id="guild-invite-name" type="text" maxlength="20" placeholder="Tên người chơi đang online" style="flex:1;padding:7px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+        <button id="guild-invite-btn" type="button" style="padding:7px 14px;background:linear-gradient(to bottom,#6e4c9b,#523a73);border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer">➕ Mời</button>
+      </div>` : ""}
+      <div style="max-height:260px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">${rows}</table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+        <span style="color:#8e9192;font-size:11px">Chat guild: <strong>/g &lt;tin nhắn&gt;</strong></span>
+        <button id="guild-leave-btn" type="button" style="padding:6px 14px;background:#402c2c;border:1px solid #5a3939;border-radius:4px;color:#ff8181;cursor:pointer">${isLeader && g.members.length > 1 ? "Rời guild (truyền chức)" : "Rời guild"}</button>
+      </div>`;
+    body.querySelector<HTMLButtonElement>("#guild-invite-btn")?.addEventListener("click", () => {
+      const name = body.querySelector<HTMLInputElement>("#guild-invite-name")?.value.trim();
+      if (name) this.guildHandlers?.invite(name);
+    });
+    body.querySelector<HTMLButtonElement>("#guild-motd-edit")?.addEventListener("click", () => {
+      const next = window.prompt("Thông báo guild mới:", g.motd)?.slice(0, GUILD_MOTD_MAX);
+      if (next !== undefined && next !== null) this.guildHandlers?.motd(next);
+    });
+    body.querySelector<HTMLButtonElement>("#guild-leave-btn")?.addEventListener("click", () => {
+      if (window.confirm("Bạn chắc chắn muốn rời guild?")) this.guildHandlers?.leave();
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-guild-kick]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const name = btn.dataset.guildKick!;
+        if (window.confirm(`Trục xuất ${name} khỏi guild?`)) this.guildHandlers?.kick(name);
+      });
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-guild-promote]").forEach((btn) => {
+      btn.addEventListener("click", () => this.guildHandlers?.promote(btn.dataset.guildPromote!));
+    });
+  }
+
   private handleSlashCommand(raw: string): void {
     const [cmd, ...rest] = raw.slice(1).split(/\s+/);
     const arg = rest.join(" ").trim();
@@ -769,6 +909,9 @@ export class Hud {
         "/w <tên> <tin> — nhắn riêng",
         "/friend <tên> — thêm bạn",
         "/unfriend <tên> — bỏ bạn",
+        "/g <tin> — chat guild",
+        "/ginvite <tên> — mời vào guild",
+        "/gaccept — nhận lời mời guild",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -784,6 +927,14 @@ export class Hud {
     }
     if (cmd === "friend" && arg) { this.friendAddHandler?.(arg); return; }
     if (cmd === "unfriend" && arg) { this.friendRemoveHandler?.(arg); return; }
+    if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
+    if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
+    if (cmd === "gaccept") {
+      const invite = this.consumePendingGuildInvite();
+      if (!invite) { this.log("Không có lời mời guild nào đang chờ.", "log-line"); return; }
+      this.guildHandlers?.accept(invite.guildId);
+      return;
+    }
     if (cmd === "clear") {
       const root = document.querySelector("#chat-messages");
       if (root) root.innerHTML = "";
