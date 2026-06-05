@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 55**. Total: **130 commits** on `master`, all pushed.
+Resume point after **Sprint 56** (guild system). Total: **131 commits** on `master`, all pushed.
 
 ## TL;DR
 
@@ -35,6 +35,7 @@ docker compose up -d --build
 - **World:** Procedural 200×150 + 12 biomes + collision, day/night 10min/4 phases, 8 ambient music moods
 - **Progression:** 3 classes, 21 quests (5 tutorial auto + 8 story + 3 daily reset 24h), 20 achievements with progress, 3 loadout presets, talents
 - **Social:** Party 4, chat + timestamps + slash commands, PvP arena + leaderboard, friends list + private msg `/w`, town NPCs
+- **Guild (Sprint 56):** tạo 5000g, 20 thành viên, rank leader/officer/member, invite/kick/promote/MOTD, chat `/g`, tag `[TAG]` cạnh tên, hotkey U, persist `data/guilds.json` (GuildStore riêng, không đụng saves.json). E2E smoke: `node smoke-guild-test.mjs` + `smoke-guild-persist.mjs` (server cần `DEV_CHEATS=1` + test save paths)
 - **Mobile:** Virtual joystick + 5 action buttons (touch auto-detect)
 - **UX:** Minimap, hotkeys (I/C/K/N/V/H/G/J/B/?), Top banner notifications, collapse panels, skill cooldown sweep
 
@@ -55,8 +56,9 @@ docker compose up -d --build
 1. **Tích hợp payment thật** — Stripe / VNPay / Momo để convert Gem → VND
 2. **Deploy public** — cần cloud account của user (Railway/Fly.io/Render). Dockerfile + DEPLOY.md sẵn sàng
 3. **Banner ads / reward video ads** — AdSense / AdMob
-4. **Guild system** — gameplay + monetize
-5. **Marketplace trading** — economy
+4. ~~Guild system~~ — ✅ DONE Sprint 56
+5. **Marketplace trading** — economy (sprint tự chọn tiếp theo hợp lý)
+6. **Guild monetize** — guild level/perks, guild shop bằng Gem (nối tiếp Sprint 56)
 
 ## Working style với user
 
