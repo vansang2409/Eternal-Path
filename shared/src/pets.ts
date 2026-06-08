@@ -34,7 +34,11 @@ export const PET_CATALOG: PetDef[] = [
   { id: "owl", name: "Cú Thông Thái", desc: "+40 HP", rarity: "rare", goldPrice: 9000, gemPrice: 0, buff: { maxHp: 40 }, color: 0xc9a36a },
   { id: "spirit", name: "Linh Hồ", desc: "+5 công, +5 thủ, +60 HP", rarity: "epic", goldPrice: 0, gemPrice: 200, buff: { attack: 5, defense: 5, maxHp: 60 }, color: 0xc79bff },
   { id: "drake", name: "Tiểu Long", desc: "+6 công, +3 thủ, +50 HP", rarity: "epic", goldPrice: 0, gemPrice: 150, buff: { attack: 6, defense: 3, maxHp: 50 }, color: 0xff7b5a },
-  { id: "phoenix", name: "Phượng Hoàng", desc: "+10 công, +5 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 300, buff: { attack: 10, defense: 5, maxHp: 100 }, color: 0xffb13d }
+  { id: "phoenix", name: "Phượng Hoàng", desc: "+10 công, +5 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 300, buff: { attack: 10, defense: 5, maxHp: 100 }, color: 0xffb13d },
+  // ── Season 2 pets (Sprint 69) ──
+  { id: "kirin", name: "Kỳ Lân", desc: "+8 công, +8 thủ, +80 HP", rarity: "epic", goldPrice: 0, gemPrice: 260, buff: { attack: 8, defense: 8, maxHp: 80 }, color: 0xf0e68c },
+  { id: "turtle", name: "Huyền Vũ", desc: "+2 công, +12 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 240, buff: { attack: 2, defense: 12, maxHp: 120 }, color: 0x4a8c6a },
+  { id: "cat", name: "Mèo May Mắn", desc: "+5 công, +20 HP", rarity: "rare", goldPrice: 12000, gemPrice: 0, buff: { attack: 5, maxHp: 20 }, color: 0xf5b942 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));

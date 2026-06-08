@@ -52,8 +52,8 @@ const run = async () => {
   ok("bought slime (gold deducted)", true);
   s.emit("buyPet", { petId: "phoenix" });
   const pBought = await waitPlayer(s, (p) => (p.ownedPets ?? []).includes("phoenix"));
-  // 500 granted − 300 (phoenix gemPrice) = 200.
-  ok("bought phoenix (gem deducted)", pBought.gems === 200, `gems=${pBought.gems}`);
+  // 500 granted − 300 (phoenix) + 10 (beast-tamer achievement on first pet, Sprint 67) = 210.
+  ok("bought phoenix (gem deducted)", pBought.gems === 210, `gems=${pBought.gems}`);
 
   // Buy duplicate rejected.
   s.emit("buyPet", { petId: "slime" });

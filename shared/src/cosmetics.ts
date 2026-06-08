@@ -72,6 +72,49 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x9bf0ff,
     gemPrice: 90
+  },
+  // ── Season 2 content drop (Sprint 69) ──
+  {
+    id: "skin-rose",
+    name: "Xích Hồng Yêu Cơ",
+    description: "Tô hồng rực — phong thái kiêu sa giữa chiến trường.",
+    type: "skinTint",
+    color: 0xff7ac6,
+    gemPrice: 150,
+    featured: true
+  },
+  {
+    id: "skin-jade-storm",
+    name: "Lục Lôi",
+    description: "Sắc lục điện quang cuộn quanh thân.",
+    type: "skinTint",
+    color: 0x6ef0c8,
+    gemPrice: 160
+  },
+  {
+    id: "skin-obsidian-gold",
+    name: "Hắc Kim Đế Vương",
+    description: "Đen tuyền viền ánh kim — uy nghi bậc đế vương.",
+    type: "skinTint",
+    color: 0x6b5a2a,
+    gemPrice: 320
+  },
+  {
+    id: "skill-fx-ember",
+    name: "Hiệu Ứng Phép Hỏa",
+    description: "Hiệu ứng kỹ năng bùng cháy đỏ cam.",
+    type: "skillEffectColor",
+    color: 0xff8838,
+    gemPrice: 110
+  },
+  {
+    id: "skill-fx-void",
+    name: "Hiệu Ứng Phép Hư Không",
+    description: "Hiệu ứng kỹ năng nhuốm tím hư vô.",
+    type: "skillEffectColor",
+    color: 0x8a4dff,
+    gemPrice: 130,
+    featured: true
   }
 ];
 
