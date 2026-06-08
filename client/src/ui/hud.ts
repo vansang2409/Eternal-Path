@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -63,7 +63,9 @@ export class Hud {
     private readonly onClaimVipDaily: () => void = () => {},
     private readonly onClaimStreak: () => void = () => {},
     private readonly onBuyPet: (petId: string) => void = () => {},
-    private readonly onEquipPet: (petId: string | null) => void = () => {}
+    private readonly onEquipPet: (petId: string | null) => void = () => {},
+    private readonly onFeedPet: () => void = () => {},
+    private readonly onPetTreat: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1252,6 +1254,7 @@ export class Hud {
     const active = this.player.activePet;
     const gold = this.player.stats.gold;
     const gems = this.player.gems ?? 0;
+    const xpMap = this.player.petXp ?? {};
     const cards = PET_CATALOG.map((p) => {
       const has = owned.has(p.id);
       const isActive = active === p.id;
@@ -1259,6 +1262,10 @@ export class Hud {
       const price = gemBuy ? `💎 ${p.gemPrice}` : `🪙 ${p.goldPrice.toLocaleString("vi-VN")}`;
       const afford = gemBuy ? gems >= p.gemPrice : gold >= p.goldPrice;
       const swatch = "#" + p.color.toString(16).padStart(6, "0");
+      const xp = xpMap[p.id] ?? 0;
+      const lvl = petLevelForXp(xp);
+      const buff = petBuffAtLevel(p.buff, lvl);
+      const buffText = [buff.attack ? `+${buff.attack} công` : "", buff.defense ? `+${buff.defense} thủ` : "", buff.maxHp ? `+${buff.maxHp} HP` : ""].filter(Boolean).join(", ");
       let action: string;
       if (!has) {
         action = `<button type="button" data-pet-buy="${p.id}" ${afford ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:${afford ? "#1d1500" : "#888"};background:${afford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${afford ? "pointer" : "not-allowed"}">${price}</button>`;
@@ -1267,16 +1274,34 @@ export class Hud {
       } else {
         action = `<button type="button" data-pet-equip="${p.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Trang bị</button>`;
       }
+      // XP bar (owned pets only).
+      const prog = petXpProgress(xp);
+      const pct = prog.atMax ? 100 : Math.round((prog.into / Math.max(1, prog.span)) * 100);
+      const levelBar = has
+        ? `<div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8e9192"><span>Cấp ${lvl}${prog.atMax ? " (MAX)" : ""}</span><span>${prog.atMax ? "" : `${prog.into}/${prog.span} XP`}</span></div><div style="height:6px;background:#101820;border-radius:3px;overflow:hidden;margin-top:2px"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,#6e4c9b,#c79bff)"></div></div></div>`
+        : "";
       return `<div class="rarity-${p.rarity}" style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;border-radius:6px;background:${isActive ? "rgba(255,209,102,0.12)" : "rgba(28,28,28,0.5)"};border:1px solid ${isActive ? "#ffd166" : "#2a2a2a"};border-left:3px solid currentColor">
         <div style="width:22px;height:22px;border-radius:50%;background:${swatch};border:2px solid #0008;flex:none"></div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;color:#f1f1f1">${escapeHtml(p.name)} <small style="color:#8e9192;font-weight:400">(${p.rarity})</small>${isActive ? " ✓" : ""}</div>
-          <div style="font-size:11px;color:#9be7a8">${escapeHtml(p.desc)}</div>
+          <div style="font-size:11px;color:#9be7a8">${has ? escapeHtml(buffText || p.desc) : escapeHtml(p.desc)}</div>
+          ${levelBar}
         </div>
         ${action}
       </div>`;
     }).join("");
-    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con.</p>${cards}`;
+    // Feed/treat panel for the active pet.
+    const activePet = PET_CATALOG.find((p) => p.id === active);
+    const feedPanel = activePet
+      ? `<div style="display:flex;gap:8px;margin:12px 0;padding:10px;background:rgba(110,76,155,0.12);border:1px solid #39424b;border-radius:6px;align-items:center;flex-wrap:wrap">
+          <span style="flex:1;min-width:120px;font-size:12px;color:#e8dcff">Nuôi <strong>${escapeHtml(activePet.name)}</strong> lên cấp để buff mạnh hơn (tối đa cấp 5):</span>
+          <button id="pet-feed-btn" type="button" ${gold >= PET_FEED_GOLD_COST ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:${gold >= PET_FEED_GOLD_COST ? "#1d1500" : "#888"};background:${gold >= PET_FEED_GOLD_COST ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${gold >= PET_FEED_GOLD_COST ? "pointer" : "not-allowed"}">🍖 Cho ăn 🪙${PET_FEED_GOLD_COST}</button>
+          <button id="pet-treat-btn" type="button" ${gems >= PET_TREAT_GEM_COST ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:${gems >= PET_TREAT_GEM_COST ? "linear-gradient(to bottom,#4aa3df,#2d6fa3)" : "#333"};cursor:${gems >= PET_TREAT_GEM_COST ? "pointer" : "not-allowed"}">🍬 Bánh thưởng 💎${PET_TREAT_GEM_COST}</button>
+        </div>`
+      : "";
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con; nuôi để lên cấp tăng buff.</p>${feedPanel}${cards}`;
+    body.querySelector<HTMLButtonElement>("#pet-feed-btn")?.addEventListener("click", () => this.onFeedPet());
+    body.querySelector<HTMLButtonElement>("#pet-treat-btn")?.addEventListener("click", () => this.onPetTreat());
     body.querySelectorAll<HTMLButtonElement>("[data-pet-buy]").forEach((btn) => {
       btn.addEventListener("click", () => this.onBuyPet(btn.dataset.petBuy!));
     });

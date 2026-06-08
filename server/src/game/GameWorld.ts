@@ -61,6 +61,12 @@ import {
   titleLabel,
   getPet,
   PET_CATALOG,
+  PET_FEED_GOLD_COST,
+  PET_FEED_XP,
+  PET_TREAT_GEM_COST,
+  PET_TREAT_XP,
+  petLevelForXp,
+  petBuffAtLevel,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -627,6 +633,7 @@ export class GameWorld {
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
         petBonusMaxHp: saved.petBonusMaxHp ?? 0,
+        petXp: saved.petXp ?? {},
         battlePassExp: saved.battlePassExp ?? 0,
         battlePassLevel: saved.battlePassLevel ?? 0,
         battlePassPremium: saved.battlePassPremium ?? false,
@@ -1796,6 +1803,33 @@ export class GameWorld {
       this.recomputePetBonus(player);
       socket.emit("player", player);
       socket.emit("system", `🐾 Đã trang bị ${getPet(petId)!.name}.`);
+      this.markDirty(player);
+    });
+
+    socket.on("feedPet", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.stats.gold < PET_FEED_GOLD_COST) {
+        socket.emit("system", `Cần ${PET_FEED_GOLD_COST} vàng để cho linh thú ăn.`);
+        return;
+      }
+      if (!this.grantPetXp(player, PET_FEED_XP)) return;
+      player.stats.gold -= PET_FEED_GOLD_COST;
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    socket.on("petTreat", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const gems = player.gems ?? 0;
+      if (gems < PET_TREAT_GEM_COST) {
+        socket.emit("system", `Cần ${PET_TREAT_GEM_COST} 💎 để mua bánh thưởng linh thú.`);
+        return;
+      }
+      if (!this.grantPetXp(player, PET_TREAT_XP)) return;
+      player.gems = gems - PET_TREAT_GEM_COST;
+      socket.emit("player", player);
       this.markDirty(player);
     });
 
@@ -3267,10 +3301,12 @@ export class GameWorld {
     player.stats.defense -= player.petBonusDefense ?? 0;
     player.stats.maxHp = Math.max(1, player.stats.maxHp - (player.petBonusMaxHp ?? 0));
 
-    const buff = getPet(player.activePet)?.buff;
-    const atk = buff?.attack ?? 0;
-    const def = buff?.defense ?? 0;
-    const hp = buff?.maxHp ?? 0;
+    const pet = getPet(player.activePet);
+    // Scale the buff by the active pet's current level (Sprint 65).
+    const scaled = pet ? petBuffAtLevel(pet.buff, petLevelForXp((player.petXp ?? {})[pet.id] ?? 0)) : undefined;
+    const atk = scaled?.attack ?? 0;
+    const def = scaled?.defense ?? 0;
+    const hp = scaled?.maxHp ?? 0;
     player.petBonusAttack = atk;
     player.petBonusDefense = def;
     player.petBonusMaxHp = hp;
@@ -3278,6 +3314,30 @@ export class GameWorld {
     player.stats.defense += def;
     player.stats.maxHp += hp;
     player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp);
+  }
+
+  /**
+   * Add XP to the player's ACTIVE pet, re-scaling its buff on level-up.
+   * Returns false (with a system message) if no pet is equipped.
+   */
+  private grantPetXp(player: PlayerState, xp: number): boolean {
+    const pet = getPet(player.activePet);
+    if (!pet) {
+      this.sockets.get(player.id)?.emit("system", "Hãy trang bị một linh thú trước (bảng Linh Thú — phím P).");
+      return false;
+    }
+    const map = player.petXp ?? {};
+    const before = petLevelForXp(map[pet.id] ?? 0);
+    map[pet.id] = (map[pet.id] ?? 0) + xp;
+    player.petXp = map;
+    const after = petLevelForXp(map[pet.id]);
+    // Re-scale the active buff (subtract-old/add-new keeps stats correct).
+    this.recomputePetBonus(player);
+    this.sockets.get(player.id)?.emit(
+      "system",
+      after > before ? `🐾 ${pet.name} lên cấp ${after}! Chỉ số buff tăng.` : `🐾 ${pet.name} +${xp} XP.`
+    );
+    return true;
   }
 
   private snapshot(): WorldSnapshot {

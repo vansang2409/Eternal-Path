@@ -46,3 +46,49 @@ export function getPet(id: string | undefined): PetDef | undefined {
 export function petLabel(id: string | undefined): string | undefined {
   return getPet(id)?.name;
 }
+
+// ── Pet leveling (Sprint 65) ────────────────────────────────────────────
+// A pet gains XP from feeding (gold) or treats (Gem). Its buff scales +25%
+// per level above 1, so a level-5 pet grants double its base buff. Level math
+// is pure for exhaustive unit testing.
+export const PET_MAX_LEVEL = 5;
+export const PET_FEED_GOLD_COST = 500;
+export const PET_FEED_XP = 50;
+export const PET_TREAT_GEM_COST = 30;
+export const PET_TREAT_XP = 250;
+
+// Cumulative XP required to REACH each level (index = level-1).
+const PET_LEVEL_XP = [0, 100, 300, 600, 1000];
+
+export function petLevelForXp(xp: number): number {
+  let level = 1;
+  for (let i = 0; i < PET_LEVEL_XP.length; i++) {
+    if (xp >= PET_LEVEL_XP[i]) level = i + 1;
+    else break;
+  }
+  return Math.min(PET_MAX_LEVEL, level);
+}
+
+/** XP progress within the current level: {into, span, atMax}. */
+export function petXpProgress(xp: number): { level: number; into: number; span: number; atMax: boolean } {
+  const level = petLevelForXp(xp);
+  if (level >= PET_MAX_LEVEL) return { level, into: 1, span: 1, atMax: true };
+  const cur = PET_LEVEL_XP[level - 1];
+  const next = PET_LEVEL_XP[level];
+  return { level, into: xp - cur, span: next - cur, atMax: false };
+}
+
+/** Multiplier applied to a pet's base buff at the given level (+25%/level). */
+export function petLevelMultiplier(level: number): number {
+  return 1 + (Math.max(1, Math.min(PET_MAX_LEVEL, level)) - 1) * 0.25;
+}
+
+/** A pet's buff scaled to the given level (each stat rounded). */
+export function petBuffAtLevel(buff: PetBuff, level: number): Required<PetBuff> {
+  const m = petLevelMultiplier(level);
+  return {
+    attack: Math.round((buff.attack ?? 0) * m),
+    defense: Math.round((buff.defense ?? 0) * m),
+    maxHp: Math.round((buff.maxHp ?? 0) * m)
+  };
+}

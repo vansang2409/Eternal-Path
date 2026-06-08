@@ -44,6 +44,7 @@ interface SavedPlayer {
   petBonusAttack?: number;
   petBonusDefense?: number;
   petBonusMaxHp?: number;
+  petXp?: Record<string, number>;
   battlePassExp?: number;
   battlePassLevel?: number;
   battlePassPremium?: boolean;
@@ -285,6 +286,7 @@ export class PlayerRepository {
       petBonusAttack: player.petBonusAttack,
       petBonusDefense: player.petBonusDefense,
       petBonusMaxHp: player.petBonusMaxHp,
+      petXp: player.petXp ? { ...player.petXp } : undefined,
       battlePassExp: player.battlePassExp,
       battlePassLevel: player.battlePassLevel,
       battlePassPremium: player.battlePassPremium,

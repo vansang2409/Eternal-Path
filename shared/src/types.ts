@@ -193,6 +193,8 @@ export interface PlayerState {
   petBonusAttack?: number;
   petBonusDefense?: number;
   petBonusMaxHp?: number;
+  // XP per owned pet id (Sprint 65) → drives pet level + buff scaling.
+  petXp?: Record<string, number>;
   // Battle pass progression for the current season.
   battlePassExp?: number;
   battlePassLevel?: number;
@@ -489,6 +491,8 @@ export interface ClientToServerEvents {
   setActiveTitle: (payload: { titleId: string | null }) => void;
   buyPet: (payload: { petId: string }) => void;
   equipPet: (payload: { petId: string | null }) => void;
+  feedPet: () => void;
+  petTreat: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;
