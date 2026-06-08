@@ -34,6 +34,11 @@ interface SavedPlayer {
   loginStreak?: number;
   streakLastClaimDate?: string;
   activeTitle?: string;
+  ownedPets?: string[];
+  activePet?: string;
+  petBonusAttack?: number;
+  petBonusDefense?: number;
+  petBonusMaxHp?: number;
   battlePassExp?: number;
   battlePassLevel?: number;
   battlePassPremium?: boolean;
@@ -267,6 +272,11 @@ export class PlayerRepository {
       loginStreak: player.loginStreak,
       streakLastClaimDate: player.streakLastClaimDate,
       activeTitle: player.activeTitle,
+      ownedPets: player.ownedPets ? [...player.ownedPets] : undefined,
+      activePet: player.activePet,
+      petBonusAttack: player.petBonusAttack,
+      petBonusDefense: player.petBonusDefense,
+      petBonusMaxHp: player.petBonusMaxHp,
       battlePassExp: player.battlePassExp,
       battlePassLevel: player.battlePassLevel,
       battlePassPremium: player.battlePassPremium,

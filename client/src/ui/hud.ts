@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -61,7 +61,9 @@ export class Hud {
     private readonly onClaimBattlePass: (tier: number, track: "free" | "premium") => void = () => {},
     private readonly onBuyVip: (days: number) => void = () => {},
     private readonly onClaimVipDaily: () => void = () => {},
-    private readonly onClaimStreak: () => void = () => {}
+    private readonly onClaimStreak: () => void = () => {},
+    private readonly onBuyPet: (petId: string) => void = () => {},
+    private readonly onEquipPet: (petId: string | null) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -124,6 +126,7 @@ export class Hud {
       m: "market-modal",        // 'm' for market/chợ
       l: "streak-modal",        // 'l' for login/điểm danh
       t: "titles-modal",        // 't' for titles/danh hiệu
+      p: "pets-modal",          // 'p' for pets/linh thú
       "?": "help-modal"
     };
     window.addEventListener("keydown", (event) => {
@@ -233,6 +236,7 @@ export class Hud {
     this.renderMarketModal();
     this.renderStreakModal();
     this.renderTitlesModal();
+    this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -1237,6 +1241,47 @@ export class Hud {
     body.querySelector<HTMLSelectElement>("#market-sort")?.addEventListener("change", (e) => {
       this.marketSort = (e.target as HTMLSelectElement).value as MarketSortKey;
       this.renderMarketModal();
+    });
+  }
+
+  // ----- Pets (Sprint 63) -----
+  private renderPetsModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#pets-body");
+    if (!body || !this.player) return;
+    const owned = new Set(this.player.ownedPets ?? []);
+    const active = this.player.activePet;
+    const gold = this.player.stats.gold;
+    const gems = this.player.gems ?? 0;
+    const cards = PET_CATALOG.map((p) => {
+      const has = owned.has(p.id);
+      const isActive = active === p.id;
+      const gemBuy = p.gemPrice > 0;
+      const price = gemBuy ? `💎 ${p.gemPrice}` : `🪙 ${p.goldPrice.toLocaleString("vi-VN")}`;
+      const afford = gemBuy ? gems >= p.gemPrice : gold >= p.goldPrice;
+      const swatch = "#" + p.color.toString(16).padStart(6, "0");
+      let action: string;
+      if (!has) {
+        action = `<button type="button" data-pet-buy="${p.id}" ${afford ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:${afford ? "#1d1500" : "#888"};background:${afford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${afford ? "pointer" : "not-allowed"}">${price}</button>`;
+      } else if (isActive) {
+        action = `<button type="button" data-pet-equip="" style="padding:6px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Thu hồi</button>`;
+      } else {
+        action = `<button type="button" data-pet-equip="${p.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Trang bị</button>`;
+      }
+      return `<div class="rarity-${p.rarity}" style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;border-radius:6px;background:${isActive ? "rgba(255,209,102,0.12)" : "rgba(28,28,28,0.5)"};border:1px solid ${isActive ? "#ffd166" : "#2a2a2a"};border-left:3px solid currentColor">
+        <div style="width:22px;height:22px;border-radius:50%;background:${swatch};border:2px solid #0008;flex:none"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:#f1f1f1">${escapeHtml(p.name)} <small style="color:#8e9192;font-weight:400">(${p.rarity})</small>${isActive ? " ✓" : ""}</div>
+          <div style="font-size:11px;color:#9be7a8">${escapeHtml(p.desc)}</div>
+        </div>
+        ${action}
+      </div>`;
+    }).join("");
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con.</p>${cards}`;
+    body.querySelectorAll<HTMLButtonElement>("[data-pet-buy]").forEach((btn) => {
+      btn.addEventListener("click", () => this.onBuyPet(btn.dataset.petBuy!));
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-pet-equip]").forEach((btn) => {
+      btn.addEventListener("click", () => { const id = btn.dataset.petEquip; this.onEquipPet(id ? id : null); });
     });
   }
 

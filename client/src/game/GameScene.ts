@@ -11,6 +11,7 @@ import {
   WORLD_WIDTH,
   clampToWorld,
   getMonsterDefinition,
+  getPet,
   isWalkableTile,
   titleLabel
 } from "@mmorpg/shared";
@@ -54,6 +55,7 @@ export class GameScene extends Phaser.Scene {
   private names = new Map<string, Phaser.GameObjects.Text>();
   private playerBars = new Map<string, Phaser.GameObjects.Graphics>();
   private playerEquipment = new Map<string, Phaser.GameObjects.Graphics>();
+  private petSprites = new Map<string, Phaser.GameObjects.Arc>();
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
@@ -127,7 +129,9 @@ export class GameScene extends Phaser.Scene {
       (tier, track) => this.socket.emit("claimBattlePassTier", { tier, track }),
       (days) => this.socket.emit("buyVip", { days }),
       () => this.socket.emit("claimVipDaily"),
-      () => this.socket.emit("claimLoginStreak")
+      () => this.socket.emit("claimLoginStreak"),
+      (petId) => this.socket.emit("buyPet", { petId }),
+      (petId) => this.socket.emit("equipPet", { petId })
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -1130,6 +1134,8 @@ export class GameScene extends Phaser.Scene {
         this.playerBars.delete(id);
         this.playerEquipment.get(id)?.destroy();
         this.playerEquipment.delete(id);
+        this.petSprites.get(id)?.destroy();
+        this.petSprites.delete(id);
       }
     }
 
@@ -1369,6 +1375,24 @@ export class GameScene extends Phaser.Scene {
     this.playerEquipment.get(player.id)?.setDepth(ip3.y + 0.5);
     this.drawPlayerBar(player, ip3);
     this.drawPlayerEquipment(player, ip3, facing);
+    this.updatePetSprite(player, ip3);
+  }
+
+  /** Small companion orb that trails the player when a pet is equipped. */
+  private updatePetSprite(player: PlayerState, position: Vec2): void {
+    const pet = getPet(player.activePet);
+    let arc = this.petSprites.get(player.id);
+    if (!pet) {
+      if (arc) { arc.destroy(); this.petSprites.delete(player.id); }
+      return;
+    }
+    if (!arc) {
+      arc = this.add.circle(position.x, position.y, 5, pet.color).setStrokeStyle(2, 0x000000, 0.5);
+      this.petSprites.set(player.id, arc);
+    }
+    arc.setFillStyle(pet.color);
+    // Trail slightly behind-left of the hero, just above the ground shadow.
+    arc.setPosition(position.x - 16, position.y - 6).setDepth(position.y - 1);
   }
 
   /** Name label text: optional title + guild tag prefix before the name. */

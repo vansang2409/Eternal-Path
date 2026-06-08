@@ -59,6 +59,8 @@ import {
   earnedTitles,
   isTitleEarned,
   titleLabel,
+  getPet,
+  PET_CATALOG,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -615,6 +617,11 @@ export class GameWorld {
         loginStreak: saved.loginStreak ?? 0,
         streakLastClaimDate: saved.streakLastClaimDate,
         activeTitle: saved.activeTitle,
+        ownedPets: saved.ownedPets ?? [],
+        activePet: saved.activePet,
+        petBonusAttack: saved.petBonusAttack ?? 0,
+        petBonusDefense: saved.petBonusDefense ?? 0,
+        petBonusMaxHp: saved.petBonusMaxHp ?? 0,
         battlePassExp: saved.battlePassExp ?? 0,
         battlePassLevel: saved.battlePassLevel ?? 0,
         battlePassPremium: saved.battlePassPremium ?? false,
@@ -1729,6 +1736,60 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
       socket.emit("system", `Đã gắn danh hiệu «${titleLabel(titleId)}».`);
+      this.markDirty(player);
+    });
+
+    socket.on("buyPet", ({ petId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const pet = getPet(petId);
+      if (!pet) {
+        socket.emit("system", "Linh thú không tồn tại.");
+        return;
+      }
+      if ((player.ownedPets ?? []).includes(pet.id)) {
+        socket.emit("system", "Bạn đã sở hữu linh thú này.");
+        return;
+      }
+      if (pet.gemPrice > 0) {
+        const gems = player.gems ?? 0;
+        if (gems < pet.gemPrice) {
+          socket.emit("system", `Cần ${pet.gemPrice} 💎 để mua ${pet.name} (đang có ${gems}).`);
+          return;
+        }
+        player.gems = gems - pet.gemPrice;
+      } else {
+        if (player.stats.gold < pet.goldPrice) {
+          socket.emit("system", `Cần ${pet.goldPrice} vàng để mua ${pet.name} (đang có ${player.stats.gold}).`);
+          return;
+        }
+        player.stats.gold -= pet.goldPrice;
+      }
+      player.ownedPets = [...(player.ownedPets ?? []), pet.id];
+      socket.emit("player", player);
+      socket.emit("system", `🐾 Đã thu phục ${pet.name}! Mở bảng Linh Thú (P) để trang bị.`);
+      this.markDirty(player);
+    });
+
+    socket.on("equipPet", ({ petId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (petId === null) {
+        player.activePet = undefined;
+        this.recomputePetBonus(player);
+        socket.emit("player", player);
+        socket.emit("system", "Đã thu hồi linh thú.");
+        this.markDirty(player);
+        return;
+      }
+      if (!(player.ownedPets ?? []).includes(petId) || !getPet(petId)) {
+        socket.emit("system", "Bạn chưa sở hữu linh thú này.");
+        return;
+      }
+      player.activePet = petId;
+      this.recomputePetBonus(player);
+      socket.emit("player", player);
+      socket.emit("system", `🐾 Đã trang bị ${getPet(petId)!.name}.`);
       this.markDirty(player);
     });
 
@@ -3186,6 +3247,27 @@ export class GameWorld {
     player.setBonusAttack = atk;
     player.setBonusDefense = def;
     player.setBonusMaxHp = hp;
+    player.stats.attack += atk;
+    player.stats.defense += def;
+    player.stats.maxHp += hp;
+    player.stats.hp = Math.min(player.stats.maxHp, player.stats.hp);
+  }
+
+  // Apply the active pet's buff with subtract-old/add-new bookkeeping. The
+  // tracked petBonus* fields are persisted, so this is only invoked when the
+  // active pet actually changes (never on login) — no double counting.
+  private recomputePetBonus(player: PlayerState): void {
+    player.stats.attack -= player.petBonusAttack ?? 0;
+    player.stats.defense -= player.petBonusDefense ?? 0;
+    player.stats.maxHp = Math.max(1, player.stats.maxHp - (player.petBonusMaxHp ?? 0));
+
+    const buff = getPet(player.activePet)?.buff;
+    const atk = buff?.attack ?? 0;
+    const def = buff?.defense ?? 0;
+    const hp = buff?.maxHp ?? 0;
+    player.petBonusAttack = atk;
+    player.petBonusDefense = def;
+    player.petBonusMaxHp = hp;
     player.stats.attack += atk;
     player.stats.defense += def;
     player.stats.maxHp += hp;

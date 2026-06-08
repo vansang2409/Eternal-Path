@@ -186,6 +186,13 @@ export interface PlayerState {
   // Active equippable title id (Sprint 62) — shown next to the name. Derived
   // titles are earned via stats; only the chosen one is persisted.
   activeTitle?: string;
+  // Pets (Sprint 63): owned pet ids + the active companion + its applied buff
+  // (persisted so relogin doesn't double-count the bonus baked into stats).
+  ownedPets?: string[];
+  activePet?: string;
+  petBonusAttack?: number;
+  petBonusDefense?: number;
+  petBonusMaxHp?: number;
   // Battle pass progression for the current season.
   battlePassExp?: number;
   battlePassLevel?: number;
@@ -480,6 +487,8 @@ export interface ClientToServerEvents {
   claimLoginStreak: () => void;
   requestTitles: () => void;
   setActiveTitle: (payload: { titleId: string | null }) => void;
+  buyPet: (payload: { petId: string }) => void;
+  equipPet: (payload: { petId: string | null }) => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;
