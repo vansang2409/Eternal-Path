@@ -115,7 +115,11 @@ export interface GuildRecord {
   boostUntil?: number;
   /** Shared gold vault (Sprint 72): members deposit, leader withdraws. */
   bank?: number;
+  /** Public recruitment blurb shown in the leaderboard (Sprint 90). */
+  desc?: string;
 }
+
+export const GUILD_DESC_MAX = 80;
 
 /** Per-member view sent to clients (adds live presence info). */
 export interface GuildMemberView {
@@ -218,6 +222,7 @@ export interface GuildLeaderboardRow {
   memberCount: number;
   boostActive: boolean;
   mine: boolean;
+  desc?: string;
 }
 
 const TAG_RE = /^[A-Za-z0-9]{2,4}$/;

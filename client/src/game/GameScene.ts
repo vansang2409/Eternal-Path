@@ -166,7 +166,8 @@ export class GameScene extends Phaser.Scene {
       boost: () => this.socket.emit("buyGuildBoost"),
       deposit: (amount) => this.socket.emit("depositGuildBank", { amount }),
       withdraw: (amount) => this.socket.emit("withdrawGuildBank", { amount }),
-      disband: () => this.socket.emit("disbandGuild")
+      disband: () => this.socket.emit("disbandGuild"),
+      setDesc: (desc) => this.socket.emit("setGuildDescription", { desc })
     });
     this.socket.on("guildUpdate", (view) => this.hud.setGuild(view));
     this.socket.on("guildInvite", (payload) => {

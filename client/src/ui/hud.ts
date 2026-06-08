@@ -931,6 +931,7 @@ export class Hud {
     deposit: (amount: number) => void;
     withdraw: (amount: number) => void;
     disband: () => void;
+    setDesc: (desc: string) => void;
   };
 
   setGuildHandlers(handlers: NonNullable<Hud["guildHandlers"]>): void {
@@ -1037,7 +1038,7 @@ export class Hud {
         <td style="padding:5px 4px;border-bottom:1px solid #2a2a2a;text-align:center;color:#cdb6ff">Lv ${g.level}</td>
         <td style="padding:5px 4px;border-bottom:1px solid #2a2a2a;text-align:right;color:#8e9192">${g.memberCount}👤</td>
         <td style="padding:5px 4px;border-bottom:1px solid #2a2a2a;text-align:right;color:#ffd166">${g.exp.toLocaleString("vi-VN")}</td>
-      </tr>`)
+      </tr>${g.desc ? `<tr><td></td><td colspan="4" style="padding:0 4px 5px;border-bottom:1px solid #2a2a2a;font-size:10px;color:#9aa;font-style:italic">📣 ${escapeHtml(g.desc)}</td></tr>` : ""}`)
       .join("");
     return `
       <div style="margin-top:16px">
@@ -1154,6 +1155,7 @@ export class Hud {
       <div id="guild-motd-row" style="display:flex;gap:8px;align-items:center;margin:10px 0;padding:10px;background:rgba(110,76,155,0.15);border:1px solid rgba(199,155,255,0.35);border-radius:6px">
         <span style="font-size:13px;color:#e8dcff;flex:1">📜 ${escapeHtml(g.motd || "(chưa có thông báo)")}</span>
         ${canManage ? `<button id="guild-motd-edit" type="button" style="padding:4px 10px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#cdb6ff;cursor:pointer">Sửa</button>` : ""}
+        ${canManage ? `<button id="guild-desc-edit" type="button" title="Mô tả tuyển quân (hiện ở BXH)" style="padding:4px 10px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#9be7a8;cursor:pointer">📣 Tuyển quân</button>` : ""}
       </div>
       ${progressBlock}
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:9px;background:rgba(28,28,28,0.5);border:1px solid #39424b;border-radius:6px;flex-wrap:wrap">
@@ -1201,6 +1203,10 @@ export class Hud {
     body.querySelector<HTMLButtonElement>("#guild-motd-edit")?.addEventListener("click", () => {
       const next = window.prompt("Thông báo guild mới:", g.motd)?.slice(0, GUILD_MOTD_MAX);
       if (next !== undefined && next !== null) this.guildHandlers?.motd(next);
+    });
+    body.querySelector<HTMLButtonElement>("#guild-desc-edit")?.addEventListener("click", () => {
+      const next = window.prompt("Mô tả tuyển quân (hiện ở Bảng Xếp Hạng):", "")?.slice(0, 80);
+      if (next !== undefined && next !== null) this.guildHandlers?.setDesc(next);
     });
     body.querySelector<HTMLButtonElement>("#guild-leave-btn")?.addEventListener("click", () => {
       if (window.confirm("Bạn chắc chắn muốn rời guild?")) this.guildHandlers?.leave();

@@ -526,6 +526,7 @@ export interface ClientToServerEvents {
   sellAllMaterials: () => void;
   payPlayer: (payload: { to: string; amount: number }) => void;
   requestOnline: () => void;
+  setGuildDescription: (payload: { desc: string }) => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

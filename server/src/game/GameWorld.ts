@@ -39,6 +39,7 @@ import {
   GUILD_CREATE_COST_GOLD,
   GUILD_INVITE_TTL_MS,
   GUILD_MOTD_MAX,
+  GUILD_DESC_MAX,
   GUILD_BANK_MIN_TXN,
   GUILD_DONATE_MIN,
   GUILD_GOLD_PER_EXP,
@@ -1478,6 +1479,22 @@ export class GameWorld {
       guild.motd = String(motd ?? "").trim().slice(0, GUILD_MOTD_MAX);
       guildStore.markDirty();
       this.emitGuildUpdate(guild.id);
+    });
+
+    socket.on("setGuildDescription", ({ desc }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (!canManageGuild(rank)) {
+        socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được sửa mô tả tuyển quân.");
+        return;
+      }
+      guild.desc = String(desc ?? "").trim().slice(0, GUILD_DESC_MAX);
+      guildStore.markDirty();
+      socket.emit("system", "Đã cập nhật mô tả tuyển quân guild.");
+      this.broadcastGuildLeaderboard();
     });
 
     socket.on("guildChat", ({ message }) => {
@@ -3617,7 +3634,8 @@ export class GameWorld {
         exp: g.exp ?? 0,
         memberCount: g.members.length,
         boostActive: isGuildBoostActive(g.boostUntil, now),
-        mine: g.id === viewerGuildId
+        mine: g.id === viewerGuildId,
+        desc: g.desc
       }));
   }
 
