@@ -713,6 +713,14 @@ export class GameWorld {
       socket.emit("marketUpdate", this.marketView(player.accountName));
       socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
+      // Notify online friends that this player just came online (Sprint 80).
+      for (const other of this.players.values()) {
+        if (other.id === player.id) continue;
+        if ((other.friends ?? []).includes(player.accountName)) {
+          this.sockets.get(other.id)?.emit("system", `🟢 Bạn bè ${player.accountName} vừa online.`);
+          this.emitFriendList(other);
+        }
+      }
     });
 
     socket.on("input", (input) => {

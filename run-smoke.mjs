@@ -19,7 +19,7 @@ const FAST = [
   "smoke-market-test", "smoke-market59-test", "smoke-streak-test",
   "smoke-titles-test", "smoke-pets-test", "smoke-petlevel-test",
   "smoke-setbonus-test", "smoke-raid-test", "smoke-achv-test",
-  "smoke-mystery-test", "smoke-content2-test", "smoke-titles2-test", "smoke-guildbank-test", "smoke-disband-test", "smoke-inspect-test", "smoke-bagslot-test", "smoke-exchange-test", "smoke-goldboost-test"
+  "smoke-mystery-test", "smoke-content2-test", "smoke-titles2-test", "smoke-guildbank-test", "smoke-disband-test", "smoke-inspect-test", "smoke-bagslot-test", "smoke-exchange-test", "smoke-goldboost-test", "smoke-friendnoti-test"
 ];
 const SLOW = ["smoke-guild-persist", "smoke-market-persist"]; // 2-phase / 30s waits
 
@@ -54,7 +54,7 @@ const run = async () => {
     const r = await runTest(file);
     results.push(r);
     console.log(`${r.code === 0 ? "✅" : "❌"} ${file.padEnd(24)} ${r.last}`);
-    await sleep(800); // spacing to avoid connection-storm false negatives
+    await sleep(800); // spacing to avoid connection-storm false negatives (350ms was too tight at 22 suites)
   }
 
   server.kill();
