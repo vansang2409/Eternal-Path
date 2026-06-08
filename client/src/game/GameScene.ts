@@ -1093,6 +1093,7 @@ export class GameScene extends Phaser.Scene {
           : t("bossDefeated", { name: accountName ?? "", boss: translateMonsterName(bossName) }),
         "announcement announcement-epic"
       );
+      if (kind === "defeat") this.playBossFinisher();
     });
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
     this.socket.on("chatMessage", (message) => this.hud.appendChat(message));
@@ -1712,9 +1713,48 @@ export class GameScene extends Phaser.Scene {
     if (big) this.cameras.main.shake(180, 0.006);
   }
 
+  // Element-specific flourish at an impact point (Sprint 94).
+  private elementalAccent(element: SkillElement, x: number, y: number): void {
+    if (element === "lightning") {
+      // Jagged vertical bolt striking down + white flash.
+      const g = this.add.graphics().setDepth(99999);
+      g.lineStyle(3, 0xffffff, 0.95);
+      let px = x, py = y - 90;
+      g.beginPath(); g.moveTo(px, py);
+      for (let s = 0; s < 5; s += 1) { px = x + (Math.random() - 0.5) * 18; py += 18; g.lineTo(px, py); }
+      g.lineTo(x, y); g.strokePath();
+      const flash = this.add.circle(x, y, 14, 0xffffff, 0.7).setDepth(99998);
+      this.tweens.add({ targets: flash, scale: 2, alpha: 0, duration: 200, onComplete: () => flash.destroy() });
+      this.tweens.add({ targets: g, alpha: 0, duration: 200, onComplete: () => g.destroy() });
+    } else if (element === "ice") {
+      // Shattering ice shards.
+      for (let i = 0; i < 7; i += 1) {
+        const ang = (Math.PI * 2 * i) / 7;
+        const shard = this.add.rectangle(x, y, 3, 9, 0xeaffff, 0.95).setDepth(99998).setRotation(ang);
+        this.tweens.add({ targets: shard, x: x + Math.cos(ang) * 30, y: y + Math.sin(ang) * 30, alpha: 0, duration: 320, ease: "Quad.Out", onComplete: () => shard.destroy() });
+      }
+    } else if (element === "fire") {
+      // Rising embers.
+      for (let i = 0; i < 8; i += 1) {
+        const ember = this.add.circle(x + (Math.random() - 0.5) * 28, y, 2 + Math.random() * 1.5, i % 2 ? 0xff7a2a : 0xffd166, 0.95).setDepth(99998);
+        this.tweens.add({ targets: ember, y: y - 30 - Math.random() * 26, alpha: 0, duration: 460 + Math.random() * 200, ease: "Quad.Out", onComplete: () => ember.destroy() });
+      }
+    } else if (element === "holy") {
+      const halo = this.add.circle(x, y, 10, 0xffffff, 0.8).setDepth(99998);
+      this.tweens.add({ targets: halo, scale: 3.2, alpha: 0, duration: 320, ease: "Quad.Out", onComplete: () => halo.destroy() });
+    } else if (element === "shadow" || element === "void") {
+      for (let i = 0; i < 8; i += 1) {
+        const ang = (Math.PI * 2 * i) / 8;
+        const wisp = this.add.circle(x + Math.cos(ang) * 26, y + Math.sin(ang) * 26, 3, element === "void" ? 0x8a4dff : 0x7a3fbf, 0.9).setDepth(99998);
+        this.tweens.add({ targets: wisp, x, y, scale: 0.3, alpha: 0, duration: 300, ease: "Quad.In", onComplete: () => wisp.destroy() });
+      }
+    }
+  }
+
   private playSkillVFX(skillId: SkillId, position: Vec2, targetPosition?: Vec2): void {
     const info = SKILL_CATALOG[skillId];
     if (!info) return;
+    const theme = skillTheme(skillId);
     const iso = worldToIso(position.x, position.y);
     const tgtIso = targetPosition ? worldToIso(targetPosition.x, targetPosition.y) : undefined;
 
@@ -1754,18 +1794,19 @@ export class GameScene extends Phaser.Scene {
     if (info.effect === "damageAoe") {
       const radius = info.aoeRadius ?? 100;
       // Inner shockwave that expands quickly.
-      const inner = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0.6).setDepth(99996);
+      const inner = this.add.circle(iso.x, iso.y, 4, theme.core, 0.6).setDepth(99996);
       this.tweens.add({ targets: inner, radius: radius * 0.65, alpha: 0, duration: 280, ease: "Cubic.Out", onComplete: () => inner.destroy() });
-      // Outer gold-rimmed ring.
-      const ring = this.add.circle(iso.x, iso.y, 6, 0xff9a3c, 0).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(99997);
+      // Outer rimmed ring.
+      const ring = this.add.circle(iso.x, iso.y, 6, theme.core, 0).setStrokeStyle(3, theme.rim, 0.95).setDepth(99997);
       this.tweens.add({ targets: ring, radius, alpha: 0, duration: 420, ease: "Cubic.Out", onComplete: () => ring.destroy() });
       // Secondary thinner ring trailing behind.
-      const ring2 = this.add.circle(iso.x, iso.y, 4, 0xff9a3c, 0).setStrokeStyle(2, 0xff5d3c, 0.85).setDepth(99997);
+      const ring2 = this.add.circle(iso.x, iso.y, 4, theme.core, 0).setStrokeStyle(2, theme.core, 0.85).setDepth(99997);
       this.tweens.add({ targets: ring2, radius: radius * 0.85, alpha: 0, duration: 360, delay: 60, onComplete: () => ring2.destroy() });
+      this.elementalAccent(theme.element, iso.x, iso.y);
       // 8 outward sparks.
       for (let i = 0; i < 8; i += 1) {
         const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.18;
-        const spark = this.add.circle(iso.x, iso.y, 2.5, 0xfff1a8, 1).setDepth(99998);
+        const spark = this.add.circle(iso.x, iso.y, 2.5, theme.rim, 1).setDepth(99998);
         this.tweens.add({
           targets: spark,
           x: iso.x + Math.cos(ang) * radius * 0.9,
@@ -1814,12 +1855,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // damageSingle — double slash with impact spark.
+    // damageSingle — double slash with impact spark, themed per element.
     if (tgtIso) {
       const slash = this.add.graphics().setDepth(99997);
-      slash.lineStyle(4, 0xfff1a8, 0.95);
+      slash.lineStyle(4, theme.rim, 0.95);
       slash.lineBetween(iso.x, iso.y, tgtIso.x, tgtIso.y);
-      slash.lineStyle(2, 0xffd166, 0.95);
+      slash.lineStyle(2, theme.core, 0.95);
       const dx = tgtIso.x - iso.x;
       const dy = tgtIso.y - iso.y;
       // Second slash offset perpendicular for a "double" feel.
@@ -1842,6 +1883,36 @@ export class GameScene extends Phaser.Scene {
           onComplete: () => spark.destroy()
         });
       }
+    }
+  }
+
+  // Cinematic boss finisher: zoom-punch + white flash + golden shockwave +
+  // radial speed-lines around the camera centre (anime "finishing blow").
+  private playBossFinisher(): void {
+    const cam = this.cameras.main;
+    cam.flash(360, 255, 240, 180);
+    cam.shake(420, 0.012);
+    // Zoom punch in then ease back out.
+    this.tweens.add({ targets: cam, zoom: 1.18, duration: 140, ease: "Quad.Out", yoyo: true, hold: 90 });
+    const cx = cam.scrollX + cam.width / 2;
+    const cy = cam.scrollY + cam.height / 2;
+    // Expanding golden shockwave at screen centre.
+    const ring = this.add.circle(cx, cy, 20).setStrokeStyle(4, 0xffd166, 0.95).setDepth(99999);
+    this.tweens.add({ targets: ring, scale: 9, alpha: 0, duration: 520, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    // Radial speed-lines.
+    for (let i = 0; i < 16; i += 1) {
+      const ang = (Math.PI * 2 * i) / 16;
+      const line = this.add.rectangle(cx + Math.cos(ang) * 60, cy + Math.sin(ang) * 60, 40, 3, 0xffffff, 0.8)
+        .setRotation(ang).setDepth(99998);
+      this.tweens.add({
+        targets: line,
+        x: cx + Math.cos(ang) * 240,
+        y: cy + Math.sin(ang) * 240,
+        alpha: 0,
+        duration: 360,
+        ease: "Quad.Out",
+        onComplete: () => line.destroy()
+      });
     }
   }
 
@@ -1930,6 +2001,35 @@ export class GameScene extends Phaser.Scene {
       duration: 180,
       onComplete: () => slash.destroy()
     });
+  }
+}
+
+type SkillElement = "fire" | "ice" | "lightning" | "shadow" | "holy" | "void" | "blood" | "physical";
+
+function skillElement(skillId: SkillId): SkillElement {
+  switch (skillId) {
+    case "flameBurst": return "fire";
+    case "icicleStorm": return "ice";
+    case "thunderStrike": return "lightning";
+    case "shadowAssault": return "shadow";
+    case "divineLight": return "holy";
+    case "voidNova": return "void";
+    case "lifedrain": return "blood";
+    default: return "physical";
+  }
+}
+
+function skillTheme(skillId: SkillId): { core: number; rim: number; element: SkillElement } {
+  const element = skillElement(skillId);
+  switch (element) {
+    case "fire": return { core: 0xff7a2a, rim: 0xffd166, element };
+    case "ice": return { core: 0x7fd4ff, rim: 0xeaffff, element };
+    case "lightning": return { core: 0xfff36b, rim: 0xffffff, element };
+    case "shadow": return { core: 0x7a3fbf, rim: 0xc79bff, element };
+    case "holy": return { core: 0xfff1a8, rim: 0xffffff, element };
+    case "void": return { core: 0x8a4dff, rim: 0xff7ac6, element };
+    case "blood": return { core: 0xff5d7a, rim: 0xffb0c1, element };
+    default: return { core: 0xff9a3c, rim: 0xfff1a8, element };
   }
 }
 
