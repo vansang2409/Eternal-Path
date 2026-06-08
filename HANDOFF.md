@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 67** (achievements + rewards). Total: **153 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
+Resume point after **Sprint 68** (mystery box gacha). Total: **155 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
 
 ## TL;DR
 
@@ -44,6 +44,7 @@ docker compose up -d --build
 - **Titles (Sprint 62):** 10 danh hiệu derived từ stat (level/kills/gold/guild/VIP/streak/cosmetics) trong shared/titles.ts. Hotkey **T** mở modal gắn/bỏ; «Danh hiệu» hiện cạnh tên ở HUD + trên đầu nhân vật cho mọi người thấy (`displayName` = title + [TAG] + name). Chỉ persist `activeTitle` (titles tự suy từ stat). Hàm thuần `earnedTitles`/`isTitleEarned` unit-test. E2E: `node smoke-titles-test.mjs` (9 unit + 6 e2e)
 - **Pets (Sprint 63):** 6 linh thú (shared/pets.ts), mua bằng vàng (slime/wolf/owl) hoặc Gem (spirit/drake/phoenix), buff thụ động atk/def/hp. `recomputePetBonus` mirror `recomputeSetBonus` (subtract-old/add-new). **QUAN TRỌNG:** petBonus* fields ĐƯỢC persist (khác set-bonus) nên relogin không double-count — recompute CHỈ chạy khi đổi pet, không chạy lúc login. Orb nhỏ đi theo player (Phaser arc tinted). Hotkey **P**. E2E: `node smoke-pets-test.mjs` (14 checks gồm swap + relog no-double-count).
 - **Set-bonus relogin fix (Sprint 64):** sửa bug double-count — `setBonus*` bake vào stats lưu nhưng KHÔNG persist, nên sau login reset 0 và lần equip kế tiếp cộng lại không trừ (giữ bonus sau khi tháo set). Đã persist `setBonusAttack/Defense/MaxHp`. `devGrantItem` mở rộng nhận `slot`/`themeId`/`stats` để test. E2E: `node smoke-setbonus-test.mjs` (equip→relog→unequip về base).
+- **Mystery Box gacha (Sprint 68):** Rương Bí Ẩn 50💎 trong gem shop, roll trọng số 40% vàng/25% gem/25% cosmetic/10% pet; trùng cosmetic/pet → đền 30💎. Hàm thuần `rollMysteryBox(rng)` (rng tiêm vào, unit-test từng nhánh). `MYSTERY_COSMETIC_POOL`/`MYSTERY_PET_POOL` lọc từ catalog gem-priced. E2E: `node smoke-mystery-test.mjs` (6 unit + 4 e2e gồm stress 20 roll).
 - **Achievements + rewards (Sprint 67):** 8 thành tựu mới (guild-founder/merchant/big-spender/beast-tamer/beast-master/raid-slayer/devout/titled), `Achievement.reward {gold,gems}` cấp 1 lần khi mở khoá trong `unlockAchievement`. Hook ở createGuild/buyMarketItem(seller+buyer)/buyPet/grantPetXp(L5)/resolveGuildRaid/claimLoginStreak/setActiveTitle. Idempotent (không thưởng 2 lần). E2E: `node smoke-achv-test.mjs` (9 checks).
 - **Guild raid boss (Sprint 66):** Hội Trưởng/Sĩ Quan triệu hồi boss co-op (HP theo cấp guild, 5 phút, có cooldown), thành viên bấm Tấn công (dmg = attack, cd 1s), thanh máu chung realtime trong guild modal. Hạ → chia vàng theo % sát thương + top contributor +20💎 + guild EXP. Raid ephemeral in-memory (`guildRaids` map), expire qua `updateGuildRaids` trong tick. E2E: `node smoke-raid-test.mjs` (11 checks).
 - **Pet leveling (Sprint 65):** linh thú lên cấp tối đa 5, mỗi cấp +25% buff. Cho ăn (vàng 500/50xp) hoặc bánh thưởng (Gem 30/250xp) cho pet đang trang bị. XP lưu per-pet trong `petXp` map (persist). `recomputePetBonus` dùng `petBuffAtLevel` scale theo cấp; re-scale khi level-up (subtract-old/add-new → không double-count qua relogin). Hàm thuần `petLevelForXp/petBuffAtLevel/petXpProgress` unit-test. Thanh XP + nút cho ăn/bánh trong modal P. E2E: `node smoke-petlevel-test.mjs` (7 unit + 9 e2e).
@@ -66,6 +67,7 @@ docker compose up -d --build
 | Daily streak ngày 3/5/7 | faucet | +20/40/100 Gem theo chuỗi điểm danh (Sprint 61) |
 | Pet (gem) | 150-300 | Linh Hồ/Tiểu Long/Phượng Hoàng (Sprint 63) |
 | Pet treat | 30 | Bánh thưởng +250 XP nuôi pet lên cấp (Sprint 65) |
+| Mystery Box | 50 | Gacha vàng/gem/cosmetic/pet (Sprint 68) |
 
 ## ⚠️ Cần làm tiếp (user sẽ chỉ đạo)
 
