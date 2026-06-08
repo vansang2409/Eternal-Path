@@ -25,7 +25,12 @@ export const TITLES: TitleDef[] = [
   { id: "guildmate", label: "Hội Viên", desc: "Gia nhập một guild.", earned: (p) => !!p.guildId },
   { id: "noble", label: "Quý Tộc", desc: "Đang là VIP.", earned: (p) => isVipActive(p.vipUntil) },
   { id: "devoted", label: "Chuyên Cần", desc: "Chuỗi điểm danh ≥ 7 ngày.", earned: (p) => (p.loginStreak ?? 0) >= 7 },
-  { id: "collector", label: "Nhà Sưu Tầm", desc: "Sở hữu 3+ cosmetic.", earned: (p) => (p.cosmetics?.length ?? 0) >= 3 }
+  { id: "collector", label: "Nhà Sưu Tầm", desc: "Sở hữu 3+ cosmetic.", earned: (p) => (p.cosmetics?.length ?? 0) >= 3 },
+  // ── Achievement-gated prestige titles (Sprint 71) ──
+  { id: "raidlord", label: "Diệt Ma Vương", desc: "Mở thành tựu hạ Boss Guild.", earned: (p) => (p.achievements ?? []).includes("raid-slayer") },
+  { id: "petlord", label: "Bá Chủ Linh Thú", desc: "Nuôi linh thú đạt cấp 5.", earned: (p) => (p.achievements ?? []).includes("beast-master") },
+  { id: "merchant-prince", label: "Thương Vương", desc: "Bán được hàng ở Chợ.", earned: (p) => (p.achievements ?? []).includes("merchant") },
+  { id: "founder", label: "Khai Quốc", desc: "Sáng lập một guild.", earned: (p) => (p.achievements ?? []).includes("guild-founder") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

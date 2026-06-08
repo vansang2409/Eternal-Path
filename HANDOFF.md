@@ -1,6 +1,8 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 69** (Season 2 content). Total: **157 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine). Cosmetics: 12, Pets: 9.
+Resume point after **Sprint 70** (test stabilization). Total: **159 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine). Cosmetics: 12, Pets: 9.
+
+**Regression nhanh:** `node run-smoke.mjs` (tự boot server + chạy 14 smoke suite tuần tự có giãn cách + summary + exit code). `--slow` để thêm 2 test persistence. LƯU Ý: đừng chạy nhiều smoke test dồn dập cùng lúc — gây "websocket error" false-negative; dùng runner. Khi thêm reward (gem/gold) vào hệ thống cũ, nhớ chạy runner để bắt test có assertion gem/gold bị lệch.
 
 ## TL;DR
 
