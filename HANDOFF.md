@@ -1,5 +1,27 @@
 # Eternal Path — Handoff for Next Session
 
+## ▶ BẮT ĐẦU LẠI (đọc trước — kể cả khi là Claude/tài khoản khác)
+
+Bạn đang tiếp quản một MMORPG trình duyệt đang phát triển dở. Hãy đọc hết file này rồi tiếp tục theo đúng cách làm dưới đây — **không cần hỏi lại chủ dự án** (anh ấy thường vắng và muốn cứ làm tới).
+
+**Cách làm việc (BẮT BUỘC):**
+- Trả lời **tiếng Việt** trong chat; code/comment bằng **tiếng Anh**.
+- **Tự implement trực tiếp** (đừng giao Codex). Tự chọn sprint kế tiếp khi chủ vắng mặt, đừng chờ duyệt.
+- **Mỗi sprint = 1 commit + push** lên `origin master` ngay (`feat:`/`fix:`/`docs:`). Build PASS trước khi commit.
+- Mỗi sprint nên có **smoke test e2e** (`smoke-*.mjs`) và thêm vào `run-smoke.mjs`. Server test cần env `DEV_CHEATS=1` (bật event `devGrant`/`devGrantItem`/`devGrantMaterial`) + đường lưu test riêng (`MEMORY_SAVE_PATH`/`GUILD_SAVE_PATH`/`MARKET_SAVE_PATH`).
+- Logic dễ sai (tính toán) → tách **hàm thuần trong `shared/`** rồi unit-test.
+- Chủ THÍCH **đồ hoạ mạnh kiểu anime** (toàn bộ VFX ở `client/src/game/GameScene.ts`).
+
+**Môi trường:** Node 24 (`nvm use`). `npm install` → `npm run build` → `npm start` (phục vụ client+server ở cổng 3000) → mở `http://localhost:3000`. Regression: `npm smoke` (hoặc `node run-smoke.mjs`, dùng `--half 1|2` nếu timeout). KHÔNG chạy nhiều smoke test thủ công cùng lúc (gây flaky "websocket error" — dùng runner có giãn cách 800ms).
+
+**Lưu ý sandbox (chỉ khi chạy trong Cowork máy hiện tại):** mount đôi khi đọc stale file lớn vừa sửa — chạy build/test/git qua PowerShell, file tools (Read/Edit) đọc đúng.
+
+**Còn lại cần CHỦ cung cấp:** payment thật (Stripe/VNPay), deploy public (cloud account), AdMob ads.
+
+---
+
+Resume point after **Sprint 102** (đồ hoạ anime). Total: **~215 commits** on `master`, all pushed.
+
 Resume point after **Sprint 96**. Total: **210+ commits** on `master`, all pushed. (S90=guild recruit desc, S91=fix movement-freeze when focusing checkbox [isEditableFocused only blocks text inputs], S92=anime hit/crit/cast/levelup juice, S93=ambient motes + sprint afterimage, S94=per-element skill VFX [skillTheme/elementalAccent in GameScene], S95=cinematic boss finisher zoom-punch, S96=anime monster death dissolve.) **Live demo:** server chạy nền trên `http://localhost:3000` (PORT=3000, dùng data/saves.json thật) — restart bằng `npm start`; hard-refresh (Ctrl+Shift+R) để lấy client mới sau mỗi build. VFX toàn bộ ở `client/src/game/GameScene.ts`. (S81=sell-all-materials, S82=economy achievements, S83=README rewrite, S84=full regression checkpoint + `--half`, S85=prod deploy smoke + `npm start`/`npm smoke`, S86=`/pay` gold transfer, S87=`/who` online list, S88=server-wide raid-defeat announce, S89=guild MOTD on login.) **28 smoke suites, all green** (verified in 2 halves). prod boot serves /health+client 200 on Node 24. (S71=achievement titles, S72=guild bank, S73=raid costs bank, S74=disband guild, S75=/inspect, S76=ECONOMY.md audit, S77=buy bag slots, S78=gem→gold exchange, S79=gold boost potion, S80=friend online noti.) Smoke suites: 22 (`node run-smoke.mjs` — chạy tuần tự ~120s; nếu chỉ cần check 1 feature thì chạy `node smoke-<x>-test.mjs` riêng với server đã bật `DEV_CHEATS=1`). ECONOMY.md = faucet/sink audit. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine). Cosmetics: 12, Pets: 9.
 
 **Regression nhanh:** `node run-smoke.mjs` (tự boot server + chạy 14 smoke suite tuần tự có giãn cách + summary + exit code). `--slow` để thêm 2 test persistence. LƯU Ý: đừng chạy nhiều smoke test dồn dập cùng lúc — gây "websocket error" false-negative; dùng runner. Khi thêm reward (gem/gold) vào hệ thống cũ, nhớ chạy runner để bắt test có assertion gem/gold bị lệch.
