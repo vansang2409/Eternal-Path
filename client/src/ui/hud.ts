@@ -865,6 +865,7 @@ export class Hud {
     boost: () => void;
     deposit: (amount: number) => void;
     withdraw: (amount: number) => void;
+    disband: () => void;
   };
 
   setGuildHandlers(handlers: NonNullable<Hud["guildHandlers"]>): void {
@@ -1106,6 +1107,7 @@ export class Hud {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
         <span style="color:#8e9192;font-size:11px">Chat guild: <strong>/g &lt;tin nhắn&gt;</strong></span>
         <button id="guild-leave-btn" type="button" style="padding:6px 14px;background:#402c2c;border:1px solid #5a3939;border-radius:4px;color:#ff8181;cursor:pointer">${isLeader && g.members.length > 1 ? "Rời guild (truyền chức)" : "Rời guild"}</button>
+        ${isLeader ? `<button id="guild-disband-btn" type="button" style="padding:6px 14px;margin-left:6px;background:#5a1f1f;border:1px solid #7a2727;border-radius:4px;color:#ff8181;cursor:pointer">Giải tán</button>` : ""}
       </div>
       ${this.renderGuildRaid(canManage)}
       ${this.renderGuildRanking()}`;
@@ -1137,6 +1139,9 @@ export class Hud {
     });
     body.querySelector<HTMLButtonElement>("#guild-leave-btn")?.addEventListener("click", () => {
       if (window.confirm("Bạn chắc chắn muốn rời guild?")) this.guildHandlers?.leave();
+    });
+    body.querySelector<HTMLButtonElement>("#guild-disband-btn")?.addEventListener("click", () => {
+      if (window.confirm("GIẢI TÁN guild? Toàn bộ thành viên sẽ bị xoá khỏi guild và quỹ sẽ mất. Không thể hoàn tác!")) this.guildHandlers?.disband();
     });
     body.querySelectorAll<HTMLButtonElement>("[data-guild-kick]").forEach((btn) => {
       btn.addEventListener("click", () => {

@@ -1348,6 +1348,41 @@ export class GameWorld {
       this.removeFromGuild(player.accountName, player.guildId, "leave");
     });
 
+    socket.on("disbandGuild", () => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (rank !== "leader") {
+        socket.emit("system", "Chỉ Hội Trưởng mới được giải tán guild.");
+        return;
+      }
+      const guildId = guild.id;
+      const tag = guild.tag;
+      const name = guild.name;
+      const memberNames = guild.members.map((m) => m.accountName);
+      // Clear runtime guild state for every online member.
+      for (const p of this.players.values()) {
+        if (p.guildId === guildId) {
+          p.guildId = undefined;
+          p.guildTag = undefined;
+          const sock = this.sockets.get(p.id);
+          sock?.emit("player", p);
+          sock?.emit("guildUpdate", null);
+          sock?.emit("guildRaidUpdate", null);
+          sock?.emit("system", `🏰 Guild [${tag}] ${name} đã bị Hội Trưởng giải tán.`);
+          this.markDirty(p);
+        }
+      }
+      // Tear down any active raid + cooldown for the guild, then remove it.
+      this.guildRaids.delete(guildId);
+      this.guildRaidCooldownUntil.delete(guildId);
+      guildStore.remove(guildId);
+      this.io.emit("system", `🏰 Guild [${tag}] ${name} (${memberNames.length} thành viên) đã giải tán.`);
+      this.broadcastGuildLeaderboard();
+    });
+
     socket.on("kickGuildMember", ({ accountName }) => {
       const actor = this.players.get(socket.id);
       if (!actor || !actor.guildId) return;

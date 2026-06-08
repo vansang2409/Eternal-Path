@@ -517,6 +517,7 @@ export interface ClientToServerEvents {
   buyGuildBoost: () => void;
   depositGuildBank: (payload: { amount: number }) => void;
   withdrawGuildBank: (payload: { amount: number }) => void;
+  disbandGuild: () => void;
   requestGuildLeaderboard: () => void;
   summonGuildRaid: () => void;
   raidAttack: () => void;
