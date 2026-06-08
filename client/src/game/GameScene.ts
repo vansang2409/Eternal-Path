@@ -56,6 +56,8 @@ export class GameScene extends Phaser.Scene {
   private playerBars = new Map<string, Phaser.GameObjects.Graphics>();
   private playerEquipment = new Map<string, Phaser.GameObjects.Graphics>();
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
+  private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
+  private lastAfterimageAt = 0;
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
@@ -210,6 +212,7 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
     this.setupTouchControls();
+    this.setupAmbientParticles();
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
     this.input.mouse?.disableContextMenu();
@@ -253,6 +256,44 @@ export class GameScene extends Phaser.Scene {
     this.socket.emit("input", input);
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
+    this.updateAmbient(delta);
+    // Sprint afterimage: leave fading ghost copies of the hero while dashing.
+    const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
+    if (input.sprinting && moving && time - this.lastAfterimageAt > 70) {
+      this.lastAfterimageAt = time;
+      const self = this.players.get(this.selfId);
+      if (self) {
+        const ghost = this.add.sprite(self.x, self.y, self.texture.key, self.frame.name)
+          .setScale(self.scaleX, self.scaleY).setFlipX(self.flipX)
+          .setAlpha(0.45).setTint(0x9ad0ff).setDepth(self.depth - 1);
+        this.tweens.add({ targets: ghost, alpha: 0, duration: 240, onComplete: () => ghost.destroy() });
+      }
+    }
+  }
+
+  // Gentle screen-space atmosphere motes drifting upward (anime ambiance).
+  private setupAmbientParticles(): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    for (let i = 0; i < 22; i += 1) {
+      const go = this.add.circle(Math.random() * w, Math.random() * h, Math.random() < 0.3 ? 2.5 : 1.5, 0xffffff, 0.12 + Math.random() * 0.12)
+        .setScrollFactor(0).setDepth(99980);
+      this.ambientMotes.push({ go, vx: (Math.random() - 0.5) * 6, vy: -4 - Math.random() * 8 });
+    }
+  }
+
+  private updateAmbient(delta: number): void {
+    if (this.ambientMotes.length === 0) return;
+    const dt = delta / 1000;
+    const w = this.scale.width;
+    const h = this.scale.height;
+    for (const m of this.ambientMotes) {
+      m.go.x += m.vx * dt;
+      m.go.y += m.vy * dt;
+      if (m.go.y < -6) { m.go.y = h + 6; m.go.x = Math.random() * w; }
+      if (m.go.x < -6) m.go.x = w + 6;
+      else if (m.go.x > w + 6) m.go.x = -6;
+    }
   }
 
   private neutralInput(): ClientInput {
