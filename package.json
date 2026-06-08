@@ -16,6 +16,6 @@
     "typecheck": "npm run build --workspace shared && npm run typecheck --workspace server && npm run typecheck --workspace client"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   }
 }

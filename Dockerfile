@@ -2,7 +2,7 @@
 # Builds shared + server + client and serves them from a single container.
 # Exposes :3000 for Socket.IO + a static file server for the built client.
 
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
 
 # Copy workspace package files first for better layer caching.
@@ -21,7 +21,7 @@ COPY client ./client
 RUN npm run build
 
 # ──────────────────────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
+FROM node:24-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
