@@ -34,6 +34,11 @@ interface SavedPlayer {
   loginStreak?: number;
   streakLastClaimDate?: string;
   activeTitle?: string;
+  // Set-bonus tracked fields are baked into saved stats — persist them so a
+  // relogin doesn't lose track and double-count on the next equip change.
+  setBonusAttack?: number;
+  setBonusDefense?: number;
+  setBonusMaxHp?: number;
   ownedPets?: string[];
   activePet?: string;
   petBonusAttack?: number;
@@ -272,6 +277,9 @@ export class PlayerRepository {
       loginStreak: player.loginStreak,
       streakLastClaimDate: player.streakLastClaimDate,
       activeTitle: player.activeTitle,
+      setBonusAttack: player.setBonusAttack,
+      setBonusDefense: player.setBonusDefense,
+      setBonusMaxHp: player.setBonusMaxHp,
       ownedPets: player.ownedPets ? [...player.ownedPets] : undefined,
       activePet: player.activePet,
       petBonusAttack: player.petBonusAttack,

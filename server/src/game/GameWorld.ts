@@ -108,6 +108,8 @@ import type {
   Direction,
   AllocatableStat,
   EquipmentItem,
+  EquipmentSlot,
+  ItemStats,
   FloatingTextEvent,
   GroundItem,
   Item,
@@ -617,6 +619,9 @@ export class GameWorld {
         loginStreak: saved.loginStreak ?? 0,
         streakLastClaimDate: saved.streakLastClaimDate,
         activeTitle: saved.activeTitle,
+        setBonusAttack: saved.setBonusAttack ?? 0,
+        setBonusDefense: saved.setBonusDefense ?? 0,
+        setBonusMaxHp: saved.setBonusMaxHp ?? 0,
         ownedPets: saved.ownedPets ?? [],
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
@@ -1180,7 +1185,7 @@ export class GameWorld {
         player.gems = (player.gems ?? 0) + Math.max(0, Number(payload?.gems) || 0);
         socket.emit("player", player);
       });
-      (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number }) => {
+      (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number; slot?: EquipmentSlot; themeId?: string; stats?: ItemStats }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
         const item: EquipmentItem = {
@@ -1188,9 +1193,10 @@ export class GameWorld {
           name: String(payload?.name ?? "Dev Item").slice(0, 40),
           rarity: (payload?.rarity ?? "common") as Rarity,
           kind: "equipment",
-          slot: "weapon",
+          slot: (payload?.slot ?? "weapon") as EquipmentSlot,
           value: Math.max(1, Number(payload?.value) || 100),
-          stats: { attack: 5 }
+          stats: payload?.stats ?? { attack: 5 },
+          themeId: payload?.themeId
         };
         player.inventory.items.push(item);
         socket.emit("player", player);
