@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 62** (equippable titles). Total: **143 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
+Resume point after **Sprint 63** (pets/companions). Total: **145 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
 
 ## TL;DR
 
@@ -42,6 +42,7 @@ docker compose up -d --build
 - **Guild leaderboard (Sprint 60):** BXH guild toàn server, sort theo level desc → exp desc, top 20, hiện trong modal guild (cả khi chưa có guild) kèm 🥇🥈🥉 + highlight guild mình. `requestGuildLeaderboard` khi mở modal; auto broadcast sau mọi guild level-up. E2E: `node smoke-guild-rank-test.mjs` (7 checks)
 - **Daily login streak (Sprint 61):** lịch điểm danh 7 ngày, thưởng tăng dần (200g…ngày7 100💎 jackpot), ngày liên tiếp +1, lỡ 1 ngày reset về 1. Hotkey **L**. Logic chuỗi tách thành hàm thuần `computeStreakClaim`/`streakRewardFor`/`dateKeyAddDays` trong shared/dailyStreak.ts (unit-test kỹ theo ngày, không cần fake clock). Persist `loginStreak`+`streakLastClaimDate`. Tách biệt với daily-gem 20h và VIP daily. E2E: `node smoke-streak-test.mjs` (12 unit + 5 e2e)
 - **Titles (Sprint 62):** 10 danh hiệu derived từ stat (level/kills/gold/guild/VIP/streak/cosmetics) trong shared/titles.ts. Hotkey **T** mở modal gắn/bỏ; «Danh hiệu» hiện cạnh tên ở HUD + trên đầu nhân vật cho mọi người thấy (`displayName` = title + [TAG] + name). Chỉ persist `activeTitle` (titles tự suy từ stat). Hàm thuần `earnedTitles`/`isTitleEarned` unit-test. E2E: `node smoke-titles-test.mjs` (9 unit + 6 e2e)
+- **Pets (Sprint 63):** 6 linh thú (shared/pets.ts), mua bằng vàng (slime/wolf/owl) hoặc Gem (spirit/drake/phoenix), buff thụ động atk/def/hp. `recomputePetBonus` mirror `recomputeSetBonus` (subtract-old/add-new). **QUAN TRỌNG:** petBonus* fields ĐƯỢC persist (khác set-bonus) nên relogin không double-count — recompute CHỈ chạy khi đổi pet, không chạy lúc login. Orb nhỏ đi theo player (Phaser arc tinted). Hotkey **P**. E2E: `node smoke-pets-test.mjs` (14 checks gồm swap + relog no-double-count). ⚠️ set-bonus có latent double-count nếu equip sau login (stats lưu đã gồm bonus, setBonus* không persist) — pets đã tránh; nên fix set-bonus theo cách của pets sau này.
 - **Mobile:** Virtual joystick + 5 action buttons (touch auto-detect)
 - **UX:** Minimap, hotkeys (I/C/K/N/V/H/G/J/B/?), Top banner notifications, collapse panels, skill cooldown sweep
 
