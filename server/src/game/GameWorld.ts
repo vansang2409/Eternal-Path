@@ -1263,6 +1263,7 @@ export class GameWorld {
       guildStore.upsert(record);
       player.guildId = record.id;
       player.guildTag = record.tag;
+      this.unlockAchievement(player, "guild-founder");
       socket.emit("player", player);
       this.emitGuildUpdate(record.id);
       this.io.emit("system", `🏰 Guild [${record.tag}] ${record.name} vừa được thành lập bởi ${player.accountName}!`);
@@ -1648,6 +1649,7 @@ export class GameWorld {
       buyer.inventory.items.push(listing.item);
       socket.emit("player", buyer);
       socket.emit("system", `Đã mua ${listing.item.name} với giá ${listing.price} vàng.`);
+      this.unlockAchievement(buyer, "big-spender");
       this.markDirty(buyer);
 
       // Pay the seller their proceeds (price minus burned tax).
@@ -1657,6 +1659,7 @@ export class GameWorld {
         seller.stats.gold += net;
         this.sockets.get(seller.id)?.emit("player", seller);
         this.sockets.get(seller.id)?.emit("system", `💰 ${buyer.accountName} đã mua ${listing.item.name} — bạn nhận ${net} vàng (đã trừ ${marketTax(listing.price)} phí).`);
+        this.unlockAchievement(seller, "merchant");
         this.markDirty(seller);
       } else {
         marketStore.addPending(listing.sellerName, net, listing.item.name, Date.now());
@@ -1793,6 +1796,7 @@ export class GameWorld {
         `📅 Điểm danh ngày ${((result.newStreak - 1) % 7) + 1} (chuỗi ${result.newStreak}): nhận ${result.reward.label}.`
       );
       if (result.reward.gold > 0) this.emitFloating(player.id, player.position, result.reward.gold, "loot", `+${result.reward.gold} gold`);
+      if (result.newStreak >= 7) this.unlockAchievement(player, "devout");
       this.markDirty(player);
     });
 
@@ -1817,6 +1821,7 @@ export class GameWorld {
         return;
       }
       player.activeTitle = titleId;
+      this.unlockAchievement(player, "titled");
       socket.emit("player", player);
       socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
       socket.emit("system", `Đã gắn danh hiệu «${titleLabel(titleId)}».`);
@@ -1850,6 +1855,7 @@ export class GameWorld {
         player.stats.gold -= pet.goldPrice;
       }
       player.ownedPets = [...(player.ownedPets ?? []), pet.id];
+      this.unlockAchievement(player, "beast-tamer");
       socket.emit("player", player);
       socket.emit("system", `🐾 Đã thu phục ${pet.name}! Mở bảng Linh Thú (P) để trang bị.`);
       this.markDirty(player);
@@ -2624,6 +2630,15 @@ export class GameWorld {
     if (!achievement) return false;
     player.achievements.push(achievement.id);
     this.sockets.get(player.id)?.emit("achievementUnlocked", achievement);
+    // Grant the one-time reward (Sprint 67), if any.
+    const reward = achievement.reward;
+    if (reward && (reward.gold || reward.gems)) {
+      if (reward.gold) player.stats.gold += reward.gold;
+      if (reward.gems) player.gems = (player.gems ?? 0) + reward.gems;
+      this.sockets.get(player.id)?.emit("player", player);
+      const parts = [reward.gold ? `${reward.gold} vàng` : "", reward.gems ? `${reward.gems} 💎` : ""].filter(Boolean).join(" + ");
+      this.sockets.get(player.id)?.emit("system", `🏅 Thành tựu «${achievement.title}» — thưởng ${parts}.`);
+    }
     this.markDirty(player);
     return true;
   }
@@ -3310,6 +3325,7 @@ export class GameWorld {
         member.stats.gold += share;
         this.sockets.get(member.id)?.emit("player", member);
         this.sockets.get(member.id)?.emit("system", `🏆 Hạ ${raid.bossName}! Bạn nhận ${share.toLocaleString("vi-VN")} vàng (đóng góp ${dmg.toLocaleString("vi-VN")} sát thương).`);
+        this.unlockAchievement(member, "raid-slayer");
         this.markDirty(member);
       }
     }
@@ -3476,6 +3492,7 @@ export class GameWorld {
       "system",
       after > before ? `🐾 ${pet.name} lên cấp ${after}! Chỉ số buff tăng.` : `🐾 ${pet.name} +${xp} XP.`
     );
+    if (after >= 5) this.unlockAchievement(player, "beast-master");
     return true;
   }
 

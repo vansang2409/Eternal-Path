@@ -20,7 +20,16 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "mount-rider",     title: "Kỵ Sĩ",               description: "Nhận Bùa Cưỡi Gió từ world boss." },
   { id: "homeward",        title: "Đường Về Nhà",        description: "Dùng 1 Cuộn Hồi Thành." },
   { id: "deep-explorer",   title: "Người Đi Vực Sâu",    description: "Hạ 1 quái cấp 8 trở lên." },
-  { id: "talent-spent",    title: "Tài Năng Lộ Diện",    description: "Nâng cấp 1 skill bằng điểm tài năng." }
+  { id: "talent-spent",    title: "Tài Năng Lộ Diện",    description: "Nâng cấp 1 skill bằng điểm tài năng." },
+  // Sprint 67 — achievements tied to the newer systems, each with a reward.
+  { id: "guild-founder",   title: "Khai Quốc Công Thần",  description: "Thành lập một guild.",          reward: { gems: 20 } },
+  { id: "merchant",        title: "Thương Nhân",          description: "Bán được 1 món ở Chợ.",        reward: { gold: 500 } },
+  { id: "big-spender",     title: "Tay Chơi",             description: "Mua 1 món ở Chợ.",             reward: { gold: 300 } },
+  { id: "beast-tamer",     title: "Người Thuần Thú",      description: "Thu phục 1 linh thú.",         reward: { gems: 10 } },
+  { id: "beast-master",    title: "Bá Chủ Linh Thú",      description: "Nuôi 1 linh thú đạt cấp 5.",   reward: { gems: 30 } },
+  { id: "raid-slayer",     title: "Diệt Ma Vương",        description: "Góp công hạ 1 Boss Guild.",    reward: { gems: 25 } },
+  { id: "devout",          title: "Lòng Thành",           description: "Đạt chuỗi điểm danh 7 ngày.",  reward: { gems: 15 } },
+  { id: "titled",          title: "Người Có Danh",        description: "Gắn 1 danh hiệu.",             reward: { gold: 200 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

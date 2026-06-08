@@ -40,6 +40,8 @@ export interface Achievement {
   id: string;
   title: string;
   description: string;
+  /** Optional one-time reward granted when the achievement unlocks. */
+  reward?: { gold?: number; gems?: number };
 }
 
 export interface Vec2 {
