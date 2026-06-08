@@ -48,7 +48,14 @@ const run = async () => {
   for (let i = 0; i < 20 && !booted; i++) await sleep(300);
   await sleep(500);
 
-  const list = process.argv.includes("--slow") ? [...FAST, ...SLOW] : FAST;
+  let list = process.argv.includes("--slow") ? [...FAST, ...SLOW] : FAST;
+  // --half 1|2 runs a slice so the full sweep fits inside short tool timeouts.
+  const halfArg = process.argv.indexOf("--half");
+  if (halfArg !== -1) {
+    const half = Number(process.argv[halfArg + 1]);
+    const mid = Math.ceil(FAST.length / 2);
+    list = half === 2 ? FAST.slice(mid) : FAST.slice(0, mid);
+  }
   const results = [];
   for (const file of list) {
     const r = await runTest(file);
