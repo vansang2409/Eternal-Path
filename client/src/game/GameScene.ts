@@ -184,6 +184,8 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("mysteryBoxResult", (r) => this.hud.showMysteryBoxResult(r.label));
     this.hud.setInspectHandler((name) => this.socket.emit("inspectPlayer", { name }));
     this.hud.setPayHandler((to, amount) => this.socket.emit("payPlayer", { to, amount }));
+    this.hud.setWhoHandler(() => this.socket.emit("requestOnline"));
+    this.socket.on("onlineList", (p) => this.hud.showOnlineList(p));
     this.socket.on("playerProfile", (p) => { if (p) this.hud.showPlayerProfile(p); });
     document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='guild-modal']").forEach((btn) => {
       btn.addEventListener("click", () => this.socket.emit("requestGuildLeaderboard"));

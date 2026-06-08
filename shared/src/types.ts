@@ -474,6 +474,7 @@ export interface ServerToClientEvents {
   titlesUpdate: (payload: { earned: string[]; active?: string }) => void;
   mysteryBoxResult: (payload: { kind: string; label: string; converted: boolean }) => void;
   playerProfile: (payload: PlayerProfile | null) => void;
+  onlineList: (payload: { count: number; players: Array<{ accountName: string; level: number; guildTag?: string }> }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -524,6 +525,7 @@ export interface ClientToServerEvents {
   buyGoldBoost: () => void;
   sellAllMaterials: () => void;
   payPlayer: (payload: { to: string; amount: number }) => void;
+  requestOnline: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

@@ -2278,6 +2278,16 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    socket.on("requestOnline", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const players = [...this.players.values()]
+        .map((p) => ({ accountName: p.accountName, level: p.stats.level, guildTag: p.guildTag }))
+        .sort((a, b) => b.level - a.level)
+        .slice(0, 50);
+      socket.emit("onlineList", { count: this.players.size, players });
+    });
+
     socket.on("payPlayer", ({ to, amount }) => {
       const sender = this.players.get(socket.id);
       if (!sender) return;

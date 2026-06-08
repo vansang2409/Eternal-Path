@@ -891,6 +891,14 @@ export class Hud {
   setPayHandler(handler: (to: string, amount: number) => void): void {
     this.payHandler = handler;
   }
+  private whoHandler?: () => void;
+  setWhoHandler(handler: () => void): void {
+    this.whoHandler = handler;
+  }
+  showOnlineList(payload: { count: number; players: Array<{ accountName: string; level: number; guildTag?: string }> }): void {
+    const names = payload.players.map((p) => `${p.guildTag ? `[${p.guildTag}] ` : ""}${p.accountName} (Lv${p.level})`).join(", ");
+    this.log(`🌐 Đang online (${payload.count}): ${names || "(chỉ mình bạn)"}`, "log-line");
+  }
 
   showPlayerProfile(p: { accountName: string; level: number; playerClass?: string; title?: string; guildTag?: string; guildName?: string; petName?: string; petLevel?: number; pvpKills: number; totalKills: number; vip: boolean }): void {
     const cls = p.playerClass ? CLASS_CATALOG[p.playerClass as PlayerClass]?.name : undefined;
@@ -1473,6 +1481,7 @@ export class Hud {
         "/gaccept — nhận lời mời guild",
         "/inspect <tên> — xem hồ sơ người chơi",
         "/pay <tên> <số> — chuyển vàng (phí 5%)",
+        "/who — danh sách người chơi online",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -1496,6 +1505,7 @@ export class Hud {
       this.payHandler?.(target, amt);
       return;
     }
+    if (cmd === "who" || cmd === "online") { this.whoHandler?.(); return; }
     if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
     if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
     if (cmd === "gaccept") {
