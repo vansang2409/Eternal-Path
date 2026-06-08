@@ -29,7 +29,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "beast-master",    title: "Bá Chủ Linh Thú",      description: "Nuôi 1 linh thú đạt cấp 5.",   reward: { gems: 30 } },
   { id: "raid-slayer",     title: "Diệt Ma Vương",        description: "Góp công hạ 1 Boss Guild.",    reward: { gems: 25 } },
   { id: "devout",          title: "Lòng Thành",           description: "Đạt chuỗi điểm danh 7 ngày.",  reward: { gems: 15 } },
-  { id: "titled",          title: "Người Có Danh",        description: "Gắn 1 danh hiệu.",             reward: { gold: 200 } }
+  { id: "titled",          title: "Người Có Danh",        description: "Gắn 1 danh hiệu.",             reward: { gold: 200 } },
+  // Sprint 82 — economy-feature achievements.
+  { id: "bag-master",      title: "Túi Thần Kỳ",          description: "Mở rộng túi đồ tối đa.",       reward: { gems: 20 } },
+  { id: "high-roller",     title: "Con Bạc",              description: "Mở 1 Rương Bí Ẩn.",            reward: { gold: 500 } },
+  { id: "philanthropist",  title: "Mạnh Thường Quân",     description: "Góp vàng vào Quỹ Guild.",      reward: { gems: 10 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

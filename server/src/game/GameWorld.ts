@@ -1541,6 +1541,7 @@ export class GameWorld {
       guild.bank = (guild.bank ?? 0) + gold;
       guildStore.markDirty();
       socket.emit("player", player);
+      this.unlockAchievement(player, "philanthropist");
       this.markDirty(player);
       this.broadcastGuildSystem(guild, `${player.accountName} gửi ${gold.toLocaleString("vi-VN")} vàng vào quỹ (tổng: ${guild.bank.toLocaleString("vi-VN")}).`);
       this.emitGuildUpdate(guild.id);
@@ -2130,6 +2131,7 @@ export class GameWorld {
       player.bagBonus = bonus + BAG_SLOT_PACK;
       socket.emit("player", player);
       socket.emit("system", `🎒 Đã mở rộng túi đồ lên ${bagCapacity(player.bagBonus)} ô.`);
+      if ((player.bagBonus ?? 0) >= BAG_MAX_BONUS) this.unlockAchievement(player, "bag-master");
       this.markDirty(player);
     });
 
@@ -2169,6 +2171,7 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("mysteryBoxResult", { kind: reward.kind, label, converted });
       socket.emit("system", `🎁 Rương Bí Ẩn: ${label}!`);
+      this.unlockAchievement(player, "high-roller");
       this.markDirty(player);
     });
 
