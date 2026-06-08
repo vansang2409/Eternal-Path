@@ -58,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private lastAfterimageAt = 0;
+  private statusFxAt = new Map<string, number>();
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
@@ -1236,6 +1237,7 @@ export class GameScene extends Phaser.Scene {
         this.monsterBars.delete(id);
         this.monsterLabels.get(id)?.destroy();
         this.monsterLabels.delete(id);
+        this.statusFxAt.delete(id);
       }
     }
 
@@ -1551,6 +1553,14 @@ export class GameScene extends Phaser.Scene {
     else if (effects.some((e) => e.kind === "freeze")) tint = 0x9bd2ff;
     else if (effects.some((e) => e.kind === "bleed")) tint = 0xd94b88;
     sprite.setTint(tint);
+    // Lingering status particles (throttled per monster ~180ms).
+    if (effects.length && !monster.respawnsAt) {
+      const now = this.time.now;
+      if (now - (this.statusFxAt.get(monster.id) ?? 0) > 180) {
+        this.statusFxAt.set(monster.id, now);
+        this.emitStatusParticle(effects[0].kind, iso.x, iso.y);
+      }
+    }
     sprite.setScale(monster.boss ? definition.scale : monster.elite ? definition.scale * 1.18 : definition.scale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
@@ -1686,6 +1696,20 @@ export class GameScene extends Phaser.Scene {
         ring.destroy();
       }
     });
+  }
+
+  // One small lingering particle for an active status effect (Sprint 97).
+  private emitStatusParticle(kind: "burn" | "freeze" | "bleed", x: number, y: number): void {
+    if (kind === "burn") {
+      const ember = this.add.circle(x + (Math.random() - 0.5) * 16, y - 4, 2 + Math.random() * 1.5, Math.random() < 0.5 ? 0xff7a2a : 0xffd166, 0.9).setDepth(99980);
+      this.tweens.add({ targets: ember, y: ember.y - 22 - Math.random() * 12, alpha: 0, duration: 480, ease: "Quad.Out", onComplete: () => ember.destroy() });
+    } else if (kind === "freeze") {
+      const flake = this.add.rectangle(x + (Math.random() - 0.5) * 18, y - 8, 3, 3, 0xeaffff, 0.9).setDepth(99980).setRotation(Math.random() * Math.PI);
+      this.tweens.add({ targets: flake, alpha: 0, scale: 0.3, duration: 420, onComplete: () => flake.destroy() });
+    } else {
+      const drop = this.add.circle(x + (Math.random() - 0.5) * 14, y - 2, 2, 0xd94b88, 0.9).setDepth(99980);
+      this.tweens.add({ targets: drop, y: drop.y + 16, alpha: 0, duration: 380, ease: "Quad.In", onComplete: () => drop.destroy() });
+    }
   }
 
   private playDeathPoof(position: Vec2, big: boolean): void {
