@@ -11,6 +11,8 @@ import {
   BAG_MAX_BONUS,
   bagUpgradeCost,
   bagCapacity,
+  GEM_TO_GOLD_RATE,
+  gemsToGold,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -2040,6 +2042,26 @@ export class GameWorld {
       if (!this.grantPetXp(player, PET_TREAT_XP)) return;
       player.gems = gems - PET_TREAT_GEM_COST;
       socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    socket.on("exchangeGemsForGold", ({ gems }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const spend = Math.floor(Number(gems) || 0);
+      if (spend < 1) {
+        socket.emit("system", "Số Gem đổi không hợp lệ.");
+        return;
+      }
+      if ((player.gems ?? 0) < spend) {
+        socket.emit("system", `Không đủ Gem (đang có ${player.gems ?? 0}).`);
+        return;
+      }
+      player.gems = (player.gems ?? 0) - spend;
+      const gold = gemsToGold(spend);
+      player.stats.gold += gold;
+      socket.emit("player", player);
+      socket.emit("system", `💱 Đã đổi ${spend} 💎 thành ${gold.toLocaleString("vi-VN")} vàng.`);
       this.markDirty(player);
     });
 

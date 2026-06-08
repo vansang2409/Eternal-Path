@@ -54,6 +54,13 @@ export function bagUpgradeCost(currentBonus: number): number {
 export function bagCapacity(bagBonus: number | undefined): number {
   return INVENTORY_CAPACITY + Math.max(0, Math.min(BAG_MAX_BONUS, bagBonus ?? 0));
 }
+
+// Gem → Gold exchange (Sprint 78): premium-currency gold convenience. Gem is
+// the scarce/paid currency so this is a Gem sink, not free gold inflation.
+export const GEM_TO_GOLD_RATE = 100;
+export function gemsToGold(gems: number): number {
+  return Math.max(0, Math.floor(gems)) * GEM_TO_GOLD_RATE;
+}
 export const POWER_STRIKE_COOLDOWN_MS = 4000;
 export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;

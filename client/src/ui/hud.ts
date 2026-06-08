@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -69,7 +69,8 @@ export class Hud {
     private readonly onFeedPet: () => void = () => {},
     private readonly onPetTreat: () => void = () => {},
     private readonly onBuyMysteryBox: () => void = () => {},
-    private readonly onBuyBagSlots: () => void = () => {}
+    private readonly onBuyBagSlots: () => void = () => {},
+    private readonly onExchangeGems: (gems: number) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -747,6 +748,22 @@ export class Hud {
       <div class="gem-shop-action"><button id="mystery-buy-btn" class="gem-shop-buy-btn" type="button">💎 50 — Mở</button></div>`;
     root.appendChild(box);
     box.querySelector<HTMLButtonElement>("#mystery-buy-btn")?.addEventListener("click", () => this.onBuyMysteryBox());
+    // Gem → Gold exchange row (Sprint 78).
+    const ex = document.createElement("div");
+    ex.className = "gem-shop-card";
+    ex.style.cssText = "align-items:center";
+    ex.innerHTML = `
+      <div class="gem-shop-swatch" style="background:linear-gradient(135deg,#cdb6ff,#ffd166);display:flex;align-items:center;justify-content:center;font-size:18px">💱</div>
+      <div class="gem-shop-info"><strong>Đổi Gem → Vàng</strong><p>1 💎 = ${GEM_TO_GOLD_RATE} vàng.</p></div>
+      <div class="gem-shop-action" style="display:flex;gap:6px;align-items:center">
+        <input id="gem-exchange-amount" type="number" min="1" placeholder="Gem" style="width:70px;padding:6px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+        <button id="gem-exchange-btn" class="gem-shop-buy-btn" type="button">Đổi</button>
+      </div>`;
+    root.appendChild(ex);
+    ex.querySelector<HTMLButtonElement>("#gem-exchange-btn")?.addEventListener("click", () => {
+      const v = Math.floor(Number(ex.querySelector<HTMLInputElement>("#gem-exchange-amount")?.value) || 0);
+      if (v >= 1) this.onExchangeGems(v); else this.log("Nhập số Gem hợp lệ.", "log-line");
+    });
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
     for (const cosmetic of COSMETICS) {

@@ -14,7 +14,11 @@ Mục tiêu: game kiếm tiền, nên hai loại tiền tệ phải cân bằng 
 - Guild Raid (S66): khi hạ boss, chia `maxHp × 0.15` vàng cho người đóng góp. **Faucet mới đáng theo dõi** — nhưng có chặn: tốn 2000 vàng quỹ để triệu hồi (S73) + cooldown 5 phút + giới hạn bởi sát thương người chơi.
 - Mystery Box (S68): nhánh gold 1000–5000 (mua bằng 50💎 → đây là gold faucet đổi từ gem).
 
+### Faucet (vàng từ Gem — premium)
+- Đổi Gem → Vàng (S78): 1💎 = 100 vàng. Là **Gem sink**, vàng tạo ra "trả bằng" tiền premium nên không gây lạm phát free.
+
 ### Sink (hủy/khóa vàng)
+- Mở rộng túi đồ (S77): 3000 × số pack đã mua, tối đa +30 ô (sink cuối game).
 - Mua đồ ở shop, bình máu.
 - Crafting (gián tiếp qua nguyên liệu).
 - Lập guild: −5000 (S56).
