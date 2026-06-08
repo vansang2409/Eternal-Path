@@ -455,6 +455,8 @@ export interface ClientToServerEvents {
   promoteGuildMember: (payload: { accountName: string }) => void;
   setGuildMotd: (payload: { motd: string }) => void;
   guildChat: (payload: { message: string }) => void;
+  donateGuild: (payload: { amount: number }) => void;
+  buyGuildBoost: () => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

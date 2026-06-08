@@ -29,11 +29,21 @@ import {
   isVipActive,
   GUILD_CREATE_COST_GOLD,
   GUILD_INVITE_TTL_MS,
-  GUILD_MAX_MEMBERS,
   GUILD_MOTD_MAX,
+  GUILD_DONATE_MIN,
+  GUILD_GOLD_PER_EXP,
+  GUILD_MAX_LEVEL,
+  GUILD_BOOST_GEM_COST,
+  GUILD_BOOST_DURATION_MS,
+  GUILD_BOOST_EXP_BONUS,
   canManageGuild,
   sanitizeGuildName,
   sanitizeGuildTag,
+  guildLevelForExp,
+  guildTier,
+  guildMaxMembers,
+  guildExpProgress,
+  isGuildBoostActive,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -1166,7 +1176,9 @@ export class GameWorld {
         tag: cleanTag,
         motd: "Chào mừng đến với guild!",
         createdAt: Date.now(),
-        members: [{ accountName: player.accountName, rank: "leader", joinedAt: Date.now() }]
+        members: [{ accountName: player.accountName, rank: "leader", joinedAt: Date.now(), contribution: 0 }],
+        exp: 0,
+        level: 1
       };
       guildStore.upsert(record);
       player.guildId = record.id;
@@ -1187,8 +1199,9 @@ export class GameWorld {
         socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được mời thành viên.");
         return;
       }
-      if (guild.members.length >= GUILD_MAX_MEMBERS) {
-        socket.emit("system", `Guild đã đầy (${GUILD_MAX_MEMBERS} thành viên).`);
+      const inviteCap = guildMaxMembers(guildLevelForExp(guild.exp ?? 0));
+      if (guild.members.length >= inviteCap) {
+        socket.emit("system", `Guild đã đầy (${inviteCap} thành viên). Lên cấp guild để mở thêm chỗ.`);
         return;
       }
       const cleanName = String(name ?? "").trim().slice(0, 20);
@@ -1228,7 +1241,7 @@ export class GameWorld {
         socket.emit("system", "Guild không còn tồn tại.");
         return;
       }
-      if (guild.members.length >= GUILD_MAX_MEMBERS) {
+      if (guild.members.length >= guildMaxMembers(guildLevelForExp(guild.exp ?? 0))) {
         socket.emit("system", "Guild đã đầy.");
         return;
       }
@@ -1320,6 +1333,64 @@ export class GameWorld {
       for (const p of this.players.values()) {
         if (p.guildId === guild.id) this.sockets.get(p.id)?.emit("guildChatMessage", payload);
       }
+    });
+
+    socket.on("donateGuild", ({ amount }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) {
+        socket.emit("system", "Bạn chưa ở trong guild nào.");
+        return;
+      }
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const gold = Math.floor(Number(amount) || 0);
+      if (gold < GUILD_DONATE_MIN) {
+        socket.emit("system", `Góp tối thiểu ${GUILD_DONATE_MIN} vàng.`);
+        return;
+      }
+      if (player.stats.gold < gold) {
+        socket.emit("system", `Không đủ vàng (đang có ${player.stats.gold}).`);
+        return;
+      }
+      if (guildLevelForExp(guild.exp ?? 0) >= GUILD_MAX_LEVEL) {
+        socket.emit("system", "Guild đã đạt cấp tối đa — không cần góp thêm.");
+        return;
+      }
+      player.stats.gold -= gold;
+      const member = guild.members.find((m) => m.accountName === player.accountName);
+      if (member) member.contribution = (member.contribution ?? 0) + gold;
+      socket.emit("player", player);
+      socket.emit("system", `Đã góp ${gold} vàng cho guild (+${gold * GUILD_GOLD_PER_EXP} EXP guild).`);
+      this.markDirty(player);
+      this.addGuildExp(guild, gold * GUILD_GOLD_PER_EXP);
+    });
+
+    socket.on("buyGuildBoost", () => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (!canManageGuild(rank)) {
+        socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được mua Guild Boost.");
+        return;
+      }
+      if (isGuildBoostActive(guild.boostUntil)) {
+        socket.emit("system", "Guild Boost đang còn hiệu lực.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < GUILD_BOOST_GEM_COST) {
+        socket.emit("system", `Cần ${GUILD_BOOST_GEM_COST} 💎 để mua Guild Boost (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - GUILD_BOOST_GEM_COST;
+      guild.boostUntil = Date.now() + GUILD_BOOST_DURATION_MS;
+      guildStore.markDirty();
+      socket.emit("player", player);
+      this.markDirty(player);
+      this.broadcastGuildSystem(guild, `${player.accountName} kích hoạt Guild Boost ⚡ +${Math.round(GUILD_BOOST_EXP_BONUS * 100)}% EXP trong 48h!`);
+      this.emitGuildUpdate(guild.id);
     });
 
     socket.on("buyBattlePassPremium", () => {
@@ -2111,8 +2182,10 @@ export class GameWorld {
 
   private grantExpAndStatPoints(player: PlayerState, exp: number): boolean {
     const previousLevel = player.stats.level;
-    // VIP bonus: +20% exp.
-    const boosted = isVipActive(player.vipUntil) ? Math.round(exp * VIP_EXP_MULTIPLIER) : exp;
+    // Stack VIP (+20%) and guild perk/boost EXP multipliers.
+    let mult = isVipActive(player.vipUntil) ? VIP_EXP_MULTIPLIER : 1;
+    mult *= this.guildExpMultiplier(player);
+    const boosted = mult === 1 ? exp : Math.round(exp * mult);
     const result = grantExp(player.stats, boosted);
     player.stats = result.stats;
     const levelsGained = Math.max(0, player.stats.level - previousLevel);
@@ -2154,8 +2227,10 @@ export class GameWorld {
     this.returningToSpawn.delete(monster.id);
 
     const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
+    let goldMult = isVipActive(player.vipUntil) ? VIP_GOLD_MULTIPLIER : 1;
+    goldMult *= this.guildGoldMultiplier(player);
     let gold = goldForMonster(monster);
-    if (isVipActive(player.vipUntil)) gold = Math.round(gold * VIP_GOLD_MULTIPLIER);
+    if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;
     for (const recipient of this.expRecipientsFor(player)) {
       const leveled = this.grantExpAndStatPoints(recipient, exp);
@@ -2658,9 +2733,14 @@ export class GameWorld {
           rank: m.rank,
           level: live?.stats.level ?? 0,
           online: !!live,
-          playerClass: live?.playerClass
+          playerClass: live?.playerClass,
+          contribution: m.contribution ?? 0
         };
       });
+    const exp = guild.exp ?? 0;
+    const level = guildLevelForExp(exp);
+    const tier = guildTier(level);
+    const progress = guildExpProgress(exp);
     return {
       id: guild.id,
       name: guild.name,
@@ -2668,8 +2748,54 @@ export class GameWorld {
       motd: guild.motd,
       createdAt: guild.createdAt,
       members,
-      maxMembers: GUILD_MAX_MEMBERS
+      maxMembers: tier.maxMembers,
+      exp,
+      level,
+      expInto: progress.into,
+      expSpan: progress.span,
+      atMaxLevel: progress.atMax,
+      expBonus: tier.expBonus,
+      goldBonus: tier.goldBonus,
+      boostUntil: guild.boostUntil,
+      boostActive: isGuildBoostActive(guild.boostUntil)
     };
+  }
+
+  // ── Guild perk multipliers (Sprint 57) ──────────────────────────────
+  // A player's guild grants a passive EXP/gold bonus by guild level, plus a
+  // time-limited Gem boost on top of EXP. Returns 1.0 when not in a guild.
+  private guildExpMultiplier(player: PlayerState): number {
+    if (!player.guildId) return 1;
+    const guild = guildStore.get(player.guildId);
+    if (!guild) return 1;
+    const tier = guildTier(guildLevelForExp(guild.exp ?? 0));
+    const boost = isGuildBoostActive(guild.boostUntil) ? GUILD_BOOST_EXP_BONUS : 0;
+    return 1 + tier.expBonus + boost;
+  }
+
+  private guildGoldMultiplier(player: PlayerState): number {
+    if (!player.guildId) return 1;
+    const guild = guildStore.get(player.guildId);
+    if (!guild) return 1;
+    return 1 + guildTier(guildLevelForExp(guild.exp ?? 0)).goldBonus;
+  }
+
+  /** Add EXP to a guild, handle level-ups (announce), and refresh roster. */
+  private addGuildExp(guild: GuildRecord, amount: number): void {
+    if (amount <= 0) return;
+    const before = guildLevelForExp(guild.exp ?? 0);
+    guild.exp = (guild.exp ?? 0) + amount;
+    const after = guildLevelForExp(guild.exp);
+    guild.level = after;
+    guildStore.markDirty();
+    if (after > before) {
+      const tier = guildTier(after);
+      this.broadcastGuildSystem(
+        guild,
+        `Guild đạt cấp ${after}! 🎉 Buff: +${Math.round(tier.expBonus * 100)}% EXP, +${Math.round(tier.goldBonus * 100)}% vàng, ${tier.maxMembers} slot.`
+      );
+    }
+    this.emitGuildUpdate(guild.id);
   }
 
   /** Send the fresh roster to every online member of a guild. */

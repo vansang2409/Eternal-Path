@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_CREATE_COST_GOLD, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildView, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -774,6 +774,8 @@ export class Hud {
     promote: (accountName: string) => void;
     motd: (motd: string) => void;
     chat: (message: string) => void;
+    donate: (amount: number) => void;
+    boost: () => void;
   };
 
   setGuildHandlers(handlers: NonNullable<Hud["guildHandlers"]>): void {
@@ -838,6 +840,7 @@ export class Hud {
     const canManage = canManageGuild(me?.rank);
     const isLeader = me?.rank === "leader";
     const onlineCount = g.members.filter((m) => m.online).length;
+    // Contribution leaderboard ordering is by rank already; show donated gold.
     const rows = g.members
       .map((m) => {
         const cls = m.playerClass ? ` · ${CLASS_CATALOG[m.playerClass].name}` : "";
@@ -850,6 +853,7 @@ export class Hud {
           <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${m.online ? "🟢" : "⚪"} ${escapeHtml(m.accountName)}</td>
           <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#cdb6ff">${guildRankLabel(m.rank)}</td>
           <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#8e9192">${level}</td>
+          <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;text-align:right;color:#ffd166;white-space:nowrap" title="Tổng vàng đã góp">${m.contribution.toLocaleString("vi-VN")} 🪙</td>
           <td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;text-align:right;white-space:nowrap">
             ${promotable ? `<button type="button" data-guild-promote="${escapeHtml(m.accountName)}" title="Thăng/giáng chức" style="padding:3px 8px;margin-right:4px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#ffd166;cursor:pointer">⭐</button>` : ""}
             ${kickable ? `<button type="button" data-guild-kick="${escapeHtml(m.accountName)}" title="Trục xuất" style="padding:3px 8px;background:#402c2c;border:1px solid #5a3939;border-radius:4px;color:#ff8181;cursor:pointer">✕</button>` : ""}
@@ -857,6 +861,28 @@ export class Hud {
         </tr>`;
       })
       .join("");
+
+    // Progression block: level, EXP progress bar, active perks, donate + boost.
+    const pct = g.atMaxLevel ? 100 : Math.min(100, Math.round((g.expInto / Math.max(1, g.expSpan)) * 100));
+    const boostMs = g.boostActive && g.boostUntil ? g.boostUntil - Date.now() : 0;
+    const boostHrs = Math.max(0, Math.ceil(boostMs / (60 * 60 * 1000)));
+    const progressBlock = `
+      <div style="margin:4px 0 12px;padding:12px;background:rgba(28,28,28,0.5);border:1px solid #39424b;border-radius:6px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <strong style="color:#ffd166;font-size:15px">⚜️ Guild Lv ${g.level}${g.atMaxLevel ? " (MAX)" : ""}</strong>
+          <span style="color:#9be7a8;font-size:12px">+${Math.round(g.expBonus * 100)}% EXP · +${Math.round(g.goldBonus * 100)}% vàng cho cả guild</span>
+          ${g.boostActive ? `<span style="margin-left:auto;color:#7fd4ff;font-size:12px;font-weight:700">⚡ Boost +${10}% EXP · còn ${boostHrs}h</span>` : ""}
+        </div>
+        <div style="margin-top:8px;height:14px;background:#101820;border-radius:7px;overflow:hidden;border:1px solid #2a2a2a">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(to right,#6e4c9b,#c79bff);transition:width .3s"></div>
+        </div>
+        <div style="margin-top:4px;font-size:11px;color:#8e9192">${g.atMaxLevel ? "Đã đạt cấp tối đa." : `${g.expInto.toLocaleString("vi-VN")} / ${g.expSpan.toLocaleString("vi-VN")} EXP đến Lv ${g.level + 1}`} · Tổng góp guild: ${g.exp.toLocaleString("vi-VN")}</div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          ${g.atMaxLevel ? "" : `<input id="guild-donate-amount" type="number" min="${GUILD_DONATE_MIN}" step="100" placeholder="Góp vàng (≥${GUILD_DONATE_MIN})" style="flex:1;min-width:140px;padding:7px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+          <button id="guild-donate-btn" type="button" style="padding:7px 14px;background:linear-gradient(to bottom,#ffd166,#c8a948);border:none;border-radius:4px;color:#1d1500;font-weight:700;cursor:pointer">🪙 Góp</button>`}
+          ${canManage && !g.boostActive ? `<button id="guild-boost-btn" type="button" title="Mua boost EXP 48h cho cả guild" style="padding:7px 14px;background:linear-gradient(to bottom,#4aa3df,#2d6fa3);border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer">⚡ Guild Boost · 💎 ${GUILD_BOOST_GEM_COST}</button>` : ""}
+        </div>
+      </div>`;
     body.innerHTML = `
       <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
         <h3 style="margin:0;color:#ffd166">[${escapeHtml(g.tag)}] ${escapeHtml(g.name)}</h3>
@@ -866,6 +892,7 @@ export class Hud {
         <span style="font-size:13px;color:#e8dcff;flex:1">📜 ${escapeHtml(g.motd || "(chưa có thông báo)")}</span>
         ${canManage ? `<button id="guild-motd-edit" type="button" style="padding:4px 10px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#cdb6ff;cursor:pointer">Sửa</button>` : ""}
       </div>
+      ${progressBlock}
       ${canManage ? `<div style="display:flex;gap:8px;margin-bottom:10px">
         <input id="guild-invite-name" type="text" maxlength="20" placeholder="Tên người chơi đang online" style="flex:1;padding:7px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
         <button id="guild-invite-btn" type="button" style="padding:7px 14px;background:linear-gradient(to bottom,#6e4c9b,#523a73);border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer">➕ Mời</button>
@@ -880,6 +907,15 @@ export class Hud {
     body.querySelector<HTMLButtonElement>("#guild-invite-btn")?.addEventListener("click", () => {
       const name = body.querySelector<HTMLInputElement>("#guild-invite-name")?.value.trim();
       if (name) this.guildHandlers?.invite(name);
+    });
+    body.querySelector<HTMLButtonElement>("#guild-donate-btn")?.addEventListener("click", () => {
+      const raw = body.querySelector<HTMLInputElement>("#guild-donate-amount")?.value ?? "";
+      const amount = Math.floor(Number(raw) || 0);
+      if (amount >= GUILD_DONATE_MIN) this.guildHandlers?.donate(amount);
+      else this.log(`Góp tối thiểu ${GUILD_DONATE_MIN} vàng.`, "log-line");
+    });
+    body.querySelector<HTMLButtonElement>("#guild-boost-btn")?.addEventListener("click", () => {
+      if (window.confirm(`Mua Guild Boost (+10% EXP cho cả guild trong 48h) với ${GUILD_BOOST_GEM_COST} 💎?`)) this.guildHandlers?.boost();
     });
     body.querySelector<HTMLButtonElement>("#guild-motd-edit")?.addEventListener("click", () => {
       const next = window.prompt("Thông báo guild mới:", g.motd)?.slice(0, GUILD_MOTD_MAX);
