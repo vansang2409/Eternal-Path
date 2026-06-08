@@ -1248,6 +1248,22 @@ export class GameWorld {
         player.inventory.items.push(item);
         socket.emit("player", player);
       });
+      (socket as Socket).on("devGrantMaterial", (payload: { count?: number; value?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const n = Math.max(1, Math.min(20, Number(payload?.count) || 1));
+        for (let i = 0; i < n; i++) {
+          player.inventory.items.push({
+            id: `devmat-${Date.now()}-${i}-${Math.floor(Math.random() * 1e4)}`,
+            kind: "material",
+            materialId: "slimeCore",
+            name: "Dev Material",
+            rarity: "common",
+            value: Math.max(1, Number(payload?.value) || 50)
+          });
+        }
+        socket.emit("player", player);
+      });
     }
 
     socket.on("createGuild", ({ name, tag }) => {
@@ -2256,6 +2272,29 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `Đã bán ${item.name} được ${gold} vàng.`);
       this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
+      this.markDirty(player);
+    });
+
+    socket.on("sellAllMaterials", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      let count = 0;
+      let gold = 0;
+      player.inventory.items = player.inventory.items.filter((item) => {
+        if (item.kind === "material") {
+          count += 1;
+          gold += sellValue(item.value);
+          return false;
+        }
+        return true;
+      });
+      if (count === 0) {
+        socket.emit("system", "Không có nguyên liệu nào để bán.");
+        return;
+      }
+      player.stats.gold += gold;
+      socket.emit("player", player);
+      socket.emit("system", `Đã bán ${count} nguyên liệu được ${gold.toLocaleString("vi-VN")} vàng.`);
       this.markDirty(player);
     });
 

@@ -71,7 +71,8 @@ export class Hud {
     private readonly onBuyMysteryBox: () => void = () => {},
     private readonly onBuyBagSlots: () => void = () => {},
     private readonly onExchangeGems: (gems: number) => void = () => {},
-    private readonly onBuyGoldBoost: () => void = () => {}
+    private readonly onBuyGoldBoost: () => void = () => {},
+    private readonly onSellAllMaterials: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -81,6 +82,7 @@ export class Hud {
     const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
     sellJunkButton.addEventListener("click", () => this.onSellJunk());
     document.querySelector("#bag-expand-button")?.addEventListener("click", () => this.onBuyBagSlots());
+    document.querySelector("#sell-materials-button")?.addEventListener("click", () => this.onSellAllMaterials());
     muteButton.addEventListener("click", () => {
       this.onToggleMuted();
       this.renderSoundToggle();
