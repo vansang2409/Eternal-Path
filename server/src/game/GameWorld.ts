@@ -2278,6 +2278,40 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    socket.on("payPlayer", ({ to, amount }) => {
+      const sender = this.players.get(socket.id);
+      if (!sender) return;
+      const gold = Math.floor(Number(amount) || 0);
+      const cleanTo = String(to ?? "").trim().slice(0, 20);
+      if (gold < 1) {
+        socket.emit("system", "Số vàng chuyển không hợp lệ.");
+        return;
+      }
+      if (cleanTo === sender.accountName) {
+        socket.emit("system", "Không thể chuyển vàng cho chính mình.");
+        return;
+      }
+      if (sender.stats.gold < gold) {
+        socket.emit("system", `Không đủ vàng (đang có ${sender.stats.gold}).`);
+        return;
+      }
+      const recipient = [...this.players.values()].find((p) => p.accountName === cleanTo);
+      if (!recipient) {
+        socket.emit("system", `${cleanTo || "Người chơi"} không online.`);
+        return;
+      }
+      // 5% transfer tax burned (sink, consistent with the marketplace).
+      const net = gold - Math.floor(gold * 0.05);
+      sender.stats.gold -= gold;
+      recipient.stats.gold += net;
+      socket.emit("player", sender);
+      socket.emit("system", `Đã chuyển ${gold.toLocaleString("vi-VN")} vàng cho ${cleanTo} (họ nhận ${net.toLocaleString("vi-VN")} sau phí 5%).`);
+      this.sockets.get(recipient.id)?.emit("player", recipient);
+      this.sockets.get(recipient.id)?.emit("system", `💰 ${sender.accountName} đã chuyển cho bạn ${net.toLocaleString("vi-VN")} vàng.`);
+      this.markDirty(sender);
+      this.markDirty(recipient);
+    });
+
     socket.on("sellAllMaterials", () => {
       const player = this.players.get(socket.id);
       if (!player) return;

@@ -523,6 +523,7 @@ export interface ClientToServerEvents {
   exchangeGemsForGold: (payload: { gems: number }) => void;
   buyGoldBoost: () => void;
   sellAllMaterials: () => void;
+  payPlayer: (payload: { to: string; amount: number }) => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

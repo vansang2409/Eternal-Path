@@ -887,6 +887,10 @@ export class Hud {
   setInspectHandler(handler: (name: string) => void): void {
     this.inspectHandler = handler;
   }
+  private payHandler?: (to: string, amount: number) => void;
+  setPayHandler(handler: (to: string, amount: number) => void): void {
+    this.payHandler = handler;
+  }
 
   showPlayerProfile(p: { accountName: string; level: number; playerClass?: string; title?: string; guildTag?: string; guildName?: string; petName?: string; petLevel?: number; pvpKills: number; totalKills: number; vip: boolean }): void {
     const cls = p.playerClass ? CLASS_CATALOG[p.playerClass as PlayerClass]?.name : undefined;
@@ -1468,6 +1472,7 @@ export class Hud {
         "/ginvite <tên> — mời vào guild",
         "/gaccept — nhận lời mời guild",
         "/inspect <tên> — xem hồ sơ người chơi",
+        "/pay <tên> <số> — chuyển vàng (phí 5%)",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -1484,6 +1489,13 @@ export class Hud {
     if (cmd === "friend" && arg) { this.friendAddHandler?.(arg); return; }
     if (cmd === "unfriend" && arg) { this.friendRemoveHandler?.(arg); return; }
     if ((cmd === "inspect" || cmd === "ins") && arg) { this.inspectHandler?.(arg); return; }
+    if (cmd === "pay") {
+      const [target, amtStr] = rest;
+      const amt = Math.floor(Number(amtStr) || 0);
+      if (!target || amt < 1) { this.log("Cú pháp: /pay <tên> <số vàng>", "log-line"); return; }
+      this.payHandler?.(target, amt);
+      return;
+    }
     if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
     if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
     if (cmd === "gaccept") {
