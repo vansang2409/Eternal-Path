@@ -187,6 +187,8 @@ export interface PlayerState {
   streakLastClaimDate?: string;
   /** Extra inventory slots bought with gold (Sprint 77). */
   bagBonus?: number;
+  /** Timestamp (ms) the personal +50% gold boost potion expires (Sprint 79). */
+  goldBoostUntil?: number;
   // Active equippable title id (Sprint 62) — shown next to the name. Derived
   // titles are earned via stats; only the chosen one is persisted.
   activeTitle?: string;
@@ -519,6 +521,7 @@ export interface ClientToServerEvents {
   inspectPlayer: (payload: { name: string }) => void;
   buyBagSlots: () => void;
   exchangeGemsForGold: (payload: { gems: number }) => void;
+  buyGoldBoost: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

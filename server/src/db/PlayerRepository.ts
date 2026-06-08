@@ -34,6 +34,7 @@ interface SavedPlayer {
   loginStreak?: number;
   streakLastClaimDate?: string;
   bagBonus?: number;
+  goldBoostUntil?: number;
   activeTitle?: string;
   // Set-bonus tracked fields are baked into saved stats — persist them so a
   // relogin doesn't lose track and double-count on the next equip change.
@@ -279,6 +280,7 @@ export class PlayerRepository {
       loginStreak: player.loginStreak,
       streakLastClaimDate: player.streakLastClaimDate,
       bagBonus: player.bagBonus,
+      goldBoostUntil: player.goldBoostUntil,
       activeTitle: player.activeTitle,
       setBonusAttack: player.setBonusAttack,
       setBonusDefense: player.setBonusDefense,

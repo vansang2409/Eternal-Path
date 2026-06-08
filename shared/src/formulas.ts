@@ -58,6 +58,13 @@ export function bagCapacity(bagBonus: number | undefined): number {
 // Gem → Gold exchange (Sprint 78): premium-currency gold convenience. Gem is
 // the scarce/paid currency so this is a Gem sink, not free gold inflation.
 export const GEM_TO_GOLD_RATE = 100;
+// Personal gold boost potion (Sprint 79): premium +50% gold for 30 min.
+export const GOLD_BOOST_GEM_COST = 40;
+export const GOLD_BOOST_DURATION_MS = 30 * 60 * 1000;
+export const GOLD_BOOST_MULTIPLIER = 1.5;
+export function isGoldBoostActive(until: number | undefined, now: number = Date.now()): boolean {
+  return typeof until === "number" && until > now;
+}
 export function gemsToGold(gems: number): number {
   return Math.max(0, Math.floor(gems)) * GEM_TO_GOLD_RATE;
 }

@@ -13,6 +13,10 @@ import {
   bagCapacity,
   GEM_TO_GOLD_RATE,
   gemsToGold,
+  GOLD_BOOST_GEM_COST,
+  GOLD_BOOST_DURATION_MS,
+  GOLD_BOOST_MULTIPLIER,
+  isGoldBoostActive,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -649,6 +653,7 @@ export class GameWorld {
         loginStreak: saved.loginStreak ?? 0,
         streakLastClaimDate: saved.streakLastClaimDate,
         bagBonus: saved.bagBonus ?? 0,
+        goldBoostUntil: saved.goldBoostUntil,
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -2045,6 +2050,25 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    socket.on("buyGoldBoost", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (isGoldBoostActive(player.goldBoostUntil)) {
+        socket.emit("system", "Bình Tăng Vàng đang còn hiệu lực.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < GOLD_BOOST_GEM_COST) {
+        socket.emit("system", `Cần ${GOLD_BOOST_GEM_COST} 💎 để mua Bình Tăng Vàng (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - GOLD_BOOST_GEM_COST;
+      player.goldBoostUntil = Date.now() + GOLD_BOOST_DURATION_MS;
+      socket.emit("player", player);
+      socket.emit("system", `🪙 Bình Tăng Vàng kích hoạt: +${Math.round((GOLD_BOOST_MULTIPLIER - 1) * 100)}% vàng trong 30 phút!`);
+      this.markDirty(player);
+    });
+
     socket.on("exchangeGemsForGold", ({ gems }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -2874,6 +2898,7 @@ export class GameWorld {
     const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
     let goldMult = isVipActive(player.vipUntil) ? VIP_GOLD_MULTIPLIER : 1;
     goldMult *= this.guildGoldMultiplier(player);
+    if (isGoldBoostActive(player.goldBoostUntil)) goldMult *= GOLD_BOOST_MULTIPLIER;
     let gold = goldForMonster(monster);
     if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;

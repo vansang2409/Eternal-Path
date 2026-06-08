@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -70,7 +70,8 @@ export class Hud {
     private readonly onPetTreat: () => void = () => {},
     private readonly onBuyMysteryBox: () => void = () => {},
     private readonly onBuyBagSlots: () => void = () => {},
-    private readonly onExchangeGems: (gems: number) => void = () => {}
+    private readonly onExchangeGems: (gems: number) => void = () => {},
+    private readonly onBuyGoldBoost: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -764,6 +765,17 @@ export class Hud {
       const v = Math.floor(Number(ex.querySelector<HTMLInputElement>("#gem-exchange-amount")?.value) || 0);
       if (v >= 1) this.onExchangeGems(v); else this.log("Nhập số Gem hợp lệ.", "log-line");
     });
+    // Gold boost potion (Sprint 79).
+    const boostActive = isGoldBoostActive(this.player.goldBoostUntil);
+    const gb = document.createElement("div");
+    gb.className = "gem-shop-card";
+    gb.style.cssText = "align-items:center";
+    gb.innerHTML = `
+      <div class="gem-shop-swatch" style="background:radial-gradient(circle,#ffd166,#c8a948);display:flex;align-items:center;justify-content:center;font-size:18px">🪙</div>
+      <div class="gem-shop-info"><strong>Bình Tăng Vàng</strong><p>+50% vàng khi giết quái trong 30 phút.</p></div>
+      <div class="gem-shop-action"><button id="goldboost-btn" class="gem-shop-buy-btn" type="button" ${boostActive ? "disabled" : ""}>${boostActive ? "Đang hiệu lực" : `💎 ${GOLD_BOOST_GEM_COST}`}</button></div>`;
+    root.appendChild(gb);
+    gb.querySelector<HTMLButtonElement>("#goldboost-btn")?.addEventListener("click", () => this.onBuyGoldBoost());
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
     for (const cosmetic of COSMETICS) {

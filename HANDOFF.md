@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 76** (economy audit). Total: **170+ commits** on `master`, all pushed. (S71=achievement-gated titles, S72=guild bank vault, S73=raid summon costs bank gold, S74=disband guild, S75=/inspect player profile, S76=ECONOMY.md audit.) Smoke suites: 18 (`node run-smoke.mjs`). Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine). Cosmetics: 12, Pets: 9.
+Resume point after **Sprint 79** (gold boost potion). Total: **180+ commits** on `master`, all pushed. (S71=achievement titles, S72=guild bank, S73=raid costs bank, S74=disband guild, S75=/inspect, S76=ECONOMY.md audit, S77=buy bag slots, S78=gem→gold exchange, S79=gold boost potion.) Smoke suites: 20+ (`node run-smoke.mjs`). ECONOMY.md = faucet/sink audit. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine). Cosmetics: 12, Pets: 9.
 
 **Regression nhanh:** `node run-smoke.mjs` (tự boot server + chạy 14 smoke suite tuần tự có giãn cách + summary + exit code). `--slow` để thêm 2 test persistence. LƯU Ý: đừng chạy nhiều smoke test dồn dập cùng lúc — gây "websocket error" false-negative; dùng runner. Khi thêm reward (gem/gold) vào hệ thống cũ, nhớ chạy runner để bắt test có assertion gem/gold bị lệch.
 
