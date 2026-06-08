@@ -897,7 +897,7 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("floatingText", (event) => {
       const isHeavyHit = event.kind === "damage" && event.amount >= 60;
       const color = event.kind === "damage" ? (isHeavyHit ? "#ffbe3c" : "#ff6961") : event.kind === "loot" ? "#f7d774" : "#8be78b";
-      const fontSize = event.kind === "level" ? 18 : isHeavyHit ? 18 : 14;
+      const fontSize = event.kind === "level" ? 20 : isHeavyHit ? 24 : 15;
       const ftIso = worldToIso(event.position.x, event.position.y);
       // Stack damage numbers vertically: bump up by recent-text count near
       // the same entity to avoid overlap.
@@ -914,11 +914,15 @@ export class GameScene extends Phaser.Scene {
         strokeThickness: isHeavyHit ? 4 : 3,
         fontStyle: isHeavyHit ? "bold" : ""
       }).setDepth(99990).setOrigin(0.5);
+      // Pop-in: numbers punch in big then settle (anime impact juice).
+      text.setScale(isHeavyHit ? 2.1 : 1.45);
+      this.tweens.add({ targets: text, scale: 1, duration: isHeavyHit ? 220 : 130, ease: "Back.Out" });
       this.tweens.add({
         targets: text,
         y: text.y - 34,
         alpha: 0,
         duration: 900,
+        delay: 120,
         onComplete: () => text.destroy()
       });
       if (event.kind === "damage") {
@@ -943,8 +947,10 @@ export class GameScene extends Phaser.Scene {
       }
       if (event.kind === "level") {
         soundManager.play("levelUp");
+        this.playLevelUpAura(event.position);
         if (event.entityId === this.selfId) {
           this.showTopBanner(`🎉 LEVEL ${event.amount}!`, "level", 2000);
+          this.cameras.main.flash(260, 255, 226, 140);
         }
       }
     });
@@ -954,6 +960,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
+      this.playCastBurst(position);
       this.playSkillVFX(skillId, position, targetPosition);
     });
 
@@ -1797,6 +1804,39 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // Anime power-up on level-up: a rising light pillar + expanding golden rings
+  // + sparks lifting off the character.
+  private playLevelUpAura(position: { x: number; y: number }): void {
+    const iso = worldToIso(position.x, position.y);
+    const pillar = this.add.rectangle(iso.x, iso.y - 24, 26, 70, 0xffe28c, 0.5).setDepth(57).setOrigin(0.5, 1);
+    this.tweens.add({ targets: pillar, scaleX: 0.2, alpha: 0, duration: 520, ease: "Quad.Out", onComplete: () => pillar.destroy() });
+    for (let r = 0; r < 2; r += 1) {
+      const ring = this.add.ellipse(iso.x, iso.y + 4, 18, 9).setStrokeStyle(3, 0xffd166, 0.95).setDepth(57);
+      this.tweens.add({ targets: ring, scaleX: 4.5, scaleY: 4.5, alpha: 0, duration: 560, delay: r * 140, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    }
+    for (let i = 0; i < 10; i += 1) {
+      const sx = iso.x + (Math.random() - 0.5) * 30;
+      const spark = this.add.circle(sx, iso.y + 4, 2.5, 0xfff1a8, 0.95).setDepth(58);
+      this.tweens.add({ targets: spark, y: iso.y - 46 - Math.random() * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
+    }
+  }
+
+  // Anime cast "charge" burst at the caster: a bright flash + ground ring +
+  // converging energy motes. Played for every skill so casts feel weighty.
+  private playCastBurst(position: { x: number; y: number }): void {
+    const iso = worldToIso(position.x, position.y);
+    const flash = this.add.circle(iso.x, iso.y - 6, 10, 0xffffff, 0.85).setDepth(58);
+    this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 200, ease: "Quad.Out", onComplete: () => flash.destroy() });
+    const ground = this.add.ellipse(iso.x, iso.y + 6, 18, 9).setStrokeStyle(2, 0xcdb6ff, 0.9).setDepth(2);
+    this.tweens.add({ targets: ground, scaleX: 3, scaleY: 3, alpha: 0, duration: 300, ease: "Cubic.Out", onComplete: () => ground.destroy() });
+    // Converging motes spiral inward to the caster.
+    for (let i = 0; i < 7; i += 1) {
+      const ang = (Math.PI * 2 * i) / 7;
+      const mote = this.add.circle(iso.x + Math.cos(ang) * 34, iso.y - 6 + Math.sin(ang) * 34, 3, 0xa8e6ff, 0.95).setDepth(59);
+      this.tweens.add({ targets: mote, x: iso.x, y: iso.y - 6, alpha: 0.2, duration: 220, ease: "Quad.In", onComplete: () => mote.destroy() });
+    }
+  }
+
   private playHitEffect(entityId: string, position: { x: number; y: number }): void {
     // Project to iso since callers pass server-side world pixel coords.
     const iso = worldToIso(position.x, position.y);
@@ -1812,6 +1852,29 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => sprite.setAlpha(1)
       });
       if (entityId === this.selfId) this.cameras.main.shake(110, 0.004);
+    }
+
+    const cx = position.x;
+    const cy = position.y - 8;
+    // Anime "impact frame": a white core that pops and fades fast.
+    const core = this.add.circle(cx, cy, 7, 0xffffff, 0.92).setDepth(60);
+    this.tweens.add({ targets: core, scale: 2.6, alpha: 0, duration: 150, ease: "Quad.Out", onComplete: () => core.destroy() });
+    // Shockwave ring.
+    const ring = this.add.circle(cx, cy, 5).setStrokeStyle(2, 0xfff1a8, 0.95).setDepth(60);
+    this.tweens.add({ targets: ring, scale: 4.2, alpha: 0, duration: 240, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    // Radiating spark shards (anime hit sparks).
+    for (let i = 0; i < 6; i += 1) {
+      const ang = (Math.PI * 2 * i) / 6 + Math.random() * 0.5;
+      const shard = this.add.rectangle(cx, cy, 7, 2, 0xffd166, 0.95).setDepth(61).setRotation(ang);
+      this.tweens.add({
+        targets: shard,
+        x: cx + Math.cos(ang) * 28,
+        y: cy + Math.sin(ang) * 28,
+        alpha: 0,
+        duration: 230,
+        ease: "Quad.Out",
+        onComplete: () => shard.destroy()
+      });
     }
 
     const slash = this.add.graphics().setDepth(21);
