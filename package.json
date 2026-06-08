@@ -13,6 +13,8 @@
     "dev:client": "npm run dev --workspace client",
     "dev:server": "npm run dev --workspace server",
     "build": "npm run build --workspace shared && npm run build --workspace server && npm run build --workspace client",
+    "start": "node server/dist/index.js",
+    "smoke": "node run-smoke.mjs",
     "typecheck": "npm run build --workspace shared && npm run typecheck --workspace server && npm run typecheck --workspace client"
   },
   "engines": {
