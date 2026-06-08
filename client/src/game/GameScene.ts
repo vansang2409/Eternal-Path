@@ -1690,24 +1690,41 @@ export class GameScene extends Phaser.Scene {
 
   private playDeathPoof(position: Vec2, big: boolean): void {
     const iso = worldToIso(position.x, position.y);
-    const count = big ? 14 : 8;
+    // Flash core + shockwave ring (anime dissolve burst).
+    const flash = this.add.circle(iso.x, iso.y, big ? 12 : 7, 0xffffff, 0.9).setDepth(99998);
+    this.tweens.add({ targets: flash, scale: big ? 3 : 2, alpha: 0, duration: 220, ease: "Quad.Out", onComplete: () => flash.destroy() });
+    const ring = this.add.circle(iso.x, iso.y, big ? 8 : 5).setStrokeStyle(big ? 3 : 2, 0xffd166, 0.9).setDepth(99997);
+    this.tweens.add({ targets: ring, scale: big ? 6 : 4, alpha: 0, duration: big ? 480 : 340, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    const count = big ? 16 : 9;
     for (let i = 0; i < count; i += 1) {
       const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
       const speed = (big ? 70 : 50) + Math.random() * 30;
       const radius = big ? 5 : 3.5;
-      const color = big ? 0xffd166 : 0xc7c7c7;
+      const color = big ? 0xffd166 : 0xd8d8d8;
       const dot = this.add.circle(iso.x, iso.y, radius, color, 0.95).setDepth(99998);
-      const tx = iso.x + Math.cos(angle) * speed;
-      const ty = iso.y + Math.sin(angle) * speed;
       this.tweens.add({
         targets: dot,
-        x: tx,
-        y: ty,
+        x: iso.x + Math.cos(angle) * speed,
+        y: iso.y + Math.sin(angle) * speed,
         alpha: 0,
         scale: 0.2,
         duration: big ? 700 : 500,
         ease: "Cubic.Out",
         onComplete: () => dot.destroy()
+      });
+    }
+    // Rising "soul" wisps that float up and fade (anime death flourish).
+    const souls = big ? 4 : 2;
+    for (let i = 0; i < souls; i += 1) {
+      const sx = iso.x + (Math.random() - 0.5) * (big ? 24 : 14);
+      const soul = this.add.circle(sx, iso.y, big ? 3.5 : 2.5, 0xbfeaff, 0.9).setDepth(99999);
+      this.tweens.add({
+        targets: soul,
+        y: iso.y - (big ? 70 : 44) - Math.random() * 20,
+        alpha: 0,
+        duration: big ? 900 : 650,
+        ease: "Sine.Out",
+        onComplete: () => soul.destroy()
       });
     }
     if (big) this.cameras.main.shake(180, 0.006);
