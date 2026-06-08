@@ -30,6 +30,7 @@ import {
   GUILD_CREATE_COST_GOLD,
   GUILD_INVITE_TTL_MS,
   GUILD_MOTD_MAX,
+  GUILD_BANK_MIN_TXN,
   GUILD_DONATE_MIN,
   GUILD_GOLD_PER_EXP,
   GUILD_MAX_LEVEL,
@@ -1447,6 +1448,57 @@ export class GameWorld {
       socket.emit("system", `Đã góp ${gold} vàng cho guild (+${gold * GUILD_GOLD_PER_EXP} EXP guild).`);
       this.markDirty(player);
       this.addGuildExp(guild, gold * GUILD_GOLD_PER_EXP);
+    });
+
+    socket.on("depositGuildBank", ({ amount }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const gold = Math.floor(Number(amount) || 0);
+      if (gold < GUILD_BANK_MIN_TXN) {
+        socket.emit("system", `Gửi tối thiểu ${GUILD_BANK_MIN_TXN} vàng vào quỹ.`);
+        return;
+      }
+      if (player.stats.gold < gold) {
+        socket.emit("system", `Không đủ vàng (đang có ${player.stats.gold}).`);
+        return;
+      }
+      player.stats.gold -= gold;
+      guild.bank = (guild.bank ?? 0) + gold;
+      guildStore.markDirty();
+      socket.emit("player", player);
+      this.markDirty(player);
+      this.broadcastGuildSystem(guild, `${player.accountName} gửi ${gold.toLocaleString("vi-VN")} vàng vào quỹ (tổng: ${guild.bank.toLocaleString("vi-VN")}).`);
+      this.emitGuildUpdate(guild.id);
+    });
+
+    socket.on("withdrawGuildBank", ({ amount }) => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (rank !== "leader") {
+        socket.emit("system", "Chỉ Hội Trưởng mới được rút quỹ guild.");
+        return;
+      }
+      const gold = Math.floor(Number(amount) || 0);
+      if (gold < GUILD_BANK_MIN_TXN) {
+        socket.emit("system", `Rút tối thiểu ${GUILD_BANK_MIN_TXN} vàng.`);
+        return;
+      }
+      if ((guild.bank ?? 0) < gold) {
+        socket.emit("system", `Quỹ không đủ (đang có ${(guild.bank ?? 0).toLocaleString("vi-VN")}).`);
+        return;
+      }
+      guild.bank = (guild.bank ?? 0) - gold;
+      player.stats.gold += gold;
+      guildStore.markDirty();
+      socket.emit("player", player);
+      this.markDirty(player);
+      this.broadcastGuildSystem(guild, `${player.accountName} rút ${gold.toLocaleString("vi-VN")} vàng từ quỹ (còn: ${guild.bank.toLocaleString("vi-VN")}).`);
+      this.emitGuildUpdate(guild.id);
     });
 
     socket.on("buyGuildBoost", () => {
@@ -3230,7 +3282,8 @@ export class GameWorld {
       expBonus: tier.expBonus,
       goldBonus: tier.goldBonus,
       boostUntil: guild.boostUntil,
-      boostActive: isGuildBoostActive(guild.boostUntil)
+      boostActive: isGuildBoostActive(guild.boostUntil),
+      bank: guild.bank ?? 0
     };
   }
 

@@ -863,6 +863,8 @@ export class Hud {
     chat: (message: string) => void;
     donate: (amount: number) => void;
     boost: () => void;
+    deposit: (amount: number) => void;
+    withdraw: (amount: number) => void;
   };
 
   setGuildHandlers(handlers: NonNullable<Hud["guildHandlers"]>): void {
@@ -1088,6 +1090,12 @@ export class Hud {
         ${canManage ? `<button id="guild-motd-edit" type="button" style="padding:4px 10px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#cdb6ff;cursor:pointer">Sửa</button>` : ""}
       </div>
       ${progressBlock}
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:9px;background:rgba(28,28,28,0.5);border:1px solid #39424b;border-radius:6px;flex-wrap:wrap">
+        <span style="font-size:12px;color:#ffd166;flex:1;min-width:120px">🏦 Quỹ Guild: <strong>${(g.bank ?? 0).toLocaleString("vi-VN")} 🪙</strong></span>
+        <input id="guild-bank-amount" type="number" min="100" step="100" placeholder="Số vàng" style="width:110px;padding:6px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+        <button id="guild-bank-deposit" type="button" style="padding:6px 12px;background:linear-gradient(to bottom,#ffd166,#c8a948);border:none;border-radius:4px;color:#1d1500;font-weight:700;cursor:pointer">Gửi</button>
+        ${isLeader ? `<button id="guild-bank-withdraw" type="button" style="padding:6px 12px;background:#2c3540;border:1px solid #39424b;border-radius:4px;color:#cdd;cursor:pointer">Rút</button>` : ""}
+      </div>
       ${canManage ? `<div style="display:flex;gap:8px;margin-bottom:10px">
         <input id="guild-invite-name" type="text" maxlength="20" placeholder="Tên người chơi đang online" style="flex:1;padding:7px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
         <button id="guild-invite-btn" type="button" style="padding:7px 14px;background:linear-gradient(to bottom,#6e4c9b,#523a73);border:none;border-radius:4px;color:#fff;font-weight:700;cursor:pointer">➕ Mời</button>
@@ -1113,6 +1121,15 @@ export class Hud {
     });
     body.querySelector<HTMLButtonElement>("#guild-boost-btn")?.addEventListener("click", () => {
       if (window.confirm(`Mua Guild Boost (+10% EXP cho cả guild trong 48h) với ${GUILD_BOOST_GEM_COST} 💎?`)) this.guildHandlers?.boost();
+    });
+    const bankAmount = () => Math.floor(Number(body.querySelector<HTMLInputElement>("#guild-bank-amount")?.value) || 0);
+    body.querySelector<HTMLButtonElement>("#guild-bank-deposit")?.addEventListener("click", () => {
+      const a = bankAmount();
+      if (a >= 100) this.guildHandlers?.deposit(a); else this.log("Gửi tối thiểu 100 vàng.", "log-line");
+    });
+    body.querySelector<HTMLButtonElement>("#guild-bank-withdraw")?.addEventListener("click", () => {
+      const a = bankAmount();
+      if (a >= 100) this.guildHandlers?.withdraw(a); else this.log("Rút tối thiểu 100 vàng.", "log-line");
     });
     body.querySelector<HTMLButtonElement>("#guild-motd-edit")?.addEventListener("click", () => {
       const next = window.prompt("Thông báo guild mới:", g.motd)?.slice(0, GUILD_MOTD_MAX);

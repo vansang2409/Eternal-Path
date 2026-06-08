@@ -515,6 +515,8 @@ export interface ClientToServerEvents {
   guildChat: (payload: { message: string }) => void;
   donateGuild: (payload: { amount: number }) => void;
   buyGuildBoost: () => void;
+  depositGuildBank: (payload: { amount: number }) => void;
+  withdrawGuildBank: (payload: { amount: number }) => void;
   requestGuildLeaderboard: () => void;
   summonGuildRaid: () => void;
   raidAttack: () => void;

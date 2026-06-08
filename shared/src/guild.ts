@@ -13,6 +13,8 @@ export const GUILD_TAG_MIN = 2;
 export const GUILD_TAG_MAX = 4;
 export const GUILD_MOTD_MAX = 100;
 export const GUILD_INVITE_TTL_MS = 60 * 1000;
+/** Minimum gold per guild-bank deposit/withdraw (Sprint 72). */
+export const GUILD_BANK_MIN_TXN = 100;
 
 // ── Guild progression (Sprint 57) ──────────────────────────────────────
 // Members donate gold → guild EXP. Each guild level grants a passive
@@ -111,6 +113,8 @@ export interface GuildRecord {
   level?: number;
   /** Timestamp (ms) the Gem-purchased EXP boost expires. */
   boostUntil?: number;
+  /** Shared gold vault (Sprint 72): members deposit, leader withdraws. */
+  bank?: number;
 }
 
 /** Per-member view sent to clients (adds live presence info). */
@@ -142,6 +146,7 @@ export interface GuildView {
   goldBonus: number;
   boostUntil?: number;
   boostActive: boolean;
+  bank: number;
 }
 
 export interface GuildInvitePayload {
