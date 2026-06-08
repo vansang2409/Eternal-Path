@@ -31,6 +31,8 @@ interface SavedPlayer {
   cosmetics?: string[];
   activeCosmeticSkin?: string;
   lastDailyClaimAt?: number;
+  loginStreak?: number;
+  streakLastClaimDate?: string;
   battlePassExp?: number;
   battlePassLevel?: number;
   battlePassPremium?: boolean;
@@ -261,6 +263,8 @@ export class PlayerRepository {
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
       activeCosmeticSkin: player.activeCosmeticSkin,
       lastDailyClaimAt: player.lastDailyClaimAt,
+      loginStreak: player.loginStreak,
+      streakLastClaimDate: player.streakLastClaimDate,
       battlePassExp: player.battlePassExp,
       battlePassLevel: player.battlePassLevel,
       battlePassPremium: player.battlePassPremium,

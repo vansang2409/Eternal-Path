@@ -179,6 +179,10 @@ export interface PlayerState {
   activeCosmeticSkin?: string;
   // Last daily login reward claim timestamp (server ms).
   lastDailyClaimAt?: number;
+  // Daily login streak calendar (Sprint 61): consecutive-day count + last
+  // claim date (YYYY-MM-DD UTC).
+  loginStreak?: number;
+  streakLastClaimDate?: string;
   // Battle pass progression for the current season.
   battlePassExp?: number;
   battlePassLevel?: number;
@@ -469,6 +473,7 @@ export interface ClientToServerEvents {
   buyCosmetic: (payload: { cosmeticId: string }) => void;
   equipCosmetic: (payload: { cosmeticId: string | null }) => void;
   claimDailyReward: () => void;
+  claimLoginStreak: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

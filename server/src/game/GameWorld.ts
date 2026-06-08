@@ -54,6 +54,8 @@ import {
   sortListings,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
+  computeStreakClaim,
+  dateKey,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -607,6 +609,8 @@ export class GameWorld {
         cosmetics: saved.cosmetics ?? [],
         activeCosmeticSkin: saved.activeCosmeticSkin,
         lastDailyClaimAt: saved.lastDailyClaimAt,
+        loginStreak: saved.loginStreak ?? 0,
+        streakLastClaimDate: saved.streakLastClaimDate,
         battlePassExp: saved.battlePassExp ?? 0,
         battlePassLevel: saved.battlePassLevel ?? 0,
         battlePassPremium: saved.battlePassPremium ?? false,
@@ -1671,6 +1675,28 @@ export class GameWorld {
       player.lastDailyClaimAt = now;
       socket.emit("player", player);
       socket.emit("system", `Nhận thưởng hằng ngày: +${DAILY_GEM_REWARD} Gem.`);
+      this.markDirty(player);
+    });
+
+    socket.on("claimLoginStreak", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const today = dateKey();
+      const result = computeStreakClaim(player.streakLastClaimDate, today, player.loginStreak ?? 0);
+      if (!result.canClaim || !result.reward) {
+        socket.emit("system", "Hôm nay bạn đã điểm danh rồi — quay lại ngày mai nhé.");
+        return;
+      }
+      player.loginStreak = result.newStreak;
+      player.streakLastClaimDate = today;
+      player.stats.gold += result.reward.gold;
+      player.gems = (player.gems ?? 0) + result.reward.gems;
+      socket.emit("player", player);
+      socket.emit(
+        "system",
+        `📅 Điểm danh ngày ${((result.newStreak - 1) % 7) + 1} (chuỗi ${result.newStreak}): nhận ${result.reward.label}.`
+      );
+      if (result.reward.gold > 0) this.emitFloating(player.id, player.position, result.reward.gold, "loot", `+${result.reward.gold} gold`);
       this.markDirty(player);
     });
 

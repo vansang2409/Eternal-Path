@@ -125,7 +125,8 @@ export class GameScene extends Phaser.Scene {
       () => this.socket.emit("buyBattlePassPremium"),
       (tier, track) => this.socket.emit("claimBattlePassTier", { tier, track }),
       (days) => this.socket.emit("buyVip", { days }),
-      () => this.socket.emit("claimVipDaily")
+      () => this.socket.emit("claimVipDaily"),
+      () => this.socket.emit("claimLoginStreak")
     );
     this.socket = createSocket();
     this.registerSocketEvents();

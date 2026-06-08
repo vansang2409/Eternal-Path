@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, filterListings, sortListings, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, STREAK_REWARDS, canClaimStreakToday, filterListings, sortListings, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -58,7 +58,8 @@ export class Hud {
     private readonly onBuyBattlePass: () => void = () => {},
     private readonly onClaimBattlePass: (tier: number, track: "free" | "premium") => void = () => {},
     private readonly onBuyVip: (days: number) => void = () => {},
-    private readonly onClaimVipDaily: () => void = () => {}
+    private readonly onClaimVipDaily: () => void = () => {},
+    private readonly onClaimStreak: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -119,6 +120,7 @@ export class Hud {
       b: "leaderboard-modal",   // 'b' for bảng vinh danh
       u: "guild-modal",         // 'u' for guild/union
       m: "market-modal",        // 'm' for market/chợ
+      l: "streak-modal",        // 'l' for login/điểm danh
       "?": "help-modal"
     };
     window.addEventListener("keydown", (event) => {
@@ -223,6 +225,7 @@ export class Hud {
     this.renderVipModal();
     this.renderGuildModal();
     this.renderMarketModal();
+    this.renderStreakModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -599,6 +602,38 @@ export class Hud {
       this.vipWired = true;
       document.addEventListener("click", (e) => {
         if ((e.target as HTMLElement).id === "vip-claim-daily") this.onClaimVipDaily();
+      });
+    }
+  }
+
+  private streakWired = false;
+  private renderStreakModal(): void {
+    if (!this.player) return;
+    const body = document.querySelector<HTMLDivElement>("#streak-body");
+    if (!body) return;
+    const streak = this.player.loginStreak ?? 0;
+    const claimable = canClaimStreakToday(this.player.streakLastClaimDate);
+    // The position highlighted is the day the NEXT claim will land on.
+    const nextDay = claimable ? (((Math.max(0, streak)) % 7) + 1) : (((Math.max(1, streak) - 1) % 7) + 1);
+    const cells = STREAK_REWARDS.map((r) => {
+      const isNext = claimable && r.day === nextDay;
+      const claimed = !claimable && r.day === nextDay;
+      const bg = isNext ? "linear-gradient(to bottom,#ffd166,#c8a948)" : claimed ? "rgba(110,76,155,0.35)" : "rgba(28,28,28,0.6)";
+      const color = isNext ? "#1d1500" : "#e8dcff";
+      return `<div style="flex:1;min-width:64px;text-align:center;padding:10px 6px;border-radius:6px;background:${bg};border:1px solid ${isNext ? "#ffd166" : "#39424b"}">
+        <div style="font-size:11px;color:${isNext ? "#5a4500" : "#8e9192"}">Ngày ${r.day}</div>
+        <div style="font-size:18px;margin:2px 0">${r.gems > 0 ? "💎" : "🪙"}</div>
+        <div style="font-size:11px;font-weight:700;color:${color}">${escapeHtml(r.label)}</div>
+      </div>`;
+    }).join("");
+    body.innerHTML = `
+      <p style="color:#d6dddf;font-size:13px;margin:0 0 12px">Điểm danh mỗi ngày để nhận thưởng tăng dần. Chuỗi hiện tại: <strong style="color:#ffd166">${streak} ngày</strong>. Lỡ một ngày sẽ về lại ngày 1.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${cells}</div>
+      <button id="streak-claim-btn" type="button" ${claimable ? "" : "disabled"} style="width:100%;padding:12px;border:none;border-radius:6px;font-weight:700;font-size:15px;color:${claimable ? "#1d1500" : "#888"};background:${claimable ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${claimable ? "pointer" : "not-allowed"}">${claimable ? "📅 Điểm danh hôm nay" : "✓ Hôm nay đã điểm danh"}</button>`;
+    if (!this.streakWired) {
+      this.streakWired = true;
+      document.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).id === "streak-claim-btn") this.onClaimStreak();
       });
     }
   }
