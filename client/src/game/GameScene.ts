@@ -59,6 +59,8 @@ export class GameScene extends Phaser.Scene {
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private lastAfterimageAt = 0;
   private statusFxAt = new Map<string, number>();
+  private lowHpOverlay?: Phaser.GameObjects.Rectangle;
+  private lowHpPulse = 0;
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
@@ -281,6 +283,9 @@ export class GameScene extends Phaser.Scene {
         .setScrollFactor(0).setDepth(99980);
       this.ambientMotes.push({ go, vx: (Math.random() - 0.5) * 6, vy: -4 - Math.random() * 8 });
     }
+    // Full-screen red danger tint (alpha driven by HP each frame).
+    this.lowHpOverlay = this.add.rectangle(w / 2, h / 2, w, h, 0xff1a1a, 0)
+      .setScrollFactor(0).setDepth(99970);
   }
 
   private updateAmbient(delta: number): void {
@@ -294,6 +299,20 @@ export class GameScene extends Phaser.Scene {
       if (m.go.y < -6) { m.go.y = h + 6; m.go.x = Math.random() * w; }
       if (m.go.x < -6) m.go.x = w + 6;
       else if (m.go.x > w + 6) m.go.x = -6;
+    }
+    // Low-HP danger vignette: pulse red when below 30% HP.
+    if (this.lowHpOverlay) {
+      const hp = this.selfPlayer?.stats.hp ?? 1;
+      const maxHp = this.selfPlayer?.stats.maxHp ?? 1;
+      const ratio = maxHp > 0 ? hp / maxHp : 1;
+      let target = 0;
+      if (ratio > 0 && ratio < 0.3) {
+        this.lowHpPulse += dt * 6;
+        const danger = 1 - ratio / 0.3; // 0 at 30% → 1 near death
+        target = (0.1 + 0.12 * danger) * (0.55 + 0.45 * Math.sin(this.lowHpPulse));
+      }
+      const cur = this.lowHpOverlay.alpha;
+      this.lowHpOverlay.setAlpha(cur + (target - cur) * Math.min(1, dt * 8));
     }
   }
 
