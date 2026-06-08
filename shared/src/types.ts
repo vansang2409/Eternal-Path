@@ -100,6 +100,30 @@ export interface MaterialItem extends BaseItem {
 
 export type Item = EquipmentItem | ConsumableItem | MaterialItem;
 
+// ── Marketplace (Sprint 58) ─────────────────────────────────────────────
+/** An active listing: the item is held in escrow here, off the seller's bag. */
+export interface MarketListing {
+  id: string;
+  sellerName: string;
+  item: Item;
+  price: number;
+  listedAt: number;
+}
+
+/** Listing as shown to a client, flagged if it belongs to the viewer. */
+export interface MarketListingView extends MarketListing {
+  mine: boolean;
+  net: number;
+  tax: number;
+}
+
+/** Gold owed to an offline seller from sales, collected on next login. */
+export interface MarketPendingProceeds {
+  accountName: string;
+  gold: number;
+  sales: Array<{ itemName: string; net: number; soldAt: number }>;
+}
+
 export interface InventoryState {
   items: Item[];
   equipped: Partial<Record<EquipmentSlot, EquipmentItem>>;
@@ -404,6 +428,7 @@ export interface ServerToClientEvents {
   guildUpdate: (payload: GuildView | null) => void;
   guildInvite: (payload: GuildInvitePayload) => void;
   guildChatMessage: (payload: GuildChatPayload) => void;
+  marketUpdate: (payload: MarketListingView[]) => void;
 }
 
 export interface ClientToServerEvents {
@@ -457,6 +482,10 @@ export interface ClientToServerEvents {
   guildChat: (payload: { message: string }) => void;
   donateGuild: (payload: { amount: number }) => void;
   buyGuildBoost: () => void;
+  requestMarket: () => void;
+  listMarketItem: (payload: { itemId: string; price: number }) => void;
+  buyMarketItem: (payload: { listingId: string }) => void;
+  cancelMarketListing: (payload: { listingId: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;

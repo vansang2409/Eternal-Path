@@ -44,6 +44,10 @@ import {
   guildMaxMembers,
   guildExpProgress,
   isGuildBoostActive,
+  MARKET_MAX_LISTINGS_PER_SELLER,
+  marketTax,
+  marketNet,
+  sanitizeMarketPrice,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -103,9 +107,12 @@ import type {
   ChatMessage,
   GuildRecord,
   GuildView,
+  MarketListing,
+  MarketListingView,
   PartyView,
   QuestListPayload,
   QuestView,
+  Rarity,
   ShopItem,
   ServerToClientEvents,
   SkillId,
@@ -116,6 +123,7 @@ import type {
 } from "@mmorpg/shared";
 import type { PlayerRepository } from "../db/PlayerRepository.js";
 import { guildStore } from "../db/GuildStore.js";
+import { marketStore } from "../db/MarketStore.js";
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type GameServerSocket = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -630,6 +638,15 @@ export class GameWorld {
       // Push guild roster to the player and refresh online flags for mates.
       if (player.guildId) this.emitGuildUpdate(player.guildId);
       else socket.emit("guildUpdate", null);
+      // Collect any marketplace proceeds that accrued while offline.
+      const proceeds = marketStore.collectPending(player.accountName);
+      if (proceeds) {
+        player.stats.gold += proceeds.gold;
+        socket.emit("player", player);
+        socket.emit("system", `🏪 Khi bạn offline, ${proceeds.sales.length} món đã bán ngoài chợ — nhận ${proceeds.gold} vàng.`);
+        this.markDirty(player);
+      }
+      socket.emit("marketUpdate", this.marketView(player.accountName));
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
     });
 
@@ -1142,6 +1159,21 @@ export class GameWorld {
         player.gems = (player.gems ?? 0) + Math.max(0, Number(payload?.gems) || 0);
         socket.emit("player", player);
       });
+      (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const item: EquipmentItem = {
+          id: `dev-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          name: String(payload?.name ?? "Dev Item").slice(0, 40),
+          rarity: (payload?.rarity ?? "common") as Rarity,
+          kind: "equipment",
+          slot: "weapon",
+          value: Math.max(1, Number(payload?.value) || 100),
+          stats: { attack: 5 }
+        };
+        player.inventory.items.push(item);
+        socket.emit("player", player);
+      });
     }
 
     socket.on("createGuild", ({ name, tag }) => {
@@ -1391,6 +1423,108 @@ export class GameWorld {
       this.markDirty(player);
       this.broadcastGuildSystem(guild, `${player.accountName} kích hoạt Guild Boost ⚡ +${Math.round(GUILD_BOOST_EXP_BONUS * 100)}% EXP trong 48h!`);
       this.emitGuildUpdate(guild.id);
+    });
+
+    socket.on("requestMarket", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      socket.emit("marketUpdate", this.marketView(player.accountName));
+    });
+
+    socket.on("listMarketItem", ({ itemId, price }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const cleanPrice = sanitizeMarketPrice(price);
+      if (cleanPrice === undefined) {
+        socket.emit("system", "Giá không hợp lệ.");
+        return;
+      }
+      if (marketStore.countBySeller(player.accountName) >= MARKET_MAX_LISTINGS_PER_SELLER) {
+        socket.emit("system", `Bạn chỉ được rao tối đa ${MARKET_MAX_LISTINGS_PER_SELLER} món cùng lúc.`);
+        return;
+      }
+      const itemIndex = player.inventory.items.findIndex((it) => it.id === itemId);
+      if (itemIndex < 0) {
+        socket.emit("system", "Không tìm thấy vật phẩm trong túi.");
+        return;
+      }
+      // Escrow: pull the item out of the bag and onto the listing.
+      const [item] = player.inventory.items.splice(itemIndex, 1);
+      const listing: MarketListing = {
+        id: `mkt-${Date.now()}-${Math.floor(Math.random() * 1e5)}`,
+        sellerName: player.accountName,
+        item,
+        price: cleanPrice,
+        listedAt: Date.now()
+      };
+      marketStore.add(listing);
+      socket.emit("player", player);
+      socket.emit("system", `Đã rao ${item.name} giá ${cleanPrice} vàng (phí bán ${Math.round(0.05 * 100)}% khi giao dịch).`);
+      this.markDirty(player);
+      this.broadcastMarket();
+    });
+
+    socket.on("cancelMarketListing", ({ listingId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const listing = marketStore.get(listingId);
+      if (!listing || listing.sellerName !== player.accountName) {
+        socket.emit("system", "Không tìm thấy tin rao của bạn.");
+        return;
+      }
+      if (isBagFull(player)) {
+        socket.emit("system", "Túi đồ đầy — không thể nhận lại vật phẩm.");
+        return;
+      }
+      marketStore.remove(listingId);
+      player.inventory.items.push(listing.item);
+      socket.emit("player", player);
+      socket.emit("system", `Đã gỡ tin rao và nhận lại ${listing.item.name}.`);
+      this.markDirty(player);
+      this.broadcastMarket();
+    });
+
+    socket.on("buyMarketItem", ({ listingId }) => {
+      const buyer = this.players.get(socket.id);
+      if (!buyer) return;
+      const listing = marketStore.get(listingId);
+      if (!listing) {
+        socket.emit("system", "Tin rao không còn tồn tại.");
+        this.broadcastMarket();
+        return;
+      }
+      if (listing.sellerName === buyer.accountName) {
+        socket.emit("system", "Không thể mua món bạn đang rao. Hãy gỡ tin nếu muốn lấy lại.");
+        return;
+      }
+      if (buyer.stats.gold < listing.price) {
+        socket.emit("system", `Không đủ vàng (cần ${listing.price}, đang có ${buyer.stats.gold}).`);
+        return;
+      }
+      if (isBagFull(buyer)) {
+        socket.emit("system", BAG_FULL_MESSAGE);
+        return;
+      }
+      // Atomic transfer: remove listing first so two buyers can't race it.
+      marketStore.remove(listing.id);
+      buyer.stats.gold -= listing.price;
+      buyer.inventory.items.push(listing.item);
+      socket.emit("player", buyer);
+      socket.emit("system", `Đã mua ${listing.item.name} với giá ${listing.price} vàng.`);
+      this.markDirty(buyer);
+
+      // Pay the seller their proceeds (price minus burned tax).
+      const net = marketNet(listing.price);
+      const seller = [...this.players.values()].find((p) => p.accountName === listing.sellerName);
+      if (seller) {
+        seller.stats.gold += net;
+        this.sockets.get(seller.id)?.emit("player", seller);
+        this.sockets.get(seller.id)?.emit("system", `💰 ${buyer.accountName} đã mua ${listing.item.name} — bạn nhận ${net} vàng (đã trừ ${marketTax(listing.price)} phí).`);
+        this.markDirty(seller);
+      } else {
+        marketStore.addPending(listing.sellerName, net, listing.item.name, Date.now());
+      }
+      this.broadcastMarket();
     });
 
     socket.on("buyBattlePassPremium", () => {
@@ -2796,6 +2930,24 @@ export class GameWorld {
       );
     }
     this.emitGuildUpdate(guild.id);
+  }
+
+  // ── Marketplace (Sprint 58) ─────────────────────────────────────────
+  /** Listings as seen by a given viewer (flags their own + shows net/tax). */
+  private marketView(viewerName: string): MarketListingView[] {
+    return marketStore.all().map((l) => ({
+      ...l,
+      mine: l.sellerName === viewerName,
+      net: marketNet(l.price),
+      tax: marketTax(l.price)
+    }));
+  }
+
+  /** Push the (viewer-specific) listing book to every online player. */
+  private broadcastMarket(): void {
+    for (const p of this.players.values()) {
+      this.sockets.get(p.id)?.emit("marketUpdate", this.marketView(p.accountName));
+    }
   }
 
   /** Send the fresh roster to every online member of a guild. */

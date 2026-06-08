@@ -158,6 +158,13 @@ export class GameScene extends Phaser.Scene {
       this.showTopBanner(`🏰 ${payload.from} mời vào [${payload.tag}] ${payload.guildName} — gõ /gaccept`, "achievement", 5000);
     });
     this.socket.on("guildChatMessage", (payload) => this.hud.appendGuildChat(payload));
+    this.hud.setMarketHandlers({
+      list: (itemId, price) => this.socket.emit("listMarketItem", { itemId, price }),
+      buy: (listingId) => this.socket.emit("buyMarketItem", { listingId }),
+      cancel: (listingId) => this.socket.emit("cancelMarketListing", { listingId }),
+      refresh: () => this.socket.emit("requestMarket")
+    });
+    this.socket.on("marketUpdate", (listings) => this.hud.setMarket(listings));
 
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
@@ -936,6 +943,11 @@ export class GameScene extends Phaser.Scene {
       this.activeLeaderboardTab = "byLevel";
     });
     window.addEventListener("hotkey-arena", () => this.socket.emit("arenaLeaderboardRequest"));
+    // Marketplace: refresh listings whenever the modal opens (toolbar or hotkey).
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='market-modal']").forEach((btn) => {
+      btn.addEventListener("click", () => this.socket.emit("requestMarket"));
+    });
+    window.addEventListener("hotkey-market", () => this.socket.emit("requestMarket"));
 
     window.addEventListener("loadout-save", ((event: CustomEvent<number>) => {
       this.socket.emit("saveLoadout", { slot: event.detail });

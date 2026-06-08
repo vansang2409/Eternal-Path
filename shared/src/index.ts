@@ -11,3 +11,4 @@ export * from "./cosmetics.js";
 export * from "./battlepass.js";
 export * from "./vip.js";
 export * from "./guild.js";
+export * from "./marketplace.js";

@@ -1,5 +1,6 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildView, Item, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import { MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -18,6 +19,8 @@ export class Hud {
   private offlineRewardsOpen = false;
   private guild: GuildView | null = null;
   private pendingGuildInvite?: GuildInvitePayload;
+  private market: MarketListingView[] = [];
+  private marketTab: "browse" | "sell" | "mine" = "browse";
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -111,6 +114,7 @@ export class Hud {
       j: "forge-modal",         // 'j' for jewel/forge
       b: "leaderboard-modal",   // 'b' for bảng vinh danh
       u: "guild-modal",         // 'u' for guild/union
+      m: "market-modal",        // 'm' for market/chợ
       "?": "help-modal"
     };
     window.addEventListener("keydown", (event) => {
@@ -135,6 +139,7 @@ export class Hud {
       // Some modals trigger socket requests on open (arena, leaderboard).
       if (!isOpen && modalId === "leaderboard-modal") window.dispatchEvent(new CustomEvent("hotkey-leaderboard"));
       if (!isOpen && modalId === "arena-modal") window.dispatchEvent(new CustomEvent("hotkey-arena"));
+      if (!isOpen && modalId === "market-modal") window.dispatchEvent(new CustomEvent("hotkey-market"));
     });
     this.setParty(null);
     this.renderSoundToggle();
@@ -212,6 +217,7 @@ export class Hud {
     this.renderBattlePass();
     this.renderVipModal();
     this.renderGuildModal();
+    this.renderMarketModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -932,6 +938,146 @@ export class Hud {
     });
     body.querySelectorAll<HTMLButtonElement>("[data-guild-promote]").forEach((btn) => {
       btn.addEventListener("click", () => this.guildHandlers?.promote(btn.dataset.guildPromote!));
+    });
+  }
+
+  // ----- Marketplace (Sprint 58) -----
+
+  private marketHandlers?: {
+    list: (itemId: string, price: number) => void;
+    buy: (listingId: string) => void;
+    cancel: (listingId: string) => void;
+    refresh: () => void;
+  };
+
+  setMarketHandlers(handlers: NonNullable<Hud["marketHandlers"]>): void {
+    this.marketHandlers = handlers;
+  }
+
+  setMarket(listings: MarketListingView[]): void {
+    this.market = listings;
+    this.renderMarketModal();
+  }
+
+  private renderMarketModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#market-body");
+    if (!body) return;
+    const tab = this.marketTab;
+    const mine = this.market.filter((l) => l.mine);
+    const others = this.market.filter((l) => !l.mine);
+    const tabBtn = (id: typeof this.marketTab, label: string) =>
+      `<button type="button" data-market-tab="${id}" style="flex:1;padding:8px;border:none;border-bottom:2px solid ${tab === id ? "#ffd166" : "transparent"};background:${tab === id ? "rgba(255,209,102,0.12)" : "transparent"};color:${tab === id ? "#ffd166" : "#bdbdbd"};cursor:pointer;font-weight:700">${label}</button>`;
+    let inner = "";
+    if (tab === "browse") inner = this.renderMarketBrowse(others);
+    else if (tab === "sell") inner = this.renderMarketSell();
+    else inner = this.renderMarketMine(mine);
+    body.innerHTML = `
+      <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid #2a2a2a">
+        ${tabBtn("browse", `🛒 Chợ (${others.length})`)}
+        ${tabBtn("sell", "🏷️ Bán")}
+        ${tabBtn("mine", `📦 Của tôi (${mine.length}/${MARKET_MAX_LISTINGS_PER_SELLER})`)}
+      </div>
+      <div id="market-tab-body">${inner}</div>`;
+    body.querySelectorAll<HTMLButtonElement>("[data-market-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        this.marketTab = btn.dataset.marketTab as typeof this.marketTab;
+        this.renderMarketModal();
+      });
+    });
+    this.wireMarketTabActions();
+  }
+
+  private itemSummary(item: Item): string {
+    if (item.kind === "equipment") {
+      const parts: string[] = [];
+      if (item.stats.attack) parts.push(`+${item.stats.attack} công`);
+      if (item.stats.defense) parts.push(`+${item.stats.defense} thủ`);
+      if (item.stats.maxHp) parts.push(`+${item.stats.maxHp} HP`);
+      if (item.stats.speed) parts.push(`+${item.stats.speed}% tốc`);
+      const ench = item.enchantCount ? ` · tinh luyện ${item.enchantCount}` : "";
+      return `${parts.join(", ") || "không chỉ số"}${ench}`;
+    }
+    if (item.kind === "consumable") return item.recall ? "Hồi thành" : `Hồi ${item.heal} HP`;
+    return "Nguyên liệu chế tạo";
+  }
+
+  private renderMarketBrowse(listings: MarketListingView[]): string {
+    if (listings.length === 0) return `<p style="color:#8e9192;text-align:center;padding:24px">Chợ đang trống. Hãy là người đầu tiên rao bán!</p>`;
+    const gold = this.player?.stats.gold ?? 0;
+    const rows = listings
+      .map((l) => {
+        const afford = gold >= l.price;
+        return `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-left:3px solid currentColor;border-radius:5px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:#f1f1f1">${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
+            <div style="font-size:11px;color:#9aa">${escapeHtml(this.itemSummary(l.item))}</div>
+            <div style="font-size:11px;color:#8e9192">Người bán: ${escapeHtml(l.sellerName)}</div>
+          </div>
+          <div style="text-align:right;white-space:nowrap">
+            <div style="color:#ffd166;font-weight:700;margin-bottom:4px">${l.price.toLocaleString("vi-VN")} 🪙</div>
+            <button type="button" data-market-buy="${l.id}" ${afford ? "" : "disabled"} style="padding:5px 14px;border:none;border-radius:4px;font-weight:700;color:${afford ? "#1d1500" : "#888"};background:${afford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${afford ? "pointer" : "not-allowed"}">Mua</button>
+          </div>
+        </div>`;
+      })
+      .join("");
+    return `<div style="max-height:360px;overflow-y:auto">${rows}</div>`;
+  }
+
+  private renderMarketSell(): string {
+    const items = this.player?.inventory.items ?? [];
+    if (items.length === 0) return `<p style="color:#8e9192;text-align:center;padding:24px">Túi đồ trống — không có gì để bán.</p>`;
+    const rows = items
+      .map((it) => {
+        return `<div class="${rarityClass[it.rarity]}" style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-left:3px solid currentColor;border-radius:5px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:#f1f1f1">${escapeHtml(it.name)} <small style="color:#8e9192;font-weight:400">(${it.rarity})</small></div>
+            <div style="font-size:11px;color:#9aa">${escapeHtml(this.itemSummary(it))} · giá tham khảo ${it.value} 🪙</div>
+          </div>
+          <input type="number" min="1" placeholder="Giá" data-sell-price="${it.id}" style="width:96px;padding:6px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+          <button type="button" data-market-list="${it.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Rao</button>
+        </div>`;
+      })
+      .join("");
+    return `<p style="font-size:11px;color:#8e9192;margin:0 0 10px">Phí giao dịch ${Math.round(MARKET_TAX_RATE * 100)}% trừ vào tiền bán khi có người mua. Vật phẩm được giữ trên sạp tới khi bán hoặc gỡ.</p><div style="max-height:340px;overflow-y:auto">${rows}</div>`;
+  }
+
+  private renderMarketMine(mine: MarketListingView[]): string {
+    if (mine.length === 0) return `<p style="color:#8e9192;text-align:center;padding:24px">Bạn chưa rao bán món nào.</p>`;
+    const rows = mine
+      .map((l) => `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-left:3px solid currentColor;border-radius:5px">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;color:#f1f1f1">${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
+            <div style="font-size:11px;color:#9aa">Bán được nhận: ${l.net.toLocaleString("vi-VN")} 🪙 (sau phí ${l.tax.toLocaleString("vi-VN")})</div>
+          </div>
+          <div style="text-align:right;white-space:nowrap">
+            <div style="color:#ffd166;font-weight:700;margin-bottom:4px">${l.price.toLocaleString("vi-VN")} 🪙</div>
+            <button type="button" data-market-cancel="${l.id}" style="padding:5px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Gỡ</button>
+          </div>
+        </div>`)
+      .join("");
+    return `<div style="max-height:360px;overflow-y:auto">${rows}</div>`;
+  }
+
+  private wireMarketTabActions(): void {
+    const body = document.querySelector<HTMLDivElement>("#market-body");
+    if (!body) return;
+    body.querySelectorAll<HTMLButtonElement>("[data-market-buy]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const l = this.market.find((x) => x.id === btn.dataset.marketBuy);
+        if (l && window.confirm(`Mua ${l.item.name} với giá ${l.price.toLocaleString("vi-VN")} vàng?`)) this.marketHandlers?.buy(l.id);
+      });
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-market-cancel]").forEach((btn) => {
+      btn.addEventListener("click", () => this.marketHandlers?.cancel(btn.dataset.marketCancel!));
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-market-list]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.marketList!;
+        const input = body.querySelector<HTMLInputElement>(`[data-sell-price="${id}"]`);
+        const price = Math.floor(Number(input?.value) || 0);
+        if (price < 1) { this.log("Nhập giá hợp lệ để rao bán.", "log-line"); return; }
+        this.marketHandlers?.list(id, price);
+      });
     });
   }
 

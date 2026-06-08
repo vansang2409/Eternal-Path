@@ -166,6 +166,7 @@
         <button class="toolbar-btn" type="button" data-modal="battle-pass-modal" title="Battle Pass" aria-label="Battle Pass"><i class="material-symbols-outlined">military_tech</i></button>
         <button class="toolbar-btn" type="button" data-modal="vip-modal" title="VIP" aria-label="VIP" style="color:#ffd166"><i class="material-symbols-outlined">workspace_premium</i></button>
         <button class="toolbar-btn" type="button" data-modal="guild-modal" title="Guild (U)" aria-label="Guild"><i class="material-symbols-outlined">castle</i></button>
+        <button class="toolbar-btn" type="button" data-modal="market-modal" title="Chợ (M)" aria-label="Chợ"><i class="material-symbols-outlined">storefront</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -250,6 +251,18 @@
           </header>
           <div class="game-modal-body">
             <div id="guild-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="market-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card wide">
+          <header>
+            <h2>🏪 Chợ Giao Thương</h2>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div id="market-body"></div>
           </div>
         </div>
       </div>
@@ -364,13 +377,17 @@
               <p><b>Lên cấp Guild:</b> thành viên <b>góp vàng</b> để tích EXP guild (1 vàng = 1 EXP, tối đa Lv 10). Mỗi cấp +2% EXP &amp; +2% vàng cho <b>toàn bộ</b> thành viên và mở thêm slot (Lv10 = +18%, 30 người). Hội Trưởng/Sĩ Quan mua <b>⚡ Guild Boost</b> (200 💎) cho cả guild +10% EXP trong 48h. Bảng góp vàng hiển thị đóng góp từng người.</p>
             </div>
             <div class="help-section">
+              <h3>🏪 Chợ Giao Thương</h3>
+              <p>Nhấn <b>M</b> mở Chợ. Tab <b>Bán</b>: chọn món trong túi + nhập giá để rao (món được giữ trên sạp). Tab <b>Chợ</b>: mua đồ người khác rao bằng vàng. Tab <b>Của tôi</b>: gỡ tin để lấy lại đồ. Phí giao dịch <b>5%</b> trừ vào tiền người bán nhận. Nếu bán được lúc bạn offline, tiền sẽ vào túi khi đăng nhập lại. Tối đa 8 tin rao cùng lúc.</p>
+            </div>
+            <div class="help-section">
               <h3>🗺️ Minimap &amp; Khám phá</h3>
               <p>Góc trên-phải hiện minimap toàn bản đồ. Chấm vàng = bạn, đỏ = quái, hồng = boss, kim = rương, cyan = player khác. 3 dấu hồng cố định = lối vào hầm — vào đó để đánh <b>Khắc Tinh</b> drop epic.</p>
             </div>
             <div class="help-section">
               <h3>⌨️ Phím tắt</h3>
               <p>
-                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>U</b> Guild · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
+                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>U</b> Guild · <b>M</b> Chợ · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
               </p>
               <p>
                 <b>Shift</b> chạy nhanh (tốn thể lực) · <b>F</b> dùng bình máu · <b>Q W E R</b> dùng skill · <b>Click phải</b> đi tới vị trí · <b>Click trái</b> chọn target / nhặt loot.
