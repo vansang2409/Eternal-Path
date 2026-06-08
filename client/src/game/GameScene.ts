@@ -133,7 +133,8 @@ export class GameScene extends Phaser.Scene {
       (petId) => this.socket.emit("buyPet", { petId }),
       (petId) => this.socket.emit("equipPet", { petId }),
       () => this.socket.emit("feedPet"),
-      () => this.socket.emit("petTreat")
+      () => this.socket.emit("petTreat"),
+      () => this.socket.emit("buyMysteryBox")
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -172,6 +173,8 @@ export class GameScene extends Phaser.Scene {
       attack: () => this.socket.emit("raidAttack")
     });
     this.socket.on("guildRaidUpdate", (view) => this.hud.setGuildRaid(view));
+    this.hud.setMysteryBannerProxy((text) => this.showTopBanner(text, "achievement", 3500));
+    this.socket.on("mysteryBoxResult", (r) => this.hud.showMysteryBoxResult(r.label));
     document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='guild-modal']").forEach((btn) => {
       btn.addEventListener("click", () => this.socket.emit("requestGuildLeaderboard"));
     });

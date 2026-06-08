@@ -15,3 +15,4 @@ export * from "./marketplace.js";
 export * from "./dailyStreak.js";
 export * from "./titles.js";
 export * from "./pets.js";
+export * from "./mysterybox.js";

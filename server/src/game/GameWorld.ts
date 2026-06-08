@@ -68,6 +68,9 @@ import {
   titleLabel,
   getPet,
   PET_CATALOG,
+  MYSTERY_BOX_GEM_COST,
+  MYSTERY_DUP_GEMS,
+  rollMysteryBox,
   PET_FEED_GOLD_COST,
   PET_FEED_XP,
   PET_TREAT_GEM_COST,
@@ -1907,6 +1910,45 @@ export class GameWorld {
       if (!this.grantPetXp(player, PET_TREAT_XP)) return;
       player.gems = gems - PET_TREAT_GEM_COST;
       socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    socket.on("buyMysteryBox", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const gems = player.gems ?? 0;
+      if (gems < MYSTERY_BOX_GEM_COST) {
+        socket.emit("system", `Cần ${MYSTERY_BOX_GEM_COST} 💎 để mở Rương Bí Ẩn (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - MYSTERY_BOX_GEM_COST;
+      const reward = rollMysteryBox();
+      let converted = false;
+      let label = reward.label;
+      if (reward.kind === "gold") {
+        player.stats.gold += reward.amount ?? 0;
+      } else if (reward.kind === "gems") {
+        player.gems = (player.gems ?? 0) + (reward.amount ?? 0);
+      } else if (reward.kind === "cosmetic" && reward.id) {
+        if ((player.cosmetics ?? []).includes(reward.id)) {
+          player.gems = (player.gems ?? 0) + MYSTERY_DUP_GEMS;
+          converted = true;
+          label = `${reward.label} (đã có → +${MYSTERY_DUP_GEMS} 💎)`;
+        } else {
+          player.cosmetics = [...(player.cosmetics ?? []), reward.id];
+        }
+      } else if (reward.kind === "pet" && reward.id) {
+        if ((player.ownedPets ?? []).includes(reward.id)) {
+          player.gems = (player.gems ?? 0) + MYSTERY_DUP_GEMS;
+          converted = true;
+          label = `${reward.label} (đã có → +${MYSTERY_DUP_GEMS} 💎)`;
+        } else {
+          player.ownedPets = [...(player.ownedPets ?? []), reward.id];
+        }
+      }
+      socket.emit("player", player);
+      socket.emit("mysteryBoxResult", { kind: reward.kind, label, converted });
+      socket.emit("system", `🎁 Rương Bí Ẩn: ${label}!`);
       this.markDirty(player);
     });
 

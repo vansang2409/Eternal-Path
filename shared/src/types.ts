@@ -453,6 +453,7 @@ export interface ServerToClientEvents {
   guildRaidUpdate: (payload: GuildRaidView | null) => void;
   marketUpdate: (payload: MarketListingView[]) => void;
   titlesUpdate: (payload: { earned: string[]; active?: string }) => void;
+  mysteryBoxResult: (payload: { kind: string; label: string; converted: boolean }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -496,6 +497,7 @@ export interface ClientToServerEvents {
   equipPet: (payload: { petId: string | null }) => void;
   feedPet: () => void;
   petTreat: () => void;
+  buyMysteryBox: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

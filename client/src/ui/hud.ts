@@ -67,7 +67,8 @@ export class Hud {
     private readonly onBuyPet: (petId: string) => void = () => {},
     private readonly onEquipPet: (petId: string | null) => void = () => {},
     private readonly onFeedPet: () => void = () => {},
-    private readonly onPetTreat: () => void = () => {}
+    private readonly onPetTreat: () => void = () => {},
+    private readonly onBuyMysteryBox: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -712,6 +713,17 @@ export class Hud {
   }
 
   private gemShopWired = false;
+  showMysteryBoxResult(label: string): void {
+    const el = document.querySelector<HTMLElement>("#mystery-result");
+    if (el) el.textContent = `🎉 ${label}`;
+    this.showTopBannerProxy?.(`🎁 Rương Bí Ẩn: ${label}`);
+  }
+
+  private showTopBannerProxy?: (text: string) => void;
+  setMysteryBannerProxy(fn: (text: string) => void): void {
+    this.showTopBannerProxy = fn;
+  }
+
   private renderGemShop(): void {
     if (!this.player) return;
     const gemBalance = document.querySelector<HTMLSpanElement>("#gem-balance");
@@ -719,6 +731,20 @@ export class Hud {
     const root = document.querySelector<HTMLDivElement>("#gem-shop-items");
     if (!root) return;
     root.innerHTML = "";
+    // Mystery box banner (Sprint 68) at the top of the gem shop.
+    const box = document.createElement("div");
+    box.className = "gem-shop-card";
+    box.style.cssText = "background:linear-gradient(to right,rgba(199,155,255,0.18),rgba(255,209,102,0.12));border:1px solid rgba(199,155,255,0.5)";
+    box.innerHTML = `
+      <div class="gem-shop-swatch" style="background:radial-gradient(circle,#ffd166,#6e4c9b);display:flex;align-items:center;justify-content:center;font-size:20px">🎁</div>
+      <div class="gem-shop-info">
+        <strong>Rương Bí Ẩn</strong>
+        <p>Mở ra vàng, Gem, cosmetic hoặc linh thú ngẫu nhiên (trùng → đền Gem).</p>
+        <small id="mystery-result" style="color:#ffd166"></small>
+      </div>
+      <div class="gem-shop-action"><button id="mystery-buy-btn" class="gem-shop-buy-btn" type="button">💎 50 — Mở</button></div>`;
+    root.appendChild(box);
+    box.querySelector<HTMLButtonElement>("#mystery-buy-btn")?.addEventListener("click", () => this.onBuyMysteryBox());
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
     for (const cosmetic of COSMETICS) {
