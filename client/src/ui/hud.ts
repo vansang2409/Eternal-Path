@@ -850,6 +850,26 @@ export class Hud {
     this.friendRemoveHandler = remove;
   }
 
+  private inspectHandler?: (name: string) => void;
+  setInspectHandler(handler: (name: string) => void): void {
+    this.inspectHandler = handler;
+  }
+
+  showPlayerProfile(p: { accountName: string; level: number; playerClass?: string; title?: string; guildTag?: string; guildName?: string; petName?: string; petLevel?: number; pvpKills: number; totalKills: number; vip: boolean }): void {
+    const cls = p.playerClass ? CLASS_CATALOG[p.playerClass as PlayerClass]?.name : undefined;
+    const bits = [
+      `Lv ${p.level}`,
+      cls,
+      p.vip ? "🌟VIP" : undefined,
+      p.title ? `«${p.title}»` : undefined,
+      p.guildTag ? `[${p.guildTag}] ${p.guildName ?? ""}`.trim() : undefined,
+      p.petName ? `🐾 ${p.petName} Lv${p.petLevel ?? 1}` : undefined,
+      `⚔️ PvP ${p.pvpKills}`,
+      `Hạ ${p.totalKills} quái`
+    ].filter(Boolean).join(" · ");
+    this.log(`👤 ${p.accountName} — ${bits}`, "log-line");
+  }
+
   // ----- Guild (Sprint 56) -----
 
   private guildHandlers?: {
@@ -1414,6 +1434,7 @@ export class Hud {
         "/g <tin> — chat guild",
         "/ginvite <tên> — mời vào guild",
         "/gaccept — nhận lời mời guild",
+        "/inspect <tên> — xem hồ sơ người chơi",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -1429,6 +1450,7 @@ export class Hud {
     }
     if (cmd === "friend" && arg) { this.friendAddHandler?.(arg); return; }
     if (cmd === "unfriend" && arg) { this.friendRemoveHandler?.(arg); return; }
+    if ((cmd === "inspect" || cmd === "ins") && arg) { this.inspectHandler?.(arg); return; }
     if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
     if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
     if (cmd === "gaccept") {

@@ -420,6 +420,21 @@ export interface ChatPayload {
   message: string;
 }
 
+/** Public profile shown by /inspect (Sprint 75). */
+export interface PlayerProfile {
+  accountName: string;
+  level: number;
+  playerClass?: "warrior" | "mage" | "ranger";
+  title?: string;
+  guildTag?: string;
+  guildName?: string;
+  petName?: string;
+  petLevel?: number;
+  pvpKills: number;
+  totalKills: number;
+  vip: boolean;
+}
+
 export interface ServerToClientEvents {
   init: (data: { selfId: string; snapshot: WorldSnapshot; worldMap: WorldMapPayload }) => void;
   session: (payload: { token: string }) => void;
@@ -454,6 +469,7 @@ export interface ServerToClientEvents {
   marketUpdate: (payload: MarketListingView[]) => void;
   titlesUpdate: (payload: { earned: string[]; active?: string }) => void;
   mysteryBoxResult: (payload: { kind: string; label: string; converted: boolean }) => void;
+  playerProfile: (payload: PlayerProfile | null) => void;
 }
 
 export interface ClientToServerEvents {
@@ -498,6 +514,7 @@ export interface ClientToServerEvents {
   feedPet: () => void;
   petTreat: () => void;
   buyMysteryBox: () => void;
+  inspectPlayer: (payload: { name: string }) => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

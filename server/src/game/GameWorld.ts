@@ -69,6 +69,7 @@ import {
   isTitleEarned,
   titleLabel,
   getPet,
+  petLabel,
   PET_CATALOG,
   MYSTERY_BOX_GEM_COST,
   MYSTERY_DUP_GEMS,
@@ -142,6 +143,7 @@ import type {
   GuildRaidView,
   MarketListing,
   MarketListingView,
+  PlayerProfile,
   PartyView,
   QuestListPayload,
   QuestView,
@@ -1569,6 +1571,34 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       socket.emit("marketUpdate", this.marketView(player.accountName));
+    });
+
+    socket.on("inspectPlayer", ({ name }) => {
+      const requester = this.players.get(socket.id);
+      if (!requester) return;
+      const cleanName = String(name ?? "").trim().slice(0, 20);
+      const target = [...this.players.values()].find((p) => p.accountName === cleanName);
+      if (!target) {
+        socket.emit("playerProfile", null);
+        socket.emit("system", `${cleanName || "Người chơi"} không online.`);
+        return;
+      }
+      const guild = target.guildId ? guildStore.get(target.guildId) : undefined;
+      const pet = getPet(target.activePet);
+      const profile: PlayerProfile = {
+        accountName: target.accountName,
+        level: target.stats.level,
+        playerClass: target.playerClass,
+        title: titleLabel(target.activeTitle),
+        guildTag: target.guildTag,
+        guildName: guild?.name,
+        petName: pet ? petLabel(pet.id) : undefined,
+        petLevel: pet ? petLevelForXp((target.petXp ?? {})[pet.id] ?? 0) : undefined,
+        pvpKills: target.pvpKills ?? 0,
+        totalKills: target.totalKills ?? 0,
+        vip: isVipActive(target.vipUntil)
+      };
+      socket.emit("playerProfile", profile);
     });
 
     socket.on("requestGuildLeaderboard", () => {

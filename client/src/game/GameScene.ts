@@ -178,6 +178,8 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("guildRaidUpdate", (view) => this.hud.setGuildRaid(view));
     this.hud.setMysteryBannerProxy((text) => this.showTopBanner(text, "achievement", 3500));
     this.socket.on("mysteryBoxResult", (r) => this.hud.showMysteryBoxResult(r.label));
+    this.hud.setInspectHandler((name) => this.socket.emit("inspectPlayer", { name }));
+    this.socket.on("playerProfile", (p) => { if (p) this.hud.showPlayerProfile(p); });
     document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='guild-modal']").forEach((btn) => {
       btn.addEventListener("click", () => this.socket.emit("requestGuildLeaderboard"));
     });
