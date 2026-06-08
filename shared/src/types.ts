@@ -1,4 +1,4 @@
-import type { GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView } from "./guild.js";
+import type { GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView } from "./guild.js";
 
 export type Direction = "up" | "down" | "left" | "right";
 
@@ -448,6 +448,7 @@ export interface ServerToClientEvents {
   guildInvite: (payload: GuildInvitePayload) => void;
   guildChatMessage: (payload: GuildChatPayload) => void;
   guildLeaderboard: (payload: GuildLeaderboardRow[]) => void;
+  guildRaidUpdate: (payload: GuildRaidView | null) => void;
   marketUpdate: (payload: MarketListingView[]) => void;
   titlesUpdate: (payload: { earned: string[]; active?: string }) => void;
 }
@@ -511,6 +512,8 @@ export interface ClientToServerEvents {
   donateGuild: (payload: { amount: number }) => void;
   buyGuildBoost: () => void;
   requestGuildLeaderboard: () => void;
+  summonGuildRaid: () => void;
+  raidAttack: () => void;
   requestMarket: () => void;
   listMarketItem: (payload: { itemId: string; price: number }) => void;
   buyMarketItem: (payload: { listingId: string }) => void;

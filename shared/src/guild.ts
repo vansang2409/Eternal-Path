@@ -158,6 +158,40 @@ export interface GuildChatPayload {
   sentAt: number;
 }
 
+// ── Guild Raid Boss (Sprint 66) ─────────────────────────────────────────
+// A co-op boss summoned by a leader/officer; guild members damage a shared
+// HP pool. On defeat, gold is split by damage share, the guild gains EXP, and
+// the top contributor gets a Gem bonus. Raids are ephemeral (in-memory).
+export const GUILD_RAID_BASE_HP = 30_000;
+export const GUILD_RAID_HP_PER_LEVEL = 15_000;
+export const GUILD_RAID_DURATION_MS = 5 * 60 * 1000;
+export const GUILD_RAID_COOLDOWN_MS = 5 * 60 * 1000;
+export const GUILD_RAID_ATTACK_COOLDOWN_MS = 1000;
+/** Gold reward pool = maxHp * this, split by damage share. */
+export const GUILD_RAID_GOLD_FACTOR = 0.15;
+/** Guild EXP granted on defeat = maxHp * this. */
+export const GUILD_RAID_EXP_FACTOR = 0.2;
+/** Gem bonus to the top contributor on defeat. */
+export const GUILD_RAID_TOP_GEM = 20;
+
+export function guildRaidMaxHp(level: number): number {
+  return GUILD_RAID_BASE_HP + Math.max(0, level - 1) * GUILD_RAID_HP_PER_LEVEL;
+}
+
+export interface GuildRaidContributor {
+  accountName: string;
+  damage: number;
+}
+
+export interface GuildRaidView {
+  bossName: string;
+  maxHp: number;
+  hp: number;
+  expiresAt: number;
+  startedAt: number;
+  contributors: GuildRaidContributor[];
+}
+
 /** A row in the global guild ranking (Sprint 60). */
 export interface GuildLeaderboardRow {
   rank: number;

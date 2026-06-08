@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -20,6 +20,8 @@ export class Hud {
   private guild: GuildView | null = null;
   private pendingGuildInvite?: GuildInvitePayload;
   private guildRanking: GuildLeaderboardRow[] = [];
+  private guildRaid: GuildRaidView | null = null;
+  private onRaidHandlers?: { summon: () => void; attack: () => void };
   private earnedTitleIds: string[] = [];
   private onSetTitle?: (titleId: string | null) => void;
   private market: MarketListingView[] = [];
@@ -851,6 +853,44 @@ export class Hud {
     this.renderGuildModal();
   }
 
+  setRaidHandlers(handlers: NonNullable<Hud["onRaidHandlers"]>): void {
+    this.onRaidHandlers = handlers;
+  }
+
+  setGuildRaid(view: GuildRaidView | null): void {
+    this.guildRaid = view;
+    this.renderGuildModal();
+  }
+
+  /** Raid boss block in the guild modal (summon / live HP bar + attack). */
+  private renderGuildRaid(canManage: boolean): string {
+    const r = this.guildRaid;
+    if (!r) {
+      return `<div style="margin-top:14px;padding:10px;background:rgba(60,20,20,0.3);border:1px solid #5a3939;border-radius:6px">
+        <strong style="color:#ff8181">⚔️ Boss Guild</strong>
+        <p style="font-size:11px;color:#9aa;margin:4px 0 8px">Triệu hồi Boss để cả guild cùng đánh — chia thưởng vàng theo sát thương, người gây nhiều nhất nhận thêm Gem.</p>
+        ${canManage ? `<button id="raid-summon-btn" type="button" style="padding:7px 14px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#b03a3a,#7a2727);cursor:pointer">⚔️ Triệu hồi Boss</button>` : `<span style="font-size:11px;color:#8e9192">Chờ Hội Trưởng/Sĩ Quan triệu hồi.</span>`}
+      </div>`;
+    }
+    const pct = Math.round((r.hp / Math.max(1, r.maxHp)) * 100);
+    const secsLeft = Math.max(0, Math.ceil((r.expiresAt - Date.now()) / 1000));
+    const top = r.contributors.slice(0, 5).map((c, i) =>
+      `<div style="display:flex;justify-content:space-between;font-size:11px;color:${c.accountName === this.player?.accountName ? "#ffd166" : "#cdd"}"><span>${i + 1}. ${escapeHtml(c.accountName)}</span><span>${c.damage.toLocaleString("vi-VN")} dmg</span></div>`
+    ).join("");
+    return `<div style="margin-top:14px;padding:10px;background:rgba(60,20,20,0.35);border:1px solid #b03a3a;border-radius:6px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <strong style="color:#ff8181">⚔️ ${escapeHtml(r.bossName)}</strong>
+        <span style="font-size:11px;color:#8e9192">⏱ ${secsLeft}s</span>
+      </div>
+      <div style="margin-top:6px;height:16px;background:#101820;border-radius:8px;overflow:hidden;border:1px solid #2a2a2a">
+        <div style="height:100%;width:${pct}%;background:linear-gradient(to right,#b03a3a,#ff8181);transition:width .2s"></div>
+      </div>
+      <div style="font-size:11px;color:#d6dddf;margin-top:3px">${r.hp.toLocaleString("vi-VN")} / ${r.maxHp.toLocaleString("vi-VN")} HP</div>
+      <button id="raid-attack-btn" type="button" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:5px;font-weight:700;font-size:15px;color:#fff;background:linear-gradient(to bottom,#b03a3a,#7a2727);cursor:pointer">🗡️ Tấn công Boss</button>
+      <div style="margin-top:8px">${top || `<span style="font-size:11px;color:#8e9192">Chưa ai ra đòn.</span>`}</div>
+    </div>`;
+  }
+
   // ----- Titles (Sprint 62) -----
   setTitleHandler(handler: (titleId: string | null) => void): void {
     this.onSetTitle = handler;
@@ -1033,6 +1073,7 @@ export class Hud {
         <span style="color:#8e9192;font-size:11px">Chat guild: <strong>/g &lt;tin nhắn&gt;</strong></span>
         <button id="guild-leave-btn" type="button" style="padding:6px 14px;background:#402c2c;border:1px solid #5a3939;border-radius:4px;color:#ff8181;cursor:pointer">${isLeader && g.members.length > 1 ? "Rời guild (truyền chức)" : "Rời guild"}</button>
       </div>
+      ${this.renderGuildRaid(canManage)}
       ${this.renderGuildRanking()}`;
     body.querySelector<HTMLButtonElement>("#guild-invite-btn")?.addEventListener("click", () => {
       const name = body.querySelector<HTMLInputElement>("#guild-invite-name")?.value.trim();
@@ -1063,6 +1104,8 @@ export class Hud {
     body.querySelectorAll<HTMLButtonElement>("[data-guild-promote]").forEach((btn) => {
       btn.addEventListener("click", () => this.guildHandlers?.promote(btn.dataset.guildPromote!));
     });
+    body.querySelector<HTMLButtonElement>("#raid-summon-btn")?.addEventListener("click", () => this.onRaidHandlers?.summon());
+    body.querySelector<HTMLButtonElement>("#raid-attack-btn")?.addEventListener("click", () => this.onRaidHandlers?.attack());
   }
 
   // ----- Marketplace (Sprint 58) -----

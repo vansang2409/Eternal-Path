@@ -167,6 +167,11 @@ export class GameScene extends Phaser.Scene {
     });
     this.socket.on("guildChatMessage", (payload) => this.hud.appendGuildChat(payload));
     this.socket.on("guildLeaderboard", (rows) => this.hud.setGuildRanking(rows));
+    this.hud.setRaidHandlers({
+      summon: () => this.socket.emit("summonGuildRaid"),
+      attack: () => this.socket.emit("raidAttack")
+    });
+    this.socket.on("guildRaidUpdate", (view) => this.hud.setGuildRaid(view));
     document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='guild-modal']").forEach((btn) => {
       btn.addEventListener("click", () => this.socket.emit("requestGuildLeaderboard"));
     });

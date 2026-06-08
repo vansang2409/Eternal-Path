@@ -44,6 +44,13 @@ import {
   guildMaxMembers,
   guildExpProgress,
   isGuildBoostActive,
+  guildRaidMaxHp,
+  GUILD_RAID_DURATION_MS,
+  GUILD_RAID_COOLDOWN_MS,
+  GUILD_RAID_ATTACK_COOLDOWN_MS,
+  GUILD_RAID_GOLD_FACTOR,
+  GUILD_RAID_EXP_FACTOR,
+  GUILD_RAID_TOP_GEM,
   MARKET_MAX_LISTINGS_PER_SELLER,
   MARKET_FEATURE_GEM_COST,
   MARKET_FEATURE_DURATION_MS,
@@ -127,6 +134,7 @@ import type {
   GuildRecord,
   GuildView,
   GuildLeaderboardRow,
+  GuildRaidView,
   MarketListing,
   MarketListingView,
   PartyView,
@@ -372,6 +380,10 @@ export class GameWorld {
   private readonly pendingInvites = new Map<string, string>();
   // Pending guild invites keyed by invitee accountName.
   private readonly guildInvites = new Map<string, { guildId: string; expiresAt: number }>();
+  // Ephemeral guild raid bosses keyed by guildId (Sprint 66).
+  private readonly guildRaids = new Map<string, { bossName: string; maxHp: number; hp: number; startedAt: number; expiresAt: number; contributors: Map<string, number> }>();
+  private readonly guildRaidCooldownUntil = new Map<string, number>();
+  private readonly raidAttackCooldown = new Map<string, number>();
   private readonly sessions = new Map<string, { email: string; accountName: string }>();
   private readonly dirtyPlayers = new Set<string>();
   private readonly shopStock: ShopItem[] = createShopStock();
@@ -670,6 +682,8 @@ export class GameWorld {
       // Push guild roster to the player and refresh online flags for mates.
       if (player.guildId) this.emitGuildUpdate(player.guildId);
       else socket.emit("guildUpdate", null);
+      // Send any in-progress guild raid so the player can join the fight.
+      socket.emit("guildRaidUpdate", player.guildId ? this.guildRaidView(player.guildId) : null);
       // Collect any marketplace proceeds that accrued while offline.
       const proceeds = marketStore.collectPending(player.accountName);
       if (proceeds) {
@@ -1471,6 +1485,63 @@ export class GameWorld {
       socket.emit("guildLeaderboard", this.guildLeaderboard(player.guildId));
     });
 
+    socket.on("summonGuildRaid", () => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) {
+        socket.emit("system", "Bạn cần ở trong guild để triệu hồi Boss.");
+        return;
+      }
+      const guild = guildStore.get(player.guildId);
+      if (!guild) return;
+      const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
+      if (!canManageGuild(rank)) {
+        socket.emit("system", "Chỉ Hội Trưởng hoặc Sĩ Quan mới được triệu hồi Boss.");
+        return;
+      }
+      if (this.guildRaids.has(guild.id)) {
+        socket.emit("system", "Boss của guild đang xuất hiện rồi.");
+        return;
+      }
+      const now = Date.now();
+      const cd = this.guildRaidCooldownUntil.get(guild.id) ?? 0;
+      if (now < cd) {
+        socket.emit("system", `Cần chờ ${Math.ceil((cd - now) / 60000)} phút nữa mới triệu hồi Boss tiếp.`);
+        return;
+      }
+      const level = guildLevelForExp(guild.exp ?? 0);
+      const maxHp = guildRaidMaxHp(level);
+      this.guildRaids.set(guild.id, {
+        bossName: "Hỗn Độn Ma Vương",
+        maxHp,
+        hp: maxHp,
+        startedAt: now,
+        expiresAt: now + GUILD_RAID_DURATION_MS,
+        contributors: new Map()
+      });
+      this.broadcastGuildSystem(guild, `⚔️ ${player.accountName} đã triệu hồi Boss Hỗn Độn Ma Vương (${maxHp.toLocaleString("vi-VN")} HP)! Mở bảng Guild (U) để cùng đánh.`);
+      this.broadcastGuildRaid(guild.id);
+    });
+
+    socket.on("raidAttack", () => {
+      const player = this.players.get(socket.id);
+      if (!player || !player.guildId) return;
+      const raid = this.guildRaids.get(player.guildId);
+      if (!raid || raid.hp <= 0) return;
+      const now = Date.now();
+      const last = this.raidAttackCooldown.get(socket.id) ?? 0;
+      if (now - last < GUILD_RAID_ATTACK_COOLDOWN_MS) return;
+      this.raidAttackCooldown.set(socket.id, now);
+      // Damage = effective attack with ±15% variance.
+      const dmg = Math.max(1, Math.round(player.stats.attack * (0.85 + Math.random() * 0.3)));
+      raid.hp = Math.max(0, raid.hp - dmg);
+      raid.contributors.set(player.accountName, (raid.contributors.get(player.accountName) ?? 0) + dmg);
+      if (raid.hp <= 0) {
+        this.resolveGuildRaid(player.guildId, raid);
+      } else {
+        this.broadcastGuildRaid(player.guildId);
+      }
+    });
+
     socket.on("listMarketItem", ({ itemId, price }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -2172,6 +2243,7 @@ export class GameWorld {
       this.lastTownHealTextAt.delete(socket.id);
       this.autoRetarget.delete(socket.id);
       this.activeQuests.delete(socket.id);
+      this.raidAttackCooldown.delete(socket.id);
     });
   }
 
@@ -2185,6 +2257,20 @@ export class GameWorld {
     this.updateRespawns(now);
     this.cleanupGroundItems(now);
     this.maintainTreasureChests(now);
+    this.updateGuildRaids(now);
+  }
+
+  // Expire guild raids whose timer ran out before the boss was defeated.
+  private updateGuildRaids(now: number): void {
+    for (const [guildId, raid] of this.guildRaids) {
+      if (now >= raid.expiresAt && raid.hp > 0) {
+        this.guildRaids.delete(guildId);
+        this.guildRaidCooldownUntil.set(guildId, now + GUILD_RAID_COOLDOWN_MS);
+        const guild = guildStore.get(guildId);
+        if (guild) this.broadcastGuildSystem(guild, `Boss ${raid.bossName} đã rút lui (hết giờ). Thử lại sau!`);
+        this.broadcastGuildRaid(guildId);
+      }
+    }
   }
 
   private updatePlayers(deltaMs: number): void {
@@ -3188,6 +3274,59 @@ export class GameWorld {
     for (const p of this.players.values()) {
       this.sockets.get(p.id)?.emit("guildLeaderboard", this.guildLeaderboard(p.guildId));
     }
+  }
+
+  // ── Guild Raid (Sprint 66) ──────────────────────────────────────────
+  private guildRaidView(guildId: string): GuildRaidView | null {
+    const raid = this.guildRaids.get(guildId);
+    if (!raid) return null;
+    const contributors = [...raid.contributors.entries()]
+      .map(([accountName, damage]) => ({ accountName, damage }))
+      .sort((a, b) => b.damage - a.damage);
+    return { bossName: raid.bossName, maxHp: raid.maxHp, hp: raid.hp, expiresAt: raid.expiresAt, startedAt: raid.startedAt, contributors };
+  }
+
+  private broadcastGuildRaid(guildId: string): void {
+    const view = this.guildRaidView(guildId);
+    for (const p of this.players.values()) {
+      if (p.guildId === guildId) this.sockets.get(p.id)?.emit("guildRaidUpdate", view);
+    }
+  }
+
+  /** Boss defeated: split gold by damage share, grant guild EXP + top Gem. */
+  private resolveGuildRaid(guildId: string, raid: { bossName: string; maxHp: number; hp: number; contributors: Map<string, number> }): void {
+    this.guildRaids.delete(guildId);
+    this.guildRaidCooldownUntil.set(guildId, Date.now() + GUILD_RAID_COOLDOWN_MS);
+    const guild = guildStore.get(guildId);
+    const totalDamage = [...raid.contributors.values()].reduce((a, b) => a + b, 0) || 1;
+    const goldPool = Math.round(raid.maxHp * GUILD_RAID_GOLD_FACTOR);
+    let topName = "";
+    let topDmg = -1;
+    for (const [name, dmg] of raid.contributors) {
+      if (dmg > topDmg) { topDmg = dmg; topName = name; }
+      const share = Math.round((dmg / totalDamage) * goldPool);
+      const member = [...this.players.values()].find((p) => p.accountName === name);
+      if (member && share > 0) {
+        member.stats.gold += share;
+        this.sockets.get(member.id)?.emit("player", member);
+        this.sockets.get(member.id)?.emit("system", `🏆 Hạ ${raid.bossName}! Bạn nhận ${share.toLocaleString("vi-VN")} vàng (đóng góp ${dmg.toLocaleString("vi-VN")} sát thương).`);
+        this.markDirty(member);
+      }
+    }
+    // Top contributor Gem bonus.
+    const top = [...this.players.values()].find((p) => p.accountName === topName);
+    if (top) {
+      top.gems = (top.gems ?? 0) + GUILD_RAID_TOP_GEM;
+      this.sockets.get(top.id)?.emit("player", top);
+      this.sockets.get(top.id)?.emit("system", `🥇 Bạn gây nhiều sát thương nhất — thưởng thêm ${GUILD_RAID_TOP_GEM} 💎!`);
+      this.markDirty(top);
+    }
+    // Guild EXP reward.
+    if (guild) {
+      this.broadcastGuildSystem(guild, `🎉 Guild đã hạ ${raid.bossName}!`);
+      this.addGuildExp(guild, Math.round(raid.maxHp * GUILD_RAID_EXP_FACTOR));
+    }
+    this.broadcastGuildRaid(guildId);
   }
 
   private broadcastGuildSystem(guild: GuildRecord, message: string): void {
