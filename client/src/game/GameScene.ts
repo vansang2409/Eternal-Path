@@ -1882,6 +1882,13 @@ function facingFromAxis(axis: Vec2, fallback: Direction): Direction {
 function isEditableFocused(): boolean {
   const element = document.activeElement;
   if (!element) return false;
-  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) return true;
+  if (element instanceof HTMLTextAreaElement) return true;
+  if (element instanceof HTMLInputElement) {
+    // Only TEXT-entry inputs should swallow movement/hotkeys. A focused
+    // checkbox/button/range (e.g. the "Tự chọn" auto-target toggle) must NOT
+    // freeze the player — that was the "can't move after toggling" bug.
+    const nonText = new Set(["checkbox", "radio", "button", "submit", "reset", "range", "color", "file"]);
+    return !nonText.has(element.type);
+  }
   return element instanceof HTMLElement && element.isContentEditable;
 }

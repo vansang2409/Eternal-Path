@@ -179,6 +179,8 @@ export class Hud {
     autoRetargetToggle.addEventListener("change", () => {
       this.autoRetargetEnabled = autoRetargetToggle.checked;
       this.onAutoRetarget(this.autoRetargetEnabled);
+      // Drop focus so the checkbox doesn't keep keyboard focus and freeze movement.
+      autoRetargetToggle.blur();
     });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
