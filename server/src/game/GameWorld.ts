@@ -3671,9 +3671,10 @@ export class GameWorld {
       this.sockets.get(top.id)?.emit("system", `🥇 Bạn gây nhiều sát thương nhất — thưởng thêm ${GUILD_RAID_TOP_GEM} 💎!`);
       this.markDirty(top);
     }
-    // Guild EXP reward.
+    // Guild EXP reward + server-wide announcement (living-world flavor).
     if (guild) {
       this.broadcastGuildSystem(guild, `🎉 Guild đã hạ ${raid.bossName}!`);
+      this.io.emit("system", `🌍 Guild [${guild.tag}] ${guild.name} vừa hạ gục ${raid.bossName}!`);
       this.addGuildExp(guild, Math.round(raid.maxHp * GUILD_RAID_EXP_FACTOR));
     }
     this.broadcastGuildRaid(guildId);
