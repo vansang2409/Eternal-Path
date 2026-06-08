@@ -1715,7 +1715,19 @@ export class GameScene extends Phaser.Scene {
 
   private useFirstPotion(): void {
     const potion = this.selfPlayer?.inventory.items.find((item) => item.kind === "consumable");
-    if (potion) this.socket.emit("useItem", { itemId: potion.id });
+    if (!potion) return;
+    this.socket.emit("useItem", { itemId: potion.id });
+    // Heal flash on self: green ring + rising plus-cross sparkles.
+    const self = this.players.get(this.selfId);
+    if (self) {
+      const ring = this.add.circle(self.x, self.y, 8, 0x8be78b, 0).setStrokeStyle(2.5, 0x8be78b, 0.9).setDepth(self.depth + 1);
+      this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 420, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+      for (let i = 0; i < 6; i += 1) {
+        const px = self.x + (Math.random() - 0.5) * 22;
+        const plus = this.add.text(px, self.y, "+", { fontFamily: "monospace", fontSize: "14px", color: "#8be78b", stroke: "#0a2", strokeThickness: 2 }).setOrigin(0.5).setDepth(99999);
+        this.tweens.add({ targets: plus, y: self.y - 30 - Math.random() * 18, alpha: 0, duration: 600 + Math.random() * 200, ease: "Quad.Out", onComplete: () => plus.destroy() });
+      }
+    }
   }
 
   private useSkillSlot(slot: number): void {
