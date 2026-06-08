@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 56** (guild system). Total: **131 commits** on `master`, all pushed.
+Resume point after **Sprint 57** (guild progression). Total: **133 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
 
 ## TL;DR
 
@@ -35,7 +35,8 @@ docker compose up -d --build
 - **World:** Procedural 200×150 + 12 biomes + collision, day/night 10min/4 phases, 8 ambient music moods
 - **Progression:** 3 classes, 21 quests (5 tutorial auto + 8 story + 3 daily reset 24h), 20 achievements with progress, 3 loadout presets, talents
 - **Social:** Party 4, chat + timestamps + slash commands, PvP arena + leaderboard, friends list + private msg `/w`, town NPCs
-- **Guild (Sprint 56):** tạo 5000g, 20 thành viên, rank leader/officer/member, invite/kick/promote/MOTD, chat `/g`, tag `[TAG]` cạnh tên, hotkey U, persist `data/guilds.json` (GuildStore riêng, không đụng saves.json). E2E smoke: `node smoke-guild-test.mjs` + `smoke-guild-persist.mjs` (server cần `DEV_CHEATS=1` + test save paths)
+- **Guild (Sprint 56):** tạo 5000g, rank leader/officer/member, invite/kick/promote/MOTD, chat `/g`, tag `[TAG]` cạnh tên, hotkey U, persist `data/guilds.json` (GuildStore riêng, không đụng saves.json). E2E smoke: `node smoke-guild-test.mjs` + `smoke-guild-persist.mjs`
+- **Guild progression (Sprint 57):** 10 cấp guild, góp vàng → EXP guild (1g=1exp, max Lv10 @ 800k). Mỗi cấp +2% EXP & +2% vàng cho TOÀN guild + 1 slot (Lv10 = +18%, 30 người). `donateGuild`, `buyGuildBoost` (200💎, +10% EXP 48h cho cả guild). Multiplier stack với VIP trong `grantExpAndStatPoints` + `killMonster`. Bảng đóng góp từng member. E2E: `node smoke-guild57-test.mjs` (11 checks; server cần `DEV_CHEATS=1` — có event `devGrant {gold,gems}` chỉ bật khi env này)
 - **Mobile:** Virtual joystick + 5 action buttons (touch auto-detect)
 - **UX:** Minimap, hotkeys (I/C/K/N/V/H/G/J/B/?), Top banner notifications, collapse panels, skill cooldown sweep
 
@@ -50,6 +51,7 @@ docker compose up -d --build
 | VIP 3 tháng | 700 | Plus VIP title |
 | Daily Gem (free) | +8/day | 20h cooldown |
 | Daily Gem (VIP) | +30/day | Stacks with above |
+| Guild Boost | 500 → 200 | 48h +10% EXP cho cả guild (Sprint 57) |
 
 ## ⚠️ Cần làm tiếp (user sẽ chỉ đạo)
 
@@ -58,7 +60,7 @@ docker compose up -d --build
 3. **Banner ads / reward video ads** — AdSense / AdMob
 4. ~~Guild system~~ — ✅ DONE Sprint 56
 5. **Marketplace trading** — economy (sprint tự chọn tiếp theo hợp lý)
-6. **Guild monetize** — guild level/perks, guild shop bằng Gem (nối tiếp Sprint 56)
+6. ~~Guild monetize~~ — ✅ DONE Sprint 57 (Guild Boost 200💎 + progression)
 
 ## Working style với user
 
