@@ -55,6 +55,15 @@ const run = async () => {
   member.emit("acceptGuildInvite", { guildId: inv.guildId });
   await once(member, "guildUpdate");
 
+  // Summon needs 2000 gold in the guild bank (Sprint 73) — empty bank rejects.
+  leader.emit("summonGuildRaid");
+  await sleep(400);
+  ok("summon rejected when bank empty", lSys.some((m) => m.includes("Quỹ Guild để triệu hồi")));
+
+  // Fund the guild bank.
+  leader.emit("depositGuildBank", { amount: 5000 });
+  await waitPlayer(leader, (p) => p.stats.gold <= 5000);
+
   // Member (rank member) cannot summon.
   member.emit("summonGuildRaid");
   await sleep(400);

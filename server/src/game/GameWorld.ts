@@ -52,6 +52,7 @@ import {
   GUILD_RAID_GOLD_FACTOR,
   GUILD_RAID_EXP_FACTOR,
   GUILD_RAID_TOP_GEM,
+  GUILD_RAID_SUMMON_COST,
   MARKET_MAX_LISTINGS_PER_SELLER,
   MARKET_FEATURE_GEM_COST,
   MARKET_FEATURE_DURATION_MS,
@@ -1564,6 +1565,12 @@ export class GameWorld {
         socket.emit("system", `Cần chờ ${Math.ceil((cd - now) / 60000)} phút nữa mới triệu hồi Boss tiếp.`);
         return;
       }
+      if ((guild.bank ?? 0) < GUILD_RAID_SUMMON_COST) {
+        socket.emit("system", `Cần ${GUILD_RAID_SUMMON_COST.toLocaleString("vi-VN")} vàng trong Quỹ Guild để triệu hồi Boss (quỹ đang có ${(guild.bank ?? 0).toLocaleString("vi-VN")}).`);
+        return;
+      }
+      guild.bank = (guild.bank ?? 0) - GUILD_RAID_SUMMON_COST;
+      guildStore.markDirty();
       const level = guildLevelForExp(guild.exp ?? 0);
       const maxHp = guildRaidMaxHp(level);
       this.guildRaids.set(guild.id, {
@@ -1574,8 +1581,9 @@ export class GameWorld {
         expiresAt: now + GUILD_RAID_DURATION_MS,
         contributors: new Map()
       });
-      this.broadcastGuildSystem(guild, `⚔️ ${player.accountName} đã triệu hồi Boss Hỗn Độn Ma Vương (${maxHp.toLocaleString("vi-VN")} HP)! Mở bảng Guild (U) để cùng đánh.`);
+      this.broadcastGuildSystem(guild, `⚔️ ${player.accountName} đã triệu hồi Boss Hỗn Độn Ma Vương (${maxHp.toLocaleString("vi-VN")} HP, tốn ${GUILD_RAID_SUMMON_COST.toLocaleString("vi-VN")} vàng quỹ)! Mở bảng Guild (U) để cùng đánh.`);
       this.broadcastGuildRaid(guild.id);
+      this.emitGuildUpdate(guild.id);
     });
 
     socket.on("raidAttack", () => {

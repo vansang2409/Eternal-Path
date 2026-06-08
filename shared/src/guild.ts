@@ -178,6 +178,8 @@ export const GUILD_RAID_GOLD_FACTOR = 0.15;
 export const GUILD_RAID_EXP_FACTOR = 0.2;
 /** Gem bonus to the top contributor on defeat. */
 export const GUILD_RAID_TOP_GEM = 20;
+/** Gold cost (from the guild bank) to summon a raid boss (Sprint 73). */
+export const GUILD_RAID_SUMMON_COST = 2000;
 
 export function guildRaidMaxHp(level: number): number {
   return GUILD_RAID_BASE_HP + Math.max(0, level - 1) * GUILD_RAID_HP_PER_LEVEL;
