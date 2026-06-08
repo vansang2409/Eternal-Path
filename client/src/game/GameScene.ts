@@ -158,6 +158,11 @@ export class GameScene extends Phaser.Scene {
       this.showTopBanner(`🏰 ${payload.from} mời vào [${payload.tag}] ${payload.guildName} — gõ /gaccept`, "achievement", 5000);
     });
     this.socket.on("guildChatMessage", (payload) => this.hud.appendGuildChat(payload));
+    this.socket.on("guildLeaderboard", (rows) => this.hud.setGuildRanking(rows));
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='guild-modal']").forEach((btn) => {
+      btn.addEventListener("click", () => this.socket.emit("requestGuildLeaderboard"));
+    });
+    window.addEventListener("hotkey-guild", () => this.socket.emit("requestGuildLeaderboard"));
     this.hud.setMarketHandlers({
       list: (itemId, price) => this.socket.emit("listMarketItem", { itemId, price }),
       buy: (listingId) => this.socket.emit("buyMarketItem", { listingId }),

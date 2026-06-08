@@ -111,6 +111,7 @@ import type {
   ChatMessage,
   GuildRecord,
   GuildView,
+  GuildLeaderboardRow,
   MarketListing,
   MarketListingView,
   PartyView,
@@ -1433,6 +1434,12 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       socket.emit("marketUpdate", this.marketView(player.accountName));
+    });
+
+    socket.on("requestGuildLeaderboard", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      socket.emit("guildLeaderboard", this.guildLeaderboard(player.guildId));
     });
 
     socket.on("listMarketItem", ({ itemId, price }) => {
@@ -2958,6 +2965,8 @@ export class GameWorld {
         guild,
         `Guild đạt cấp ${after}! 🎉 Buff: +${Math.round(tier.expBonus * 100)}% EXP, +${Math.round(tier.goldBonus * 100)}% vàng, ${tier.maxMembers} slot.`
       );
+      // Ranking can shift on level-up — refresh everyone's view.
+      this.broadcastGuildLeaderboard();
     }
     this.emitGuildUpdate(guild.id);
   }
@@ -2992,6 +3001,33 @@ export class GameWorld {
     const view = this.guildView(guild);
     for (const p of this.players.values()) {
       if (p.guildId === guildId) this.sockets.get(p.id)?.emit("guildUpdate", view);
+    }
+  }
+
+  /** Global guild ranking by level desc → exp desc, top 20 (Sprint 60). */
+  private guildLeaderboard(viewerGuildId: string | undefined): GuildLeaderboardRow[] {
+    const now = Date.now();
+    return guildStore
+      .all()
+      .sort((a, b) => guildLevelForExp(b.exp ?? 0) - guildLevelForExp(a.exp ?? 0) || (b.exp ?? 0) - (a.exp ?? 0) || a.createdAt - b.createdAt)
+      .slice(0, 20)
+      .map((g, i) => ({
+        rank: i + 1,
+        guildId: g.id,
+        name: g.name,
+        tag: g.tag,
+        level: guildLevelForExp(g.exp ?? 0),
+        exp: g.exp ?? 0,
+        memberCount: g.members.length,
+        boostActive: isGuildBoostActive(g.boostUntil, now),
+        mine: g.id === viewerGuildId
+      }));
+  }
+
+  /** Push the ranking to every online player (after a guild levels up). */
+  private broadcastGuildLeaderboard(): void {
+    for (const p of this.players.values()) {
+      this.sockets.get(p.id)?.emit("guildLeaderboard", this.guildLeaderboard(p.guildId));
     }
   }
 

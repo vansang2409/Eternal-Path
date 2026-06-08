@@ -158,6 +158,19 @@ export interface GuildChatPayload {
   sentAt: number;
 }
 
+/** A row in the global guild ranking (Sprint 60). */
+export interface GuildLeaderboardRow {
+  rank: number;
+  guildId: string;
+  name: string;
+  tag: string;
+  level: number;
+  exp: number;
+  memberCount: number;
+  boostActive: boolean;
+  mine: boolean;
+}
+
 const TAG_RE = /^[A-Za-z0-9]{2,4}$/;
 
 export function sanitizeGuildTag(raw: unknown): string | undefined {
