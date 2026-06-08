@@ -83,7 +83,8 @@ const run = async () => {
   const v3 = lastA();
   ok("boost active after purchase", v3?.boostActive === true && v3?.boostUntil > Date.now(), `active=${v3?.boostActive}`);
   const pa = await new Promise((res) => { a.emit("devGrant", { gold: 0 }); a.once("player", res); });
-  ok("gems deducted ~200", pa.gems === 300, `gems=${pa.gems}`);
+  // 500 granted + 20 (guild-founder achievement, Sprint 67) − 200 (boost) = 320.
+  ok("gems deducted ~200", pa.gems === 320, `gems=${pa.gems}`);
 
   // Buying boost again rejected (already active).
   a.emit("buyGuildBoost");
