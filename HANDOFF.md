@@ -1,6 +1,6 @@
 # Eternal Path — Handoff for Next Session
 
-Resume point after **Sprint 60** (guild leaderboard). Total: **139 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
+Resume point after **Sprint 61** (daily login streak). Total: **141 commits** on `master`, all pushed. Project chuẩn hoá **Node 24** (`.nvmrc`, engines >=24, Dockerfile node:24-alpine).
 
 ## TL;DR
 
@@ -40,6 +40,7 @@ docker compose up -d --build
 - **Marketplace (Sprint 58):** chợ đấu giá người chơi, hotkey M, modal 3 tab (Chợ/Bán/Của tôi). Rao item từ túi → item giữ escrow trên listing (rời túi); mua bằng vàng; **phí 5%** đốt (gold sink), người bán nhận net. Hủy tin → hoàn item. Bán khi seller offline → proceeds vào "mailbox" `collectPending`, cộng vàng lúc relog. Tối đa 8 tin/người. `MarketStore` persist `data/market.json` (escrow sống qua restart — đã test). Dev cheat `devGrantItem {name,rarity,value}` (chỉ khi `DEV_CHEATS=1`). E2E: `node smoke-market-test.mjs` (14 checks) + `smoke-market-persist.mjs`. Server test env cần `DEV_CHEATS=1` + `MARKET_SAVE_PATH`
 - **Marketplace v2 (Sprint 59):** tab Chợ có tìm theo tên + lọc theo loại (equip/consumable/material) + sort (featured/newest/price/rarity). Helper thuần `filterListings`/`sortListings` trong shared/marketplace.ts (unit-test được, không cần server). **Tin nổi bật** (`featureMarketListing`, 30💎/48h) ghim listing lên đầu chợ kèm ✨ — Gem sink mới. `marketView` sort featured-first server-side. E2E: `node smoke-market59-test.mjs` (9 unit helper + 5 e2e)
 - **Guild leaderboard (Sprint 60):** BXH guild toàn server, sort theo level desc → exp desc, top 20, hiện trong modal guild (cả khi chưa có guild) kèm 🥇🥈🥉 + highlight guild mình. `requestGuildLeaderboard` khi mở modal; auto broadcast sau mọi guild level-up. E2E: `node smoke-guild-rank-test.mjs` (7 checks)
+- **Daily login streak (Sprint 61):** lịch điểm danh 7 ngày, thưởng tăng dần (200g…ngày7 100💎 jackpot), ngày liên tiếp +1, lỡ 1 ngày reset về 1. Hotkey **L**. Logic chuỗi tách thành hàm thuần `computeStreakClaim`/`streakRewardFor`/`dateKeyAddDays` trong shared/dailyStreak.ts (unit-test kỹ theo ngày, không cần fake clock). Persist `loginStreak`+`streakLastClaimDate`. Tách biệt với daily-gem 20h và VIP daily. E2E: `node smoke-streak-test.mjs` (12 unit + 5 e2e)
 - **Mobile:** Virtual joystick + 5 action buttons (touch auto-detect)
 - **UX:** Minimap, hotkeys (I/C/K/N/V/H/G/J/B/?), Top banner notifications, collapse panels, skill cooldown sweep
 
@@ -56,6 +57,7 @@ docker compose up -d --build
 | Daily Gem (VIP) | +30/day | Stacks with above |
 | Guild Boost | 200 | 48h +10% EXP cho cả guild (Sprint 57) |
 | Featured listing | 30 | Ghim tin chợ lên đầu 48h (Sprint 59) |
+| Daily streak ngày 3/5/7 | faucet | +20/40/100 Gem theo chuỗi điểm danh (Sprint 61) |
 
 ## ⚠️ Cần làm tiếp (user sẽ chỉ đạo)
 
