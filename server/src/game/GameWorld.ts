@@ -698,8 +698,11 @@ export class GameWorld {
       socket.emit("chatHistory", this.chatMessages);
       this.emitFriendList(player);
       // Push guild roster to the player and refresh online flags for mates.
-      if (player.guildId) this.emitGuildUpdate(player.guildId);
-      else socket.emit("guildUpdate", null);
+      if (player.guildId) {
+        this.emitGuildUpdate(player.guildId);
+        const myGuild = guildStore.get(player.guildId);
+        if (myGuild?.motd) socket.emit("system", `📜 [${myGuild.tag}] ${myGuild.motd}`);
+      } else socket.emit("guildUpdate", null);
       // Send any in-progress guild raid so the player can join the fight.
       socket.emit("guildRaidUpdate", player.guildId ? this.guildRaidView(player.guildId) : null);
       // Collect any marketplace proceeds that accrued while offline.
