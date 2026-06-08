@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -68,7 +68,8 @@ export class Hud {
     private readonly onEquipPet: (petId: string | null) => void = () => {},
     private readonly onFeedPet: () => void = () => {},
     private readonly onPetTreat: () => void = () => {},
-    private readonly onBuyMysteryBox: () => void = () => {}
+    private readonly onBuyMysteryBox: () => void = () => {},
+    private readonly onBuyBagSlots: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -77,6 +78,7 @@ export class Hud {
     const muteButton = document.querySelector("#sound-toggle") as HTMLButtonElement;
     const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
     sellJunkButton.addEventListener("click", () => this.onSellJunk());
+    document.querySelector("#bag-expand-button")?.addEventListener("click", () => this.onBuyBagSlots());
     muteButton.addEventListener("click", () => {
       this.onToggleMuted();
       this.renderSoundToggle();
@@ -1710,7 +1712,18 @@ export class Hud {
 
   private renderInventory(): void {
     if (!this.player) return;
-    document.querySelector("#inventory-count")!.textContent = `${this.player.inventory.items.length} / ${INVENTORY_CAPACITY}`;
+    document.querySelector("#inventory-count")!.textContent = `${this.player.inventory.items.length} / ${bagCapacity(this.player.bagBonus)}`;
+    const bagBtn = document.querySelector<HTMLButtonElement>("#bag-expand-button");
+    if (bagBtn) {
+      const bonus = this.player.bagBonus ?? 0;
+      if (bonus >= BAG_MAX_BONUS) {
+        bagBtn.textContent = "Túi tối đa";
+        bagBtn.disabled = true;
+      } else {
+        bagBtn.textContent = `Mở rộng túi (+5 ô · ${bagUpgradeCost(bonus).toLocaleString("vi-VN")} 🪙)`;
+        bagBtn.disabled = this.player.stats.gold < bagUpgradeCost(bonus);
+      }
+    }
     const root = document.querySelector("#inventory")!;
     root.innerHTML = "";
     if (this.player.inventory.items.length === 0) {

@@ -43,6 +43,17 @@ export const MONSTER_ATTACK_RANGE = 36;
 export const PLAYER_ATTACK_COOLDOWN_MS = 650;
 export const MONSTER_ATTACK_COOLDOWN_MS = 1100;
 export const INVENTORY_CAPACITY = 30;
+// Bag-slot expansion (Sprint 77 gold sink): buy +5 slots per pack, max +30.
+export const BAG_SLOT_PACK = 5;
+export const BAG_MAX_BONUS = 30;
+/** Escalating gold cost for the next bag pack given the current bonus. */
+export function bagUpgradeCost(currentBonus: number): number {
+  const packsBought = Math.floor(Math.max(0, currentBonus) / BAG_SLOT_PACK);
+  return 3000 * (packsBought + 1);
+}
+export function bagCapacity(bagBonus: number | undefined): number {
+  return INVENTORY_CAPACITY + Math.max(0, Math.min(BAG_MAX_BONUS, bagBonus ?? 0));
+}
 export const POWER_STRIKE_COOLDOWN_MS = 4000;
 export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;

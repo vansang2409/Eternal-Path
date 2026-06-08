@@ -7,7 +7,10 @@ import {
   DEFAULT_AFK_ZONE,
   DEFAULT_EQUIPPED_SKILLS,
   DEFAULT_LEARNED_SKILLS,
-  INVENTORY_CAPACITY,
+  BAG_SLOT_PACK,
+  BAG_MAX_BONUS,
+  bagUpgradeCost,
+  bagCapacity,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -643,6 +646,7 @@ export class GameWorld {
         lastDailyClaimAt: saved.lastDailyClaimAt,
         loginStreak: saved.loginStreak ?? 0,
         streakLastClaimDate: saved.streakLastClaimDate,
+        bagBonus: saved.bagBonus ?? 0,
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -2036,6 +2040,26 @@ export class GameWorld {
       if (!this.grantPetXp(player, PET_TREAT_XP)) return;
       player.gems = gems - PET_TREAT_GEM_COST;
       socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    socket.on("buyBagSlots", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const bonus = player.bagBonus ?? 0;
+      if (bonus >= BAG_MAX_BONUS) {
+        socket.emit("system", "Túi đồ đã mở rộng tối đa.");
+        return;
+      }
+      const cost = bagUpgradeCost(bonus);
+      if (player.stats.gold < cost) {
+        socket.emit("system", `Cần ${cost.toLocaleString("vi-VN")} vàng để mở rộng túi (+${BAG_SLOT_PACK} ô).`);
+        return;
+      }
+      player.stats.gold -= cost;
+      player.bagBonus = bonus + BAG_SLOT_PACK;
+      socket.emit("player", player);
+      socket.emit("system", `🎒 Đã mở rộng túi đồ lên ${bagCapacity(player.bagBonus)} ô.`);
       this.markDirty(player);
     });
 
@@ -4168,7 +4192,7 @@ function rewardMultiplier(monster: MonsterState): number {
 }
 
 function isBagFull(player: PlayerState): boolean {
-  return player.inventory.items.length >= INVENTORY_CAPACITY;
+  return player.inventory.items.length >= bagCapacity(player.bagBonus);
 }
 
 function scatterAround(position: { x: number; y: number }): { x: number; y: number } {

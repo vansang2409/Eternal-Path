@@ -185,6 +185,8 @@ export interface PlayerState {
   // claim date (YYYY-MM-DD UTC).
   loginStreak?: number;
   streakLastClaimDate?: string;
+  /** Extra inventory slots bought with gold (Sprint 77). */
+  bagBonus?: number;
   // Active equippable title id (Sprint 62) — shown next to the name. Derived
   // titles are earned via stats; only the chosen one is persisted.
   activeTitle?: string;
@@ -515,6 +517,7 @@ export interface ClientToServerEvents {
   petTreat: () => void;
   buyMysteryBox: () => void;
   inspectPlayer: (payload: { name: string }) => void;
+  buyBagSlots: () => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;
