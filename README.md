@@ -1,6 +1,17 @@
-# 2D Browser MMORPG Prototype
+# Eternal Path (Linh Vực) — Browser MMORPG
 
-A small but playable old-school MMORPG prototype focused on the core loop: move, farm monsters, gain EXP, loot gear, level up, return to town, and repeat.
+A full-featured 2.5D isometric browser MMORPG. Core loop: move, farm monsters, gain EXP, loot/craft gear, level up — wrapped in deep social, progression, and monetization systems. Built to be commercially deployable.
+
+## Features
+
+- **Combat & world:** 2.5D isometric procedural world (200×150, 12 biomes), 24 monsters + 4 bosses, 16 skills × 3 ranks × 3 classes, status effects, day/night cycle, treasure chests, dungeons, PvP arena.
+- **Progression:** classes (Warrior/Mage/Ranger), talents, 21 quests, achievements (with rewards), equippable **titles**, set bonuses, enchanting.
+- **Pets:** 9 companions (gold/Gem), passive buffs, **leveling** (feed/treat) up to Lv5.
+- **Guild:** create/ranks/invite/kick/promote/MOTD, `/g` chat, `[TAG]` on names, **10-level progression** (donate gold), guild-wide EXP/gold perks, **Gem boost**, **guild bank** (deposit/withdraw), **co-op raid boss**, global **guild leaderboard**, disband.
+- **Economy:** player **marketplace/auction house** (escrow, 5% tax sink, search/filter/sort, Gem-featured listings), **mystery box gacha**, Gem→Gold exchange, buy bag slots, sell-all-materials. See `ECONOMY.md` for the full faucet/sink audit.
+- **Retention/social:** daily login **streak** calendar, daily Gem, friends + private msg + **online notifications**, `/inspect` player profiles.
+- **Monetization:** Gem premium currency, cosmetic shop (12 skins/FX), Battle Pass, VIP (3 tiers), Guild Boost, pet treats, gacha, featured listings, gold/EXP boosters. (No real payment gateway wired yet — see `HANDOFF.md`.)
+- **Mobile:** virtual joystick + touch action buttons.
 
 ## Tech
 
@@ -79,6 +90,14 @@ If PostgreSQL is unavailable, the server still runs with in-memory save data so 
 - Return to town to regenerate HP
 - Loot and gold are added automatically when a monster dies
 - Click inventory items to equip gear, or drag them onto equipment slots
+
+### Hotkeys & chat commands
+
+- Panels: `I` inventory · `C` equipment · `K` skills · `N` quests · `V` achievements · `H` shop · `G` AFK · `J` forge · `B` leaderboard · `U` guild · `M` market · `L` daily streak · `T` titles · `P` pets · `?` help · `Esc` close
+- Combat: `Q W E R` skills · `F` potion · `Shift` sprint
+- Chat: `/w <name> <msg>` whisper · `/friend` `/unfriend` · `/g <msg>` guild chat · `/ginvite` `/gaccept` · `/inspect <name>` profile · `/me` `/help` `/clear`
+
+For the full system catalog and resume notes see `HANDOFF.md`; for the economy balance audit see `ECONOMY.md`. Run all server e2e smoke tests with `node run-smoke.mjs`.
 - Click equipped items to unequip
 - Use the chat box for global chat
 
