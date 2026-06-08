@@ -1263,6 +1263,10 @@ export class GameScene extends Phaser.Scene {
     const seenGroundItems = new Set<string>();
     for (const groundItem of snapshot.groundItems) {
       seenGroundItems.add(groundItem.id);
+      // Shiny drop beam for newly-appearing rare/epic loot (anime flourish).
+      if (!this.groundItems.has(groundItem.id) && groundItem.item.rarity !== "common") {
+        this.playLootBeam(groundItem.position, groundItem.item.rarity);
+      }
       this.renderGroundItem(groundItem);
     }
     for (const [id, sprite] of this.groundItems) {
@@ -1715,6 +1719,23 @@ export class GameScene extends Phaser.Scene {
         ring.destroy();
       }
     });
+  }
+
+  // Shiny drop: a rising light beam + sparkles when rare/epic loot appears.
+  private playLootBeam(position: Vec2, rarity: "rare" | "epic"): void {
+    const iso = worldToIso(position.x, position.y);
+    const color = rarity === "epic" ? 0xd98cff : 0x69a7ff;
+    const beam = this.add.rectangle(iso.x, iso.y, rarity === "epic" ? 14 : 10, 80, color, 0.5)
+      .setOrigin(0.5, 1).setDepth(iso.y - 1);
+    this.tweens.add({ targets: beam, alpha: 0, scaleX: 0.3, duration: 700, ease: "Quad.Out", onComplete: () => beam.destroy() });
+    const ring = this.add.ellipse(iso.x, iso.y + 4, 16, 8).setStrokeStyle(2, color, 0.95).setDepth(iso.y - 1);
+    this.tweens.add({ targets: ring, scaleX: 2.6, scaleY: 2.6, alpha: 0, duration: 560, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    const n = rarity === "epic" ? 8 : 5;
+    for (let i = 0; i < n; i += 1) {
+      const sx = iso.x + (Math.random() - 0.5) * 22;
+      const star = this.add.circle(sx, iso.y, 2, 0xffffff, 0.95).setDepth(99999);
+      this.tweens.add({ targets: star, y: iso.y - 30 - Math.random() * 26, alpha: 0, duration: 600 + Math.random() * 200, ease: "Quad.Out", onComplete: () => star.destroy() });
+    }
   }
 
   // One small lingering particle for an active status effect (Sprint 97).
