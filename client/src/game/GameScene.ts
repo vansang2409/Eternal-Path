@@ -61,6 +61,7 @@ export class GameScene extends Phaser.Scene {
   private statusFxAt = new Map<string, number>();
   private lowHpOverlay?: Phaser.GameObjects.Rectangle;
   private lowHpPulse = 0;
+  private lastDustAt = 0;
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
@@ -262,6 +263,15 @@ export class GameScene extends Phaser.Scene {
     this.updateAmbient(delta);
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
+    // Footstep dust puffs while moving (anime grounding).
+    if (moving && time - this.lastDustAt > 170) {
+      this.lastDustAt = time;
+      const self = this.players.get(this.selfId);
+      if (self) {
+        const puff = this.add.ellipse(self.x + (Math.random() - 0.5) * 8, self.y + 6, 9, 4, 0xcdbfa0, 0.5).setDepth(self.depth - 1);
+        this.tweens.add({ targets: puff, scaleX: 2, scaleY: 2, alpha: 0, duration: 360, ease: "Quad.Out", onComplete: () => puff.destroy() });
+      }
+    }
     if (input.sprinting && moving && time - this.lastAfterimageAt > 70) {
       this.lastAfterimageAt = time;
       const self = this.players.get(this.selfId);
