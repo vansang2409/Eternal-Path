@@ -13,6 +13,8 @@ import {
   getMonsterDefinition,
   getPet,
   isWalkableTile,
+  isVipActive,
+  isGoldBoostActive,
   titleLabel
 } from "@mmorpg/shared";
 import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, SkillId, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
@@ -56,6 +58,7 @@ export class GameScene extends Phaser.Scene {
   private playerBars = new Map<string, Phaser.GameObjects.Graphics>();
   private playerEquipment = new Map<string, Phaser.GameObjects.Graphics>();
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
+  private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private lastAfterimageAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -1238,6 +1241,8 @@ export class GameScene extends Phaser.Scene {
         this.playerEquipment.delete(id);
         this.petSprites.get(id)?.destroy();
         this.petSprites.delete(id);
+        this.playerAuras.get(id)?.destroy();
+        this.playerAuras.delete(id);
       }
     }
 
@@ -1483,6 +1488,24 @@ export class GameScene extends Phaser.Scene {
     this.drawPlayerBar(player, ip3);
     this.drawPlayerEquipment(player, ip3, facing);
     this.updatePetSprite(player, ip3);
+    this.updatePlayerAura(player, ip3);
+  }
+
+  // Pulsing golden ground aura under players with an active buff (VIP / gold
+  // boost) so power-ups read at a glance (Sprint 101).
+  private updatePlayerAura(player: PlayerState, position: Vec2): void {
+    const buffed = isVipActive(player.vipUntil) || isGoldBoostActive(player.goldBoostUntil);
+    let aura = this.playerAuras.get(player.id);
+    if (!buffed) {
+      if (aura) { aura.destroy(); this.playerAuras.delete(player.id); }
+      return;
+    }
+    if (!aura) {
+      aura = this.add.ellipse(position.x, position.y + 8, 30, 14, 0xffd166, 0.3);
+      this.playerAuras.set(player.id, aura);
+    }
+    const pulse = 0.22 + 0.16 * (0.5 + 0.5 * Math.sin(this.time.now / 260));
+    aura.setPosition(position.x, position.y + 8).setDepth(position.y - 2).setAlpha(pulse);
   }
 
   /** Small companion orb that trails the player when a pet is equipped. */
