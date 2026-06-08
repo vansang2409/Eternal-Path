@@ -45,9 +45,13 @@ import {
   guildExpProgress,
   isGuildBoostActive,
   MARKET_MAX_LISTINGS_PER_SELLER,
+  MARKET_FEATURE_GEM_COST,
+  MARKET_FEATURE_DURATION_MS,
   marketTax,
   marketNet,
   sanitizeMarketPrice,
+  isMarketFeatured,
+  sortListings,
   DAILY_CLAIM_INTERVAL_MS,
   DAILY_GEM_REWARD,
   MATERIAL_CATALOG,
@@ -1480,6 +1484,32 @@ export class GameWorld {
       player.inventory.items.push(listing.item);
       socket.emit("player", player);
       socket.emit("system", `Đã gỡ tin rao và nhận lại ${listing.item.name}.`);
+      this.markDirty(player);
+      this.broadcastMarket();
+    });
+
+    socket.on("featureMarketListing", ({ listingId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const listing = marketStore.get(listingId);
+      if (!listing || listing.sellerName !== player.accountName) {
+        socket.emit("system", "Không tìm thấy tin rao của bạn.");
+        return;
+      }
+      if (isMarketFeatured(listing.featuredUntil)) {
+        socket.emit("system", "Tin này đang được làm nổi bật rồi.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < MARKET_FEATURE_GEM_COST) {
+        socket.emit("system", `Cần ${MARKET_FEATURE_GEM_COST} 💎 để làm nổi bật tin (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - MARKET_FEATURE_GEM_COST;
+      listing.featuredUntil = Date.now() + MARKET_FEATURE_DURATION_MS;
+      marketStore.markDirty();
+      socket.emit("player", player);
+      socket.emit("system", `✨ Đã ghim ${listing.item.name} lên đầu chợ trong 48h.`);
       this.markDirty(player);
       this.broadcastMarket();
     });
@@ -2932,14 +2962,19 @@ export class GameWorld {
     this.emitGuildUpdate(guild.id);
   }
 
-  // ── Marketplace (Sprint 58) ─────────────────────────────────────────
-  /** Listings as seen by a given viewer (flags their own + shows net/tax). */
+  // ── Marketplace (Sprint 58/59) ──────────────────────────────────────
+  /** Listings as seen by a given viewer (flags their own + featured/net/tax). */
   private marketView(viewerName: string): MarketListingView[] {
-    return marketStore.all().map((l) => ({
+    const now = Date.now();
+    // Server sends featured-first/newest as the default order; the client can
+    // re-sort/filter locally for the browse tab.
+    const ordered = sortListings(marketStore.all(), "featured", now);
+    return ordered.map((l) => ({
       ...l,
       mine: l.sellerName === viewerName,
       net: marketNet(l.price),
-      tax: marketTax(l.price)
+      tax: marketTax(l.price),
+      featured: isMarketFeatured(l.featuredUntil, now)
     }));
   }
 

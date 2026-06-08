@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, filterListings, sortListings, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -21,6 +21,9 @@ export class Hud {
   private pendingGuildInvite?: GuildInvitePayload;
   private market: MarketListingView[] = [];
   private marketTab: "browse" | "sell" | "mine" = "browse";
+  private marketQuery = "";
+  private marketKind: MarketKindFilter = "all";
+  private marketSort: MarketSortKey = "featured";
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
@@ -947,6 +950,7 @@ export class Hud {
     list: (itemId: string, price: number) => void;
     buy: (listingId: string) => void;
     cancel: (listingId: string) => void;
+    feature: (listingId: string) => void;
     refresh: () => void;
   };
 
@@ -1002,14 +1006,30 @@ export class Hud {
   }
 
   private renderMarketBrowse(listings: MarketListingView[]): string {
-    if (listings.length === 0) return `<p style="color:#8e9192;text-align:center;padding:24px">Chợ đang trống. Hãy là người đầu tiên rao bán!</p>`;
     const gold = this.player?.stats.gold ?? 0;
-    const rows = listings
+    const kindOpt = (v: MarketKindFilter, label: string) => `<option value="${v}" ${this.marketKind === v ? "selected" : ""}>${label}</option>`;
+    const sortOpt = (v: MarketSortKey, label: string) => `<option value="${v}" ${this.marketSort === v ? "selected" : ""}>${label}</option>`;
+    const controls = `
+      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <input id="market-search" type="text" placeholder="🔎 Tìm theo tên..." value="${escapeHtml(this.marketQuery)}" style="flex:2;min-width:120px;padding:6px 8px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1" />
+        <select id="market-kind" style="flex:1;min-width:96px;padding:6px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1">
+          ${kindOpt("all", "Tất cả loại")}${kindOpt("equipment", "Trang bị")}${kindOpt("consumable", "Tiêu hao")}${kindOpt("material", "Nguyên liệu")}
+        </select>
+        <select id="market-sort" style="flex:1;min-width:96px;padding:6px;background:#101820;border:1px solid #39424b;border-radius:4px;color:#f1f1f1">
+          ${sortOpt("featured", "Nổi bật")}${sortOpt("newest", "Mới nhất")}${sortOpt("priceAsc", "Giá ↑")}${sortOpt("priceDesc", "Giá ↓")}${sortOpt("rarity", "Độ hiếm")}
+        </select>
+      </div>`;
+    const shown = sortListings(filterListings(listings, this.marketQuery, this.marketKind), this.marketSort);
+    if (listings.length === 0) return `${controls}<p style="color:#8e9192;text-align:center;padding:24px">Chợ đang trống. Hãy là người đầu tiên rao bán!</p>`;
+    if (shown.length === 0) return `${controls}<p style="color:#8e9192;text-align:center;padding:24px">Không có tin nào khớp bộ lọc.</p>`;
+    const rows = shown
       .map((l) => {
         const afford = gold >= l.price;
-        return `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-left:3px solid currentColor;border-radius:5px">
+        const featBadge = l.featured ? `<span title="Tin nổi bật" style="color:#ffd166">✨ </span>` : "";
+        const featBorder = l.featured ? "border:1px solid rgba(255,209,102,0.55);box-shadow:0 0 6px rgba(255,209,102,0.2)" : "border:1px solid #2a2a2a";
+        return `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);${featBorder};border-left:3px solid currentColor;border-radius:5px">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;color:#f1f1f1">${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
+            <div style="font-weight:700;color:#f1f1f1">${featBadge}${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
             <div style="font-size:11px;color:#9aa">${escapeHtml(this.itemSummary(l.item))}</div>
             <div style="font-size:11px;color:#8e9192">Người bán: ${escapeHtml(l.sellerName)}</div>
           </div>
@@ -1020,7 +1040,7 @@ export class Hud {
         </div>`;
       })
       .join("");
-    return `<div style="max-height:360px;overflow-y:auto">${rows}</div>`;
+    return `${controls}<div style="max-height:320px;overflow-y:auto">${rows}</div>`;
   }
 
   private renderMarketSell(): string {
@@ -1044,13 +1064,14 @@ export class Hud {
   private renderMarketMine(mine: MarketListingView[]): string {
     if (mine.length === 0) return `<p style="color:#8e9192;text-align:center;padding:24px">Bạn chưa rao bán món nào.</p>`;
     const rows = mine
-      .map((l) => `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-left:3px solid currentColor;border-radius:5px">
+      .map((l) => `<div class="${rarityClass[l.item.rarity]}" style="display:flex;align-items:center;gap:10px;padding:9px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid ${l.featured ? "rgba(255,209,102,0.55)" : "#2a2a2a"};border-left:3px solid currentColor;border-radius:5px">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:700;color:#f1f1f1">${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
+            <div style="font-weight:700;color:#f1f1f1">${l.featured ? "✨ " : ""}${escapeHtml(l.item.name)} <small style="color:#8e9192;font-weight:400">(${l.item.rarity})</small></div>
             <div style="font-size:11px;color:#9aa">Bán được nhận: ${l.net.toLocaleString("vi-VN")} 🪙 (sau phí ${l.tax.toLocaleString("vi-VN")})</div>
           </div>
           <div style="text-align:right;white-space:nowrap">
             <div style="color:#ffd166;font-weight:700;margin-bottom:4px">${l.price.toLocaleString("vi-VN")} 🪙</div>
+            ${l.featured ? `<span style="display:inline-block;padding:5px 10px;margin-right:4px;color:#ffd166;font-size:11px">✨ Đang nổi bật</span>` : `<button type="button" data-market-feature="${l.id}" title="Ghim lên đầu chợ 48h" style="padding:5px 10px;margin-right:4px;border:1px solid #c8a948;border-radius:4px;color:#ffd166;background:rgba(255,209,102,0.1);cursor:pointer">✨ ${MARKET_FEATURE_GEM_COST}💎</button>`}
             <button type="button" data-market-cancel="${l.id}" style="padding:5px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Gỡ</button>
           </div>
         </div>`)
@@ -1078,6 +1099,29 @@ export class Hud {
         if (price < 1) { this.log("Nhập giá hợp lệ để rao bán.", "log-line"); return; }
         this.marketHandlers?.list(id, price);
       });
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-market-feature]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const l = this.market.find((x) => x.id === btn.dataset.marketFeature);
+        if (l && window.confirm(`Ghim "${l.item.name}" lên đầu chợ trong 48h với ${MARKET_FEATURE_GEM_COST} 💎?`)) this.marketHandlers?.feature(l.id);
+      });
+    });
+    // Browse filters: update state then re-render. The search box keeps focus
+    // across the re-render so typing isn't interrupted.
+    const search = body.querySelector<HTMLInputElement>("#market-search");
+    search?.addEventListener("input", () => {
+      this.marketQuery = search.value;
+      this.renderMarketModal();
+      const next = document.querySelector<HTMLInputElement>("#market-search");
+      if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+    });
+    body.querySelector<HTMLSelectElement>("#market-kind")?.addEventListener("change", (e) => {
+      this.marketKind = (e.target as HTMLSelectElement).value as MarketKindFilter;
+      this.renderMarketModal();
+    });
+    body.querySelector<HTMLSelectElement>("#market-sort")?.addEventListener("change", (e) => {
+      this.marketSort = (e.target as HTMLSelectElement).value as MarketSortKey;
+      this.renderMarketModal();
     });
   }
 

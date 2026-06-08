@@ -162,6 +162,7 @@ export class GameScene extends Phaser.Scene {
       list: (itemId, price) => this.socket.emit("listMarketItem", { itemId, price }),
       buy: (listingId) => this.socket.emit("buyMarketItem", { listingId }),
       cancel: (listingId) => this.socket.emit("cancelMarketListing", { listingId }),
+      feature: (listingId) => this.socket.emit("featureMarketListing", { listingId }),
       refresh: () => this.socket.emit("requestMarket")
     });
     this.socket.on("marketUpdate", (listings) => this.hud.setMarket(listings));

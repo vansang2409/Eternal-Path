@@ -108,6 +108,8 @@ export interface MarketListing {
   item: Item;
   price: number;
   listedAt: number;
+  /** Timestamp (ms) the Gem-paid "featured" pin expires (Sprint 59). */
+  featuredUntil?: number;
 }
 
 /** Listing as shown to a client, flagged if it belongs to the viewer. */
@@ -115,6 +117,7 @@ export interface MarketListingView extends MarketListing {
   mine: boolean;
   net: number;
   tax: number;
+  featured: boolean;
 }
 
 /** Gold owed to an offline seller from sales, collected on next login. */
@@ -486,6 +489,7 @@ export interface ClientToServerEvents {
   listMarketItem: (payload: { itemId: string; price: number }) => void;
   buyMarketItem: (payload: { listingId: string }) => void;
   cancelMarketListing: (payload: { listingId: string }) => void;
+  featureMarketListing: (payload: { listingId: string }) => void;
   dropItem: (payload: { itemId: string }) => void;
   pickupGroundItem: (payload: { groundItemId: string }) => void;
   chatMessage: (payload: ChatPayload) => void;
