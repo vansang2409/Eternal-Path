@@ -56,6 +56,9 @@ import {
   DAILY_GEM_REWARD,
   computeStreakClaim,
   dateKey,
+  earnedTitles,
+  isTitleEarned,
+  titleLabel,
   MATERIAL_CATALOG,
   RECIPES,
   classCanLearnSkill,
@@ -611,6 +614,7 @@ export class GameWorld {
         lastDailyClaimAt: saved.lastDailyClaimAt,
         loginStreak: saved.loginStreak ?? 0,
         streakLastClaimDate: saved.streakLastClaimDate,
+        activeTitle: saved.activeTitle,
         battlePassExp: saved.battlePassExp ?? 0,
         battlePassLevel: saved.battlePassLevel ?? 0,
         battlePassPremium: saved.battlePassPremium ?? false,
@@ -656,6 +660,7 @@ export class GameWorld {
         this.markDirty(player);
       }
       socket.emit("marketUpdate", this.marketView(player.accountName));
+      socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
     });
 
@@ -1697,6 +1702,33 @@ export class GameWorld {
         `📅 Điểm danh ngày ${((result.newStreak - 1) % 7) + 1} (chuỗi ${result.newStreak}): nhận ${result.reward.label}.`
       );
       if (result.reward.gold > 0) this.emitFloating(player.id, player.position, result.reward.gold, "loot", `+${result.reward.gold} gold`);
+      this.markDirty(player);
+    });
+
+    socket.on("requestTitles", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
+    });
+
+    socket.on("setActiveTitle", ({ titleId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (titleId === null) {
+        player.activeTitle = undefined;
+        socket.emit("player", player);
+        socket.emit("titlesUpdate", { earned: earnedTitles(player), active: undefined });
+        this.markDirty(player);
+        return;
+      }
+      if (!isTitleEarned(titleId, player)) {
+        socket.emit("system", "Bạn chưa mở khoá danh hiệu này.");
+        return;
+      }
+      player.activeTitle = titleId;
+      socket.emit("player", player);
+      socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
+      socket.emit("system", `Đã gắn danh hiệu «${titleLabel(titleId)}».`);
       this.markDirty(player);
     });
 

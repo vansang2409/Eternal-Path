@@ -13,3 +13,4 @@ export * from "./vip.js";
 export * from "./guild.js";
 export * from "./marketplace.js";
 export * from "./dailyStreak.js";
+export * from "./titles.js";

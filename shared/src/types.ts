@@ -183,6 +183,9 @@ export interface PlayerState {
   // claim date (YYYY-MM-DD UTC).
   loginStreak?: number;
   streakLastClaimDate?: string;
+  // Active equippable title id (Sprint 62) — shown next to the name. Derived
+  // titles are earned via stats; only the chosen one is persisted.
+  activeTitle?: string;
   // Battle pass progression for the current season.
   battlePassExp?: number;
   battlePassLevel?: number;
@@ -437,6 +440,7 @@ export interface ServerToClientEvents {
   guildChatMessage: (payload: GuildChatPayload) => void;
   guildLeaderboard: (payload: GuildLeaderboardRow[]) => void;
   marketUpdate: (payload: MarketListingView[]) => void;
+  titlesUpdate: (payload: { earned: string[]; active?: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -474,6 +478,8 @@ export interface ClientToServerEvents {
   equipCosmetic: (payload: { cosmeticId: string | null }) => void;
   claimDailyReward: () => void;
   claimLoginStreak: () => void;
+  requestTitles: () => void;
+  setActiveTitle: (payload: { titleId: string | null }) => void;
   buyBattlePassPremium: () => void;
   claimBattlePassTier: (payload: { tier: number; track: "free" | "premium" }) => void;
   addFriend: (payload: { name: string }) => void;

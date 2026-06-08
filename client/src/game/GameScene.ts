@@ -11,7 +11,8 @@ import {
   WORLD_WIDTH,
   clampToWorld,
   getMonsterDefinition,
-  isWalkableTile
+  isWalkableTile,
+  titleLabel
 } from "@mmorpg/shared";
 import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, SkillId, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
@@ -172,6 +173,12 @@ export class GameScene extends Phaser.Scene {
       refresh: () => this.socket.emit("requestMarket")
     });
     this.socket.on("marketUpdate", (listings) => this.hud.setMarket(listings));
+    this.hud.setTitleHandler((titleId) => this.socket.emit("setActiveTitle", { titleId }));
+    this.socket.on("titlesUpdate", ({ earned, active }) => this.hud.setTitles(earned, active));
+    document.querySelectorAll<HTMLButtonElement>(".toolbar-btn[data-modal='titles-modal']").forEach((btn) => {
+      btn.addEventListener("click", () => this.socket.emit("requestTitles"));
+    });
+    window.addEventListener("hotkey-titles", () => this.socket.emit("requestTitles"));
 
     this.cursors = this.input.keyboard!.addKeys("F,Q,W,E,R,SHIFT") as Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
     this.setupLoginForm();
@@ -1364,9 +1371,14 @@ export class GameScene extends Phaser.Scene {
     this.drawPlayerEquipment(player, ip3, facing);
   }
 
-  /** Name label text: guild tag prefix when the player belongs to a guild. */
+  /** Name label text: optional title + guild tag prefix before the name. */
   private displayName(player: PlayerState): string {
-    return player.guildTag ? `[${player.guildTag}] ${player.accountName}` : player.accountName;
+    const title = titleLabel(player.activeTitle);
+    const parts: string[] = [];
+    if (title) parts.push(`«${title}»`);
+    if (player.guildTag) parts.push(`[${player.guildTag}]`);
+    parts.push(player.accountName);
+    return parts.join(" ");
   }
 
   private drawPlayerEquipment(player: PlayerState, position: Vec2, facing: Direction): void {

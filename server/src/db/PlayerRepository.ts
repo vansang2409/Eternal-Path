@@ -33,6 +33,7 @@ interface SavedPlayer {
   lastDailyClaimAt?: number;
   loginStreak?: number;
   streakLastClaimDate?: string;
+  activeTitle?: string;
   battlePassExp?: number;
   battlePassLevel?: number;
   battlePassPremium?: boolean;
@@ -265,6 +266,7 @@ export class PlayerRepository {
       lastDailyClaimAt: player.lastDailyClaimAt,
       loginStreak: player.loginStreak,
       streakLastClaimDate: player.streakLastClaimDate,
+      activeTitle: player.activeTitle,
       battlePassExp: player.battlePassExp,
       battlePassLevel: player.battlePassLevel,
       battlePassPremium: player.battlePassPremium,

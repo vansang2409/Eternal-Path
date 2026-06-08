@@ -168,6 +168,7 @@
         <button class="toolbar-btn" type="button" data-modal="guild-modal" title="Guild (U)" aria-label="Guild"><i class="material-symbols-outlined">castle</i></button>
         <button class="toolbar-btn" type="button" data-modal="market-modal" title="Chợ (M)" aria-label="Chợ"><i class="material-symbols-outlined">storefront</i></button>
         <button class="toolbar-btn" type="button" data-modal="streak-modal" title="Điểm danh (L)" aria-label="Điểm danh"><i class="material-symbols-outlined">calendar_month</i></button>
+        <button class="toolbar-btn" type="button" data-modal="titles-modal" title="Danh hiệu (T)" aria-label="Danh hiệu"><i class="material-symbols-outlined">military_tech</i></button>
         <button class="toolbar-btn" type="button" data-modal="help-modal" title="Hướng dẫn" aria-label="Hướng dẫn"><i class="material-symbols-outlined">help</i></button>
         <button class="toolbar-btn" type="button" data-modal="settings-modal" title="Cài đặt" aria-label="Cài đặt"><i class="material-symbols-outlined">settings</i></button>
       </div>
@@ -276,6 +277,18 @@
           </header>
           <div class="game-modal-body">
             <div id="streak-body"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="titles-modal" class="game-modal hidden" role="dialog" aria-modal="true">
+        <div class="game-modal-card">
+          <header>
+            <h2>🎖️ Danh Hiệu</h2>
+            <button class="modal-close" type="button" aria-label="Đóng">×</button>
+          </header>
+          <div class="game-modal-body">
+            <div id="titles-body"></div>
           </div>
         </div>
       </div>
@@ -390,6 +403,10 @@
               <p><b>Lên cấp Guild:</b> thành viên <b>góp vàng</b> để tích EXP guild (1 vàng = 1 EXP, tối đa Lv 10). Mỗi cấp +2% EXP &amp; +2% vàng cho <b>toàn bộ</b> thành viên và mở thêm slot (Lv10 = +18%, 30 người). Hội Trưởng/Sĩ Quan mua <b>⚡ Guild Boost</b> (200 💎) cho cả guild +10% EXP trong 48h. Bảng góp vàng hiển thị đóng góp từng người.</p>
             </div>
             <div class="help-section">
+              <h3>🎖️ Danh Hiệu</h3>
+              <p>Nhấn <b>T</b> mở Danh hiệu. Mở khoá theo thành tích (cấp độ, số quái hạ, vàng, vào guild, VIP, chuỗi điểm danh, sưu tầm cosmetic) và <b>gắn</b> một danh hiệu để hiện «...» cạnh tên cho mọi người thấy.</p>
+            </div>
+            <div class="help-section">
               <h3>📅 Điểm Danh Hằng Ngày</h3>
               <p>Nhấn <b>L</b> mở lịch điểm danh. Mỗi ngày bấm nhận thưởng (vàng/Gem) tăng dần theo chuỗi 7 ngày, ngày 7 thưởng lớn nhất (100 💎). <b>Lỡ một ngày sẽ về lại ngày 1</b> — nhớ vào mỗi ngày nhé. Khác với thưởng 20h (nút trong VIP/daily) và quyền lợi VIP.</p>
             </div>
@@ -404,7 +421,7 @@
             <div class="help-section">
               <h3>⌨️ Phím tắt</h3>
               <p>
-                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>U</b> Guild · <b>M</b> Chợ · <b>L</b> Điểm danh · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
+                <b>I</b> Túi đồ · <b>C</b> Trang bị · <b>K</b> Kỹ năng · <b>N</b> Nhiệm vụ · <b>V</b> Thành tựu · <b>H</b> Cửa hàng · <b>G</b> AFK · <b>J</b> Lò Rèn · <b>B</b> Bảng Vinh Danh · <b>U</b> Guild · <b>M</b> Chợ · <b>L</b> Điểm danh · <b>T</b> Danh hiệu · <b>?</b> Hướng dẫn · <b>ESC</b> Đóng tất cả modal.
               </p>
               <p>
                 <b>Shift</b> chạy nhanh (tốn thể lực) · <b>F</b> dùng bình máu · <b>Q W E R</b> dùng skill · <b>Click phải</b> đi tới vị trí · <b>Click trái</b> chọn target / nhặt loot.

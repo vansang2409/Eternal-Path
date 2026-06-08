@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, INVENTORY_CAPACITY, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, STREAK_REWARDS, canClaimStreakToday, filterListings, sortListings, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -20,6 +20,8 @@ export class Hud {
   private guild: GuildView | null = null;
   private pendingGuildInvite?: GuildInvitePayload;
   private guildRanking: GuildLeaderboardRow[] = [];
+  private earnedTitleIds: string[] = [];
+  private onSetTitle?: (titleId: string | null) => void;
   private market: MarketListingView[] = [];
   private marketTab: "browse" | "sell" | "mine" = "browse";
   private marketQuery = "";
@@ -121,6 +123,7 @@ export class Hud {
       u: "guild-modal",         // 'u' for guild/union
       m: "market-modal",        // 'm' for market/chợ
       l: "streak-modal",        // 'l' for login/điểm danh
+      t: "titles-modal",        // 't' for titles/danh hiệu
       "?": "help-modal"
     };
     window.addEventListener("keydown", (event) => {
@@ -147,6 +150,7 @@ export class Hud {
       if (!isOpen && modalId === "arena-modal") window.dispatchEvent(new CustomEvent("hotkey-arena"));
       if (!isOpen && modalId === "market-modal") window.dispatchEvent(new CustomEvent("hotkey-market"));
       if (!isOpen && modalId === "guild-modal") window.dispatchEvent(new CustomEvent("hotkey-guild"));
+      if (!isOpen && modalId === "titles-modal") window.dispatchEvent(new CustomEvent("hotkey-titles"));
     });
     this.setParty(null);
     this.renderSoundToggle();
@@ -181,7 +185,9 @@ export class Hud {
     this.updateClassModal(player);
     const classLabel = player.playerClass ? ` [${CLASS_CATALOG[player.playerClass].name}]` : "";
     const vipBadge = isVipActive(player.vipUntil) ? " 🌟" : "";
-    document.querySelector("#player-name")!.textContent = `${player.accountName}${vipBadge}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
+    const titleText = titleLabel(player.activeTitle);
+    const titlePrefix = titleText ? `«${titleText}» ` : "";
+    document.querySelector("#player-name")!.textContent = `${titlePrefix}${player.accountName}${vipBadge}${classLabel} - ${t("levelShort")} ${player.stats.level}`;
     setBar("#hp-fill", "#hp-label", player.stats.hp, player.stats.maxHp, t("hp"));
     setBar("#exp-fill", "#exp-label", player.stats.exp, expToNextLevel(player.stats.level), t("exp"));
     const maxStam = player.stats.maxStamina ?? 100;
@@ -226,6 +232,7 @@ export class Hud {
     this.renderGuildModal();
     this.renderMarketModal();
     this.renderStreakModal();
+    this.renderTitlesModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
     if (!Array.isArray(player.learnedSkills)) player.learnedSkills = [];
@@ -836,6 +843,46 @@ export class Hud {
   setGuildRanking(rows: GuildLeaderboardRow[]): void {
     this.guildRanking = rows;
     this.renderGuildModal();
+  }
+
+  // ----- Titles (Sprint 62) -----
+  setTitleHandler(handler: (titleId: string | null) => void): void {
+    this.onSetTitle = handler;
+  }
+
+  setTitles(earned: string[], active: string | undefined): void {
+    this.earnedTitleIds = earned;
+    if (this.player) this.player.activeTitle = active;
+    this.renderTitlesModal();
+  }
+
+  private renderTitlesModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#titles-body");
+    if (!body) return;
+    const active = this.player?.activeTitle;
+    const earned = new Set(this.earnedTitleIds);
+    const cards = TITLES.map((t) => {
+      const got = earned.has(t.id);
+      const isActive = active === t.id;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;border-radius:6px;background:${isActive ? "rgba(255,209,102,0.14)" : "rgba(28,28,28,0.5)"};border:1px solid ${isActive ? "#ffd166" : got ? "#39424b" : "#2a2a2a"};opacity:${got ? "1" : "0.5"}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:${got ? "#ffd166" : "#8e9192"}">«${escapeHtml(t.label)}»${isActive ? " ✓" : ""}</div>
+          <div style="font-size:11px;color:#9aa">${escapeHtml(t.desc)}</div>
+        </div>
+        ${got
+          ? (isActive
+              ? `<button type="button" data-title-set="" style="padding:5px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Bỏ gắn</button>`
+              : `<button type="button" data-title-set="${t.id}" style="padding:5px 12px;border:none;border-radius:4px;font-weight:700;color:#1d1500;background:linear-gradient(to bottom,#ffd166,#c8a948);cursor:pointer">Gắn</button>`)
+          : `<span style="font-size:11px;color:#8e9192">🔒 Chưa đạt</span>`}
+      </div>`;
+    }).join("");
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Danh hiệu mở khoá theo thành tích và hiển thị cạnh tên bạn. Mở khoá: ${earned.size}/${TITLES.length}.</p>${cards}`;
+    body.querySelectorAll<HTMLButtonElement>("[data-title-set]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.titleSet;
+        this.onSetTitle?.(id ? id : null);
+      });
+    });
   }
 
   /** Top-guild ranking block, shown in both guild states. */
