@@ -1903,12 +1903,21 @@ export class Hud {
     if (!this.player) return;
     const root = document.querySelector("#equipment")!;
     root.innerHTML = "";
+    // Sprint 175: gear power summary — total enhancement (+N) + equipped count.
+    const equippedItems = (["weapon", "helmet", "armor", "boots", "ring"] as const)
+      .map((s) => this.player!.inventory.equipped[s]).filter((it): it is NonNullable<typeof it> => !!it);
+    const totalPlus = equippedItems.reduce((sum, it) => sum + (it.kind === "equipment" ? (it.plusLevel ?? 0) : 0), 0);
+    const summary = document.createElement("div");
+    summary.style.cssText = "display:flex;justify-content:space-between;font-size:11px;color:#9be7a8;margin-bottom:6px;padding:3px 4px;border-bottom:1px solid #232838";
+    summary.innerHTML = `<span>⚒️ Sức mạnh: <strong style="color:#ffd166">+${totalPlus}</strong></span><span>${equippedItems.length}/5 ô</span>`;
+    root.append(summary);
     for (const slot of ["weapon", "helmet", "armor", "boots", "ring"] as const) {
       const item = this.player.inventory.equipped[slot];
+      const plusBadge = item && item.kind === "equipment" && item.plusLevel ? ` <span style="color:#ffd166;font-size:10px">+${item.plusLevel}</span>` : "";
       const row = document.createElement("div");
       row.className = "slot";
       row.dataset.slot = slot;
-      row.innerHTML = `<span>${t(slot)}</span><strong><i class="material-symbols-outlined">${item ? materialIcon(item.slot) : materialIcon(slot)}</i></strong>`;
+      row.innerHTML = `<span>${t(slot)}${plusBadge}</span><strong><i class="material-symbols-outlined">${item ? materialIcon(item.slot) : materialIcon(slot)}</i></strong>`;
       row.title = item ? describeItem(item) : `${t("dropHere")}: ${t(slot)}`;
       if (item) row.classList.add(rarityClass[item.rarity]);
       row.addEventListener("dragover", (event) => event.preventDefault());
