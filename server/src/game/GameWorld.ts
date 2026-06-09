@@ -1264,18 +1264,20 @@ export class GameWorld {
         player.inventory.items.push(item);
         socket.emit("player", player);
       });
-      (socket as Socket).on("devGrantMaterial", (payload: { count?: number; value?: number }) => {
+      (socket as Socket).on("devGrantMaterial", (payload: { count?: number; value?: number; materialId?: MaterialId }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
-        const n = Math.max(1, Math.min(20, Number(payload?.count) || 1));
+        const n = Math.max(1, Math.min(40, Number(payload?.count) || 1));
+        const mid = (payload?.materialId && MATERIAL_CATALOG[payload.materialId] ? payload.materialId : "slimeCore") as MaterialId;
+        const info = MATERIAL_CATALOG[mid];
         for (let i = 0; i < n; i++) {
           player.inventory.items.push({
             id: `devmat-${Date.now()}-${i}-${Math.floor(Math.random() * 1e4)}`,
             kind: "material",
-            materialId: "slimeCore",
-            name: "Dev Material",
-            rarity: "common",
-            value: Math.max(1, Number(payload?.value) || 50)
+            materialId: mid,
+            name: info.name,
+            rarity: info.rarity,
+            value: Math.max(1, Number(payload?.value) || info.value)
           });
         }
         socket.emit("player", player);

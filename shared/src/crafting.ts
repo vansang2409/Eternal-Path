@@ -233,6 +233,35 @@ export const RECIPES: Recipe[] = [
     level: 11,
     themeFrom: "bloodHarpy",
     cost: { voidAsh: 4, cursedBark: 3, emberHeart: 2 }
+  },
+  // Sprint 158: apex recipes — heavy sinks for top-tier salvage materials,
+  // closing the salvage → craft → upgrade loop with the strongest gear.
+  {
+    id: "abyssal-greatsword",
+    name: "Đại Kiếm Vực Thẳm",
+    slot: "weapon",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "voidKnight",
+    cost: { voidAsh: 5, crystalShard: 3, wardenHeart: 2 }
+  },
+  {
+    id: "dragonscale-plate",
+    name: "Giáp Vảy Rồng",
+    slot: "armor",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "ancientDrake",
+    cost: { wardenHeart: 2, emberHeart: 4, frostShard: 3 }
+  },
+  {
+    id: "eternal-signet",
+    name: "Ấn Vĩnh Hằng",
+    slot: "ring",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "eternalWarden",
+    cost: { wardenHeart: 3, voidAsh: 3, crystalShard: 3 }
   }
 ];
 
