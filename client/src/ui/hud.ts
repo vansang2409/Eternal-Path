@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RESPEC_COST_PER_POINT, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -77,6 +77,7 @@ export class Hud {
     private readonly onToggleLock: (itemId: string) => void = () => {},
     private readonly onSalvageJunk: () => void = () => {},
     private readonly onBuyXpBoost: () => void = () => {},
+    private readonly onBuyRagePotion: () => void = () => {},
     private readonly onUpgradeItem: (itemId: string) => void = () => {},
     private readonly onRespecTalents: () => void = () => {}
   ) {
@@ -829,6 +830,17 @@ export class Hud {
       <div class="gem-shop-action"><button id="xpboost-btn" class="gem-shop-buy-btn" type="button" ${xpActive ? "disabled" : ""}>${xpActive ? "Đang hiệu lực" : `💎 ${XP_BOOST_GEM_COST}`}</button></div>`;
     root.appendChild(xb);
     xb.querySelector<HTMLButtonElement>("#xpboost-btn")?.addEventListener("click", () => this.onBuyXpBoost());
+    // Rage potion (Sprint 162).
+    const rageActive = isRageActive(this.player.rageUntil);
+    const rb = document.createElement("div");
+    rb.className = "gem-shop-card";
+    rb.style.cssText = "align-items:center";
+    rb.innerHTML = `
+      <div class="gem-shop-swatch" style="background:radial-gradient(circle,#ff8a6a,#d63f3f);display:flex;align-items:center;justify-content:center;font-size:18px">⚔️</div>
+      <div class="gem-shop-info"><strong>Bình Cuồng Nộ</strong><p>+25% sát thương trong 10 phút.</p></div>
+      <div class="gem-shop-action"><button id="rage-btn" class="gem-shop-buy-btn" type="button" ${rageActive ? "disabled" : ""}>${rageActive ? "Đang hiệu lực" : `💎 ${RAGE_GEM_COST}`}</button></div>`;
+    root.appendChild(rb);
+    rb.querySelector<HTMLButtonElement>("#rage-btn")?.addEventListener("click", () => this.onBuyRagePotion());
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
     for (const cosmetic of COSMETICS) {

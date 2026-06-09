@@ -24,6 +24,10 @@ import {
   upgradeCost,
   upgradeSuccessChance,
   RESPEC_COST_PER_POINT,
+  RAGE_GEM_COST,
+  RAGE_DURATION_MS,
+  RAGE_MULTIPLIER,
+  isRageActive,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -664,6 +668,7 @@ export class GameWorld {
         bagBonus: saved.bagBonus ?? 0,
         goldBoostUntil: saved.goldBoostUntil,
         xpBoostUntil: saved.xpBoostUntil,
+        rageUntil: saved.rageUntil,
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -2148,6 +2153,26 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 162: rage potion — +25% attack damage for 10 minutes.
+    socket.on("buyRagePotion", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (isRageActive(player.rageUntil)) {
+        socket.emit("system", "Bình Cuồng Nộ đang còn hiệu lực.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < RAGE_GEM_COST) {
+        socket.emit("system", `Cần ${RAGE_GEM_COST} 💎 để mua Bình Cuồng Nộ (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - RAGE_GEM_COST;
+      player.rageUntil = Date.now() + RAGE_DURATION_MS;
+      socket.emit("player", player);
+      socket.emit("system", `⚔️ Bình Cuồng Nộ kích hoạt: +${Math.round((RAGE_MULTIPLIER - 1) * 100)}% sát thương trong 10 phút!`);
+      this.markDirty(player);
+    });
+
     socket.on("exchangeGemsForGold", ({ gems }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -3103,7 +3128,9 @@ export class GameWorld {
   }
 
   private damageMonster(player: PlayerState, monster: MonsterState, attackMultiplier: number, now: number, label?: string): void {
-    const result = rollDamage(player.stats.attack * attackMultiplier, monster.defense, player.stats.level - monster.level);
+    // Sprint 162: rage potion amplifies all outgoing damage while active.
+    const rageMult = isRageActive(player.rageUntil) ? RAGE_MULTIPLIER : 1;
+    const result = rollDamage(player.stats.attack * attackMultiplier * rageMult, monster.defense, player.stats.level - monster.level);
     monster.hp = Math.max(0, monster.hp - result.damage);
     const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
     this.emitFloating(monster.id, monster.position, result.damage, "damage", text);

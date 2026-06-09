@@ -103,6 +103,14 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// Rage potion (Sprint 162): premium combat buff — +25% attack damage for 10
+// minutes. A Gem sink that boosts farming/clear speed without permanent power.
+export const RAGE_GEM_COST = 30;
+export const RAGE_DURATION_MS = 10 * 60 * 1000;
+export const RAGE_MULTIPLIER = 1.25;
+export function isRageActive(until: number | undefined, now: number = Date.now()): boolean {
+  return typeof until === "number" && until > now;
+}
 export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 
 export type StatusEffectKind = "burn" | "bleed" | "freeze";
