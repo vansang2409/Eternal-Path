@@ -23,6 +23,7 @@ import {
   isXpBoostActive,
   upgradeCost,
   upgradeSuccessChance,
+  RESPEC_COST_PER_POINT,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -1238,11 +1239,13 @@ export class GameWorld {
     // Dev-only cheat for automated smoke tests. Never enabled in production
     // (requires explicit DEV_CHEATS=1 env; not set in Dockerfile/compose).
     if (process.env.DEV_CHEATS === "1") {
-      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number }) => {
+      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.stats.gold += Math.max(0, Number(payload?.gold) || 0);
         player.gems = (player.gems ?? 0) + Math.max(0, Number(payload?.gems) || 0);
+        if (payload?.talentPoints) player.talentPoints = (player.talentPoints ?? 0) + Math.max(0, Number(payload.talentPoints) || 0);
+        if (payload?.exp) this.grantExpAndStatPoints(player, Math.max(0, Number(payload.exp) || 0));
         socket.emit("player", player);
       });
       (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number; slot?: EquipmentSlot; themeId?: string; stats?: ItemStats }) => {
@@ -2279,6 +2282,30 @@ export class GameWorld {
       socket.emit("system", `Nâng ${skillLabel(skillId)} lên cấp ${current + 1}/${SKILL_MAX_RANK}.`);
       this.markDirty(player);
       this.unlockAchievement(player, "talent-spent");
+    });
+
+    // Sprint 156: respec all spent talent points for gold so players can
+    // re-spec their skill ranks freely.
+    socket.on("respecTalents", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const ranks = player.skillRanks ?? {};
+      const spent = Object.values(ranks).reduce((a, b) => a + (b ?? 0), 0);
+      if (spent <= 0) {
+        socket.emit("system", "Bạn chưa tiêu điểm tài năng nào.");
+        return;
+      }
+      const cost = RESPEC_COST_PER_POINT * spent;
+      if (player.stats.gold < cost) {
+        socket.emit("system", `Cần ${cost.toLocaleString("vi-VN")} vàng để tẩy ${spent} điểm tài năng.`);
+        return;
+      }
+      player.stats.gold -= cost;
+      player.talentPoints = (player.talentPoints ?? 0) + spent;
+      player.skillRanks = {};
+      socket.emit("player", player);
+      socket.emit("system", `Đã tẩy ${spent} điểm tài năng (−${cost.toLocaleString("vi-VN")} vàng). Phân bổ lại tùy ý!`);
+      this.markDirty(player);
     });
 
     socket.on("useItem", async ({ itemId }) => {

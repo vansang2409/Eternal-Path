@@ -517,6 +517,7 @@ export interface ClientToServerEvents {
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;
   upgradeItem: (payload: { itemId: string }) => void;
+  respecTalents: () => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

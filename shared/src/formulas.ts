@@ -101,6 +101,8 @@ export const WHIRLWIND_DAMAGE_MULTIPLIER = 1.0;
 export const WHIRLWIND_RADIUS = 130;
 export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
+// Talent respec (Sprint 156): gold cost per refunded talent point.
+export const RESPEC_COST_PER_POINT = 600;
 export const DEFAULT_EQUIPPED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 
 export type StatusEffectKind = "burn" | "bleed" | "freeze";
