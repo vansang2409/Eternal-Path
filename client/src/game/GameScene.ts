@@ -75,6 +75,7 @@ export class GameScene extends Phaser.Scene {
   private groundItemLabels = new Map<string, Phaser.GameObjects.Text>();
   private moveTarget?: Phaser.Math.Vector2;
   private moveMarker?: Phaser.GameObjects.Graphics;
+  private targetReticle?: Phaser.GameObjects.Graphics;
   private selfPlayer?: PlayerState;
   private partyMemberIds = new Set<string>();
   private snapshotBuffer: WorldSnapshot[] = [];
@@ -267,6 +268,7 @@ export class GameScene extends Phaser.Scene {
     this.predictLocalPlayer(input, delta);
     this.renderBufferedWorld(time);
     this.updateAmbient(delta);
+    this.drawTargetReticle(time);
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
     // Footstep dust puffs while moving (anime grounding).
@@ -1794,6 +1796,42 @@ export class GameScene extends Phaser.Scene {
     bar.fillStyle(monster.boss ? 0xffd36b : monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(position.x - width / 2 + 1, position.y - 33, (width - 2) * pct, 4);
     if (this.selfPlayer && this.selfPlayer.targetId === monster.id) {
       bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 1, position.y - 35, width + 2, 8);
+    }
+  }
+
+  // Sprint 119: animated lock-on reticle — four rotating corner brackets +
+  // pulsing ring track the currently targeted monster for a clear combat focus.
+  private drawTargetReticle(time: number): void {
+    if (!this.targetReticle) this.targetReticle = this.add.graphics().setDepth(99960);
+    const g = this.targetReticle;
+    g.clear();
+    const targetId = this.selfPlayer?.targetId;
+    const sprite = targetId ? this.monsters.get(targetId) : undefined;
+    const snap = this.snapshotBuffer[this.snapshotBuffer.length - 1];
+    const mon = targetId ? snap?.monsters.find((m) => m.id === targetId) : undefined;
+    if (!sprite || !mon || mon.respawnsAt) return;
+    const cx = sprite.x;
+    const cy = sprite.y - 6;
+    const r = mon.boss ? 40 : mon.elite ? 30 : 24;
+    const rot = time / 600;
+    const pulse = 1 + Math.sin(time / 220) * 0.06;
+    const rr = r * pulse;
+    const color = mon.boss ? 0xff5a5a : 0xf8e66d;
+    // Faint full ring.
+    g.lineStyle(1, color, 0.35).strokeCircle(cx, cy, rr);
+    // Four rotating corner brackets.
+    g.lineStyle(2.5, color, 0.95);
+    for (let i = 0; i < 4; i += 1) {
+      const a = rot + (Math.PI / 2) * i;
+      const ax = cx + Math.cos(a) * rr;
+      const ay = cy + Math.sin(a) * rr;
+      const t1 = a + 0.32;
+      const t2 = a - 0.32;
+      g.beginPath();
+      g.moveTo(cx + Math.cos(t1) * rr, cy + Math.sin(t1) * rr);
+      g.lineTo(ax, ay);
+      g.lineTo(cx + Math.cos(t2) * rr, cy + Math.sin(t2) * rr);
+      g.strokePath();
     }
   }
 
