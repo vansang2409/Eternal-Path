@@ -62,6 +62,7 @@ export class GameScene extends Phaser.Scene {
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private lastAfterimageAt = 0;
   private statusFxAt = new Map<string, number>();
+  private groundSparkleAt = new Map<string, number>();
   private lowHpOverlay?: Phaser.GameObjects.Rectangle;
   private lowHpPulse = 0;
   private lastDustAt = 0;
@@ -1288,6 +1289,7 @@ export class GameScene extends Phaser.Scene {
       if (!seenGroundItems.has(id)) {
         sprite.destroy();
         this.groundItems.delete(id);
+        this.groundSparkleAt.delete(id);
         this.groundItemLabels.get(id)?.destroy();
         this.groundItemLabels.delete(id);
       }
@@ -1666,6 +1668,17 @@ export class GameScene extends Phaser.Scene {
       .setColor(rarityHex(groundItem.item.rarity))
       .setPosition(iso.x, iso.y - 20)
       .setDepth(iso.y + 1);
+    // Idle shimmer for rare/epic loot + treasure chests (anime treasure feel).
+    const shiny = isTreasure || groundItem.item.rarity !== "common";
+    if (shiny) {
+      const now = this.time.now;
+      if (now - (this.groundSparkleAt.get(groundItem.id) ?? 0) > 520) {
+        this.groundSparkleAt.set(groundItem.id, now + Math.random() * 200);
+        const color = isTreasure ? 0xffe28c : groundItem.item.rarity === "epic" ? 0xd98cff : 0x9cc6ff;
+        const star = this.add.circle(iso.x + (Math.random() - 0.5) * 16, iso.y - 4 - Math.random() * 8, 1.8, color, 0.95).setDepth(iso.y + 2);
+        this.tweens.add({ targets: star, y: star.y - 12, alpha: 0, scale: 0.4, duration: 620, ease: "Quad.Out", onComplete: () => star.destroy() });
+      }
+    }
   }
 
   private drawPlayerBar(player: PlayerState, position: Vec2): void {
