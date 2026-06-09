@@ -292,6 +292,7 @@ export class GameScene extends Phaser.Scene {
     this.updateWaterShimmer(time);
     this.updateChatBubbles(time);
     this.drawPartyArrows();
+    this.updateZoneBanner();
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
     // Footstep dust puffs while moving (anime grounding).
@@ -416,6 +417,33 @@ export class GameScene extends Phaser.Scene {
       r.go.setVisible(true);
       r.go.setFillStyle(0xfff4c2, r.a);
     }
+  }
+
+  // Sprint 140: zone banner — a soft "⟢ <Vùng>" title fades in at the top
+  // whenever the player crosses into a new biome, giving travel a sense of place.
+  private lastZoneName = "";
+  private updateZoneBanner(): void {
+    if (!this.worldMap || !this.selfPlayer) return;
+    const tx = Math.floor(this.selfPlayer.position.x / TILE_SIZE);
+    const ty = Math.floor(this.selfPlayer.position.y / TILE_SIZE);
+    if (tx < 0 || ty < 0 || tx >= this.worldMap.width || ty >= this.worldMap.height) return;
+    const tile = this.worldMap.tiles[ty][tx] as TileId;
+    let zone = "";
+    if (tile === TileId.TownStone || tile === TileId.Road) zone = "Thị Trấn";
+    else if (tile === TileId.Forest || tile === TileId.Grass) zone = "Rừng Xanh";
+    else if (tile === TileId.Sand) zone = "Sa Mạc";
+    else if (tile === TileId.Snow) zone = "Đỉnh Tuyết";
+    else if (tile === TileId.Swamp) zone = "Đầm Lầy Độc";
+    else if (tile === TileId.Rock) zone = "Vách Núi";
+    else if (tile === TileId.Water || tile === TileId.Deep) zone = "Hồ Nước";
+    else if (tile === TileId.DungeonFloor || tile === TileId.DungeonWall) zone = "Hầm Ngục";
+    if (!zone || zone === this.lastZoneName) return;
+    this.lastZoneName = zone;
+    const label = this.add.text(this.scale.width / 2, 84, `⟢  ${zone}  ⟣`, {
+      fontFamily: "serif", fontSize: "26px", color: "#f4e9c8", stroke: "#10141a", strokeThickness: 5
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(99984).setAlpha(0);
+    this.tweens.add({ targets: label, alpha: 1, y: 92, duration: 420, ease: "Quad.Out" });
+    this.tweens.add({ targets: label, alpha: 0, duration: 600, delay: 1800, onComplete: () => label.destroy() });
   }
 
   // Sprint 132: off-screen party arrows — green pointers at the screen edge show
