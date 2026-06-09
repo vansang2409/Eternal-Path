@@ -13,6 +13,7 @@ import {
   getMonsterDefinition,
   getPet,
   getMount,
+  mountLabel,
   isWalkableTile,
   isVipActive,
   isGoldBoostActive,
@@ -2096,6 +2097,9 @@ export class GameScene extends Phaser.Scene {
     if (!ell) {
       ell = this.add.ellipse(position.x, position.y, 30, 14, mount.color, 0.9).setStrokeStyle(2, 0x000000, 0.45);
       this.mountSprites.set(player.id, ell);
+      // Sprint 183: a gentle gallop pulse (scale only — position is set each
+      // frame, so animating scale keeps the bob without being overwritten).
+      this.tweens.add({ targets: ell, scaleY: 0.82, scaleX: 1.08, duration: 360, yoyo: true, repeat: -1, ease: "Sine.InOut" });
     }
     ell.setFillStyle(mount.color, 0.9);
     // Sit just below the hero's feet, beneath the body but above the shadow.
