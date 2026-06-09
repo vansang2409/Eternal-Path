@@ -2117,7 +2117,11 @@ export class GameScene extends Phaser.Scene {
         repeat: 1,
         onComplete: () => sprite.setAlpha(1)
       });
-      if (entityId === this.selfId) this.cameras.main.shake(110, 0.004);
+      if (entityId === this.selfId) {
+        this.cameras.main.shake(110, 0.004);
+        // Brief red damage flash at screen edges when the local player is hit.
+        this.cameras.main.flash(120, 150, 20, 20, false);
+      }
     }
 
     const cx = position.x;
