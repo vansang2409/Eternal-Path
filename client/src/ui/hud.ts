@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -82,7 +82,9 @@ export class Hud {
     private readonly onUpgradeItem: (itemId: string) => void = () => {},
     private readonly onRespecTalents: () => void = () => {},
     private readonly onClaimMilestone: (level: number) => void = () => {},
-    private readonly onBrew: (recipeId: string) => void = () => {}
+    private readonly onBrew: (recipeId: string) => void = () => {},
+    private readonly onBuyMount: (mountId: string) => void = () => {},
+    private readonly onEquipMount: (mountId: string | null) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1588,7 +1590,28 @@ export class Hud {
           <button id="pet-treat-btn" type="button" ${gems >= PET_TREAT_GEM_COST ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:${gems >= PET_TREAT_GEM_COST ? "linear-gradient(to bottom,#4aa3df,#2d6fa3)" : "#333"};cursor:${gems >= PET_TREAT_GEM_COST ? "pointer" : "not-allowed"}">🍬 Bánh thưởng 💎${PET_TREAT_GEM_COST}</button>
         </div>`
       : "";
-    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con; nuôi để lên cấp tăng buff.</p>${feedPanel}${cards}`;
+    // Sprint 172: mounts shop — gold-bought rides for a move-speed buff.
+    const ownedMounts = new Set(this.player.ownedMounts ?? []);
+    const activeMount = this.player.activeMount;
+    const mountCards = MOUNT_CATALOG.map((m) => {
+      const has = ownedMounts.has(m.id);
+      const isActive = activeMount === m.id;
+      const afford = gold >= m.goldPrice;
+      const swatch = "#" + m.color.toString(16).padStart(6, "0");
+      let action: string;
+      if (!has) action = `<button type="button" data-mount-buy="${m.id}" ${afford ? "" : "disabled"} style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:${afford ? "#1d1500" : "#888"};background:${afford ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#333"};cursor:${afford ? "pointer" : "not-allowed"}">🪙 ${m.goldPrice.toLocaleString("vi-VN")}</button>`;
+      else if (isActive) action = `<button type="button" data-mount-equip="" style="padding:6px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Xuống ngựa</button>`;
+      else action = `<button type="button" data-mount-equip="${m.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Cưỡi</button>`;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;border-radius:6px;background:${isActive ? "rgba(255,209,102,0.12)" : "rgba(28,28,28,0.5)"};border:1px solid ${isActive ? "#ffd166" : "#2a2a2a"}">
+        <div style="width:22px;height:22px;border-radius:50%;background:${swatch};border:2px solid #0008;flex:none"></div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;color:#f1f1f1">🐎 ${escapeHtml(m.name)}${isActive ? " ✓" : ""}</div><div style="font-size:11px;color:#9be7a8">${escapeHtml(m.desc)}</div></div>
+        ${action}
+      </div>`;
+    }).join("");
+    const mountSection = `<div style="margin-top:14px;border-top:1px solid #2a2a2a;padding-top:10px"><p style="color:#d6dddf;font-size:12px;margin:0 0 8px"><strong>🐎 Thú cưỡi</strong> — tăng tốc chạy (mua bằng vàng).</p>${mountCards}</div>`;
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con; nuôi để lên cấp tăng buff.</p>${feedPanel}${cards}${mountSection}`;
+    body.querySelectorAll<HTMLButtonElement>("[data-mount-buy]").forEach((btn) => btn.addEventListener("click", () => this.onBuyMount(btn.dataset.mountBuy!)));
+    body.querySelectorAll<HTMLButtonElement>("[data-mount-equip]").forEach((btn) => btn.addEventListener("click", () => { const id = btn.dataset.mountEquip; this.onEquipMount(id ? id : null); }));
     body.querySelector<HTMLButtonElement>("#pet-feed-btn")?.addEventListener("click", () => this.onFeedPet());
     body.querySelector<HTMLButtonElement>("#pet-treat-btn")?.addEventListener("click", () => this.onPetTreat());
     body.querySelectorAll<HTMLButtonElement>("[data-pet-buy]").forEach((btn) => {

@@ -46,6 +46,8 @@ interface SavedPlayer {
   setBonusMaxHp?: number;
   ownedPets?: string[];
   activePet?: string;
+  ownedMounts?: string[];
+  activeMount?: string;
   petBonusAttack?: number;
   petBonusDefense?: number;
   petBonusMaxHp?: number;
@@ -293,6 +295,8 @@ export class PlayerRepository {
       setBonusMaxHp: player.setBonusMaxHp,
       ownedPets: player.ownedPets ? [...player.ownedPets] : undefined,
       activePet: player.activePet,
+      ownedMounts: player.ownedMounts ? [...player.ownedMounts] : undefined,
+      activeMount: player.activeMount,
       petBonusAttack: player.petBonusAttack,
       petBonusDefense: player.petBonusDefense,
       petBonusMaxHp: player.petBonusMaxHp,

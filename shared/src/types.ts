@@ -233,6 +233,9 @@ export interface PlayerState {
   // render [TAG] next to names without needing the guild registry.
   guildId?: string;
   guildTag?: string;
+  // Mounts (Sprint 172): owned ride ids + the active mount (move-speed buff).
+  ownedMounts?: string[];
+  activeMount?: string;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -514,6 +517,8 @@ export interface ClientToServerEvents {
   sellJunk: () => void;
   craftRecipe: (payload: { recipeId: string }) => void;
   brewPotion: (payload: { recipeId: string }) => void;
+  buyMount: (payload: { mountId: string }) => void;
+  equipMount: (payload: { mountId: string | null }) => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;

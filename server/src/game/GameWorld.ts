@@ -114,6 +114,9 @@ import {
   getCosmetic,
   getRecipe,
   getBrewRecipe,
+  MOUNT_CATALOG,
+  getMount,
+  mountSpeedBonus,
   isPlayerClass,
   materialDropForMonster,
   salvageYield,
@@ -729,6 +732,8 @@ export class GameWorld {
         setBonusDefense: saved.setBonusDefense ?? 0,
         setBonusMaxHp: saved.setBonusMaxHp ?? 0,
         ownedPets: saved.ownedPets ?? [],
+        ownedMounts: saved.ownedMounts ?? [],
+        activeMount: saved.activeMount,
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
@@ -2607,6 +2612,54 @@ export class GameWorld {
       this.brewPotion(player, recipeId);
     });
 
+    // Sprint 172: buy a mount (gold sink) → adds to owned list.
+    socket.on("buyMount", ({ mountId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const mount = getMount(mountId);
+      if (!mount) {
+        socket.emit("system", "Thú cưỡi không tồn tại.");
+        return;
+      }
+      const owned = player.ownedMounts ?? [];
+      if (owned.includes(mount.id)) {
+        socket.emit("system", "Bạn đã sở hữu thú cưỡi này.");
+        return;
+      }
+      if (player.stats.gold < mount.goldPrice) {
+        socket.emit("system", `Cần ${mount.goldPrice.toLocaleString("vi-VN")} vàng để mua ${mount.name}.`);
+        return;
+      }
+      player.stats.gold -= mount.goldPrice;
+      owned.push(mount.id);
+      player.ownedMounts = owned;
+      player.activeMount = mount.id;
+      socket.emit("player", player);
+      socket.emit("system", `🐎 Đã mua & cưỡi ${mount.name} (${mount.desc})!`);
+      this.markDirty(player);
+    });
+
+    // Sprint 172: equip / unequip an owned mount.
+    socket.on("equipMount", ({ mountId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (mountId === null) {
+        player.activeMount = undefined;
+        socket.emit("player", player);
+        socket.emit("system", "Đã xuống ngựa.");
+        this.markDirty(player);
+        return;
+      }
+      if (!(player.ownedMounts ?? []).includes(mountId)) {
+        socket.emit("system", "Bạn chưa sở hữu thú cưỡi này.");
+        return;
+      }
+      player.activeMount = mountId;
+      socket.emit("player", player);
+      socket.emit("system", `🐎 Đang cưỡi ${getMount(mountId)?.name}.`);
+      this.markDirty(player);
+    });
+
     socket.on("enchantItem", ({ itemId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -2890,7 +2943,7 @@ export class GameWorld {
       // and apply sprint multiplier if requested + sufficient stamina.
       const maxStam = player.stats.maxStamina ?? BASE_MAX_STAMINA;
       const curStam = player.stats.stamina ?? maxStam;
-      const speedBonusPct = equipmentSpeedBonusPct(player);
+      const speedBonusPct = equipmentSpeedBonusPct(player) + mountSpeedBonus(player.activeMount);
       const baseSpeed = PLAYER_SPEED * (1 + speedBonusPct / 100);
       const wantSprint = !!input.sprinting && curStam >= SPRINT_MIN_STAMINA_TO_START;
       const sprinting = wantSprint && curStam > 0;
