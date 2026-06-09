@@ -12,6 +12,7 @@ import {
   clampToWorld,
   getMonsterDefinition,
   getPet,
+  getMount,
   isWalkableTile,
   isVipActive,
   isGoldBoostActive,
@@ -58,6 +59,7 @@ export class GameScene extends Phaser.Scene {
   private playerBars = new Map<string, Phaser.GameObjects.Graphics>();
   private playerEquipment = new Map<string, Phaser.GameObjects.Graphics>();
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
+  private mountSprites = new Map<string, Phaser.GameObjects.Ellipse>();
   private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
@@ -1761,6 +1763,8 @@ export class GameScene extends Phaser.Scene {
         this.playerEquipment.delete(id);
         this.petSprites.get(id)?.destroy();
         this.petSprites.delete(id);
+        this.mountSprites.get(id)?.destroy();
+        this.mountSprites.delete(id);
         this.playerAuras.get(id)?.destroy();
         this.playerAuras.delete(id);
       }
@@ -2039,6 +2043,7 @@ export class GameScene extends Phaser.Scene {
     this.drawPlayerBar(player, ip3);
     this.drawPlayerEquipment(player, ip3, facing);
     this.updatePetSprite(player, ip3);
+    this.updateMountSprite(player, ip3);
     this.updatePlayerAura(player, ip3);
   }
 
@@ -2074,6 +2079,23 @@ export class GameScene extends Phaser.Scene {
     arc.setFillStyle(pet.color);
     // Trail slightly behind-left of the hero, just above the ground shadow.
     arc.setPosition(position.x - 16, position.y - 6).setDepth(position.y - 1);
+  }
+
+  /** Sprint 173: a colored steed ellipse under the hero's feet while mounted. */
+  private updateMountSprite(player: PlayerState, position: Vec2): void {
+    const mount = getMount(player.activeMount);
+    let ell = this.mountSprites.get(player.id);
+    if (!mount) {
+      if (ell) { ell.destroy(); this.mountSprites.delete(player.id); }
+      return;
+    }
+    if (!ell) {
+      ell = this.add.ellipse(position.x, position.y, 30, 14, mount.color, 0.9).setStrokeStyle(2, 0x000000, 0.45);
+      this.mountSprites.set(player.id, ell);
+    }
+    ell.setFillStyle(mount.color, 0.9);
+    // Sit just below the hero's feet, beneath the body but above the shadow.
+    ell.setPosition(position.x, position.y + 6).setDepth(position.y - 2);
   }
 
   /** Name label text: optional title + guild tag prefix before the name. */
