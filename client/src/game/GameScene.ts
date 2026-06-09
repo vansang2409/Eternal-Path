@@ -2012,6 +2012,13 @@ export class GameScene extends Phaser.Scene {
     const iso = worldToIso(position.x, position.y);
     const tgtIso = targetPosition ? worldToIso(targetPosition.x, targetPosition.y) : undefined;
 
+    // Sprint 115: universal cast wind-up — a theme-colored charge ring snaps
+    // inward onto the caster the instant any skill fires, giving casts weight.
+    const charge = this.add.circle(iso.x, iso.y, 34).setStrokeStyle(2.5, theme.rim, 0.85).setDepth(99996);
+    this.tweens.add({ targets: charge, scale: 0.12, alpha: 0, duration: 180, ease: "Quad.In", onComplete: () => charge.destroy() });
+    const castGlow = this.add.ellipse(iso.x, iso.y + 6, 24, 12, theme.core, 0.45).setDepth(iso.y - 1);
+    this.tweens.add({ targets: castGlow, scaleX: 1.7, scaleY: 1.7, alpha: 0, duration: 260, ease: "Cubic.Out", onComplete: () => castGlow.destroy() });
+
     if (info.effect === "healSelf") {
       // Pulsing aura ring + rising sparkles + inner glow.
       const aura = this.add.circle(iso.x, iso.y, 6, 0x8be78b, 0.45).setDepth(99996);
