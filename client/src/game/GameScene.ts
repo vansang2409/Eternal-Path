@@ -64,6 +64,7 @@ export class GameScene extends Phaser.Scene {
   private weatherPetals: Array<{ go: Phaser.GameObjects.Rectangle; vy: number; sway: number; phase: number; spin: number; a: number }> = [];
   private nextShootingStarAt = 4000;
   private godRays: Array<{ go: Phaser.GameObjects.Rectangle; baseX: number; drift: number; a: number }> = [];
+  private fxHigh = !(typeof localStorage !== "undefined" && localStorage.getItem("fxHigh") === "0");
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -233,6 +234,17 @@ export class GameScene extends Phaser.Scene {
     this.setupTouchControls();
     this.setupAmbientParticles();
 
+    // Sprint 139: press G to toggle ambient effect density (High/Low). Low mode
+    // culls the heavy atmospheric layers (motes, fireflies, weather, god-rays)
+    // for weaker machines while keeping all combat/UX feedback intact.
+    window.addEventListener("keydown", (e) => {
+      if (e.key !== "g" && e.key !== "G") return;
+      if (isEditableFocused()) return;
+      this.fxHigh = !this.fxHigh;
+      try { localStorage.setItem("fxHigh", this.fxHigh ? "1" : "0"); } catch (_) { /* noop */ }
+      if (this.loggedIn) this.showTopBanner(this.fxHigh ? "✨ Hiệu ứng: CAO" : "🔅 Hiệu ứng: THẤP", "achievement", 1600);
+    });
+
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
@@ -334,16 +346,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateAmbient(delta: number): void {
-    if (this.ambientMotes.length === 0) return;
     const dt = delta / 1000;
     const w = this.scale.width;
     const h = this.scale.height;
-    for (const m of this.ambientMotes) {
-      m.go.x += m.vx * dt;
-      m.go.y += m.vy * dt;
-      if (m.go.y < -6) { m.go.y = h + 6; m.go.x = Math.random() * w; }
-      if (m.go.x < -6) m.go.x = w + 6;
-      else if (m.go.x > w + 6) m.go.x = -6;
+    if (this.fxHigh) {
+      for (const m of this.ambientMotes) {
+        m.go.setVisible(true);
+        m.go.x += m.vx * dt;
+        m.go.y += m.vy * dt;
+        if (m.go.y < -6) { m.go.y = h + 6; m.go.x = Math.random() * w; }
+        if (m.go.x < -6) m.go.x = w + 6;
+        else if (m.go.x > w + 6) m.go.x = -6;
+      }
+    } else {
+      for (const m of this.ambientMotes) m.go.setVisible(false);
     }
     // Low-HP danger vignette: pulse red when below 30% HP.
     if (this.lowHpOverlay) {
@@ -359,10 +375,16 @@ export class GameScene extends Phaser.Scene {
       const cur = this.lowHpOverlay.alpha;
       this.lowHpOverlay.setAlpha(cur + (target - cur) * Math.min(1, dt * 8));
     }
-    this.updateNightFireflies(dt);
-    this.updateWeather(dt);
-    this.updateShootingStars();
-    this.updateGodRays(dt);
+    if (this.fxHigh) {
+      this.updateNightFireflies(dt);
+      this.updateWeather(dt);
+      this.updateShootingStars();
+      this.updateGodRays(dt);
+    } else {
+      for (const f of this.nightFireflies) f.go.setVisible(false);
+      for (const p of this.weatherPetals) p.go.setVisible(false);
+      for (const r of this.godRays) r.go.setVisible(false);
+    }
   }
 
   // Sprint 138: soft god-rays — translucent diagonal light shafts that fade in
@@ -391,6 +413,7 @@ export class GameScene extends Phaser.Scene {
     for (const r of this.godRays) {
       r.go.x += Math.sin(this.time.now / 4000 + r.baseX) * r.drift * dt;
       r.a += (target - r.a) * Math.min(1, dt * 0.8);
+      r.go.setVisible(true);
       r.go.setFillStyle(0xfff4c2, r.a);
     }
   }
@@ -475,6 +498,7 @@ export class GameScene extends Phaser.Scene {
   // water tiles so lakes and coastline feel alive instead of flat.
   private lastWaterShimmerAt = 0;
   private updateWaterShimmer(time: number): void {
+    if (!this.fxHigh) return;
     if (!this.worldMap || !this.selfPlayer) return;
     if (time - this.lastWaterShimmerAt < 220) return;
     this.lastWaterShimmerAt = time;
@@ -560,6 +584,7 @@ export class GameScene extends Phaser.Scene {
       if (p.go.y > h + 8 || p.go.x > w + 8) { p.go.y = -8; p.go.x = Math.random() * w; }
       const target = active ? 0.5 : 0;
       p.a += (target - p.a) * Math.min(1, dt * 1.5);
+      p.go.setVisible(true);
       p.go.setFillStyle(color === 0x000000 ? 0xffffff : color, p.a);
     }
   }
@@ -588,6 +613,7 @@ export class GameScene extends Phaser.Scene {
       if (f.baseY > h) f.baseY = Math.random() * h;
       const flicker = 0.55 + 0.45 * Math.sin(f.t * 3.1);
       const target = targetMax * flicker;
+      f.go.setVisible(true);
       f.go.setAlpha(f.go.alpha + (target - f.go.alpha) * Math.min(1, dt * 2));
     }
   }
