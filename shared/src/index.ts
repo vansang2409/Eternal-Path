@@ -17,3 +17,4 @@ export * from "./titles.js";
 export * from "./pets.js";
 export * from "./mysterybox.js";
 export * from "./mounts.js";
+export * from "./gems.js";

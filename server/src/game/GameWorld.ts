@@ -118,6 +118,7 @@ import {
   MOUNT_CATALOG,
   getMount,
   mountSpeedBonus,
+  getStatGem,
   isPlayerClass,
   materialDropForMonster,
   salvageYield,
@@ -2242,6 +2243,66 @@ export class GameWorld {
       this.grantPetXp(player, xpGain);
       socket.emit("player", player);
       socket.emit("system", `🔥 Đã hiến tế ${sac?.name ?? "linh thú"} → +${xpGain} XP cho linh thú đang dùng.`);
+      this.markDirty(player);
+    });
+
+    // Sprint 186: socket a stat gem into an equipment item (Gem cost).
+    socket.on("socketGem", ({ itemId, gemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const item = player.inventory.items.find((it) => it.id === itemId);
+      if (!item || item.kind !== "equipment") {
+        socket.emit("system", "Chỉ khảm được trang bị.");
+        return;
+      }
+      if (item.socketGem) {
+        socket.emit("system", "Trang bị đã có đá quý — gỡ ra trước khi khảm mới.");
+        return;
+      }
+      const gem = getStatGem(gemId);
+      if (!gem) { socket.emit("system", "Đá quý không tồn tại."); return; }
+      const gems = player.gems ?? 0;
+      if (gems < gem.gemPrice) {
+        socket.emit("system", `Cần ${gem.gemPrice} 💎 để khảm ${gem.name} (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - gem.gemPrice;
+      const equipped = player.inventory.equipped[item.slot];
+      const isEquipped = equipped?.id === item.id;
+      if (isEquipped && equipped) removeItemStats(player, equipped);
+      const s = item.stats;
+      if (gem.stats.attack) s.attack = (s.attack ?? 0) + gem.stats.attack;
+      if (gem.stats.defense) s.defense = (s.defense ?? 0) + gem.stats.defense;
+      if (gem.stats.maxHp) s.maxHp = (s.maxHp ?? 0) + gem.stats.maxHp;
+      item.socketGem = { gemId: gem.id, name: gem.name, stats: { ...gem.stats } };
+      if (isEquipped) addItemStats(player, item);
+      socket.emit("player", player);
+      socket.emit("system", `💠 Đã khảm ${gem.name} vào ${item.name}.`);
+      this.markDirty(player);
+    });
+
+    // Sprint 186: remove the socketed gem (destroyed) and subtract its stats.
+    socket.on("unsocketGem", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const item = player.inventory.items.find((it) => it.id === itemId);
+      if (!item || item.kind !== "equipment" || !item.socketGem) {
+        socket.emit("system", "Trang bị này chưa khảm đá quý.");
+        return;
+      }
+      const equipped = player.inventory.equipped[item.slot];
+      const isEquipped = equipped?.id === item.id;
+      if (isEquipped && equipped) removeItemStats(player, equipped);
+      const g = item.socketGem.stats;
+      const s = item.stats;
+      if (g.attack && s.attack) s.attack = Math.max(0, s.attack - g.attack);
+      if (g.defense && s.defense) s.defense = Math.max(0, s.defense - g.defense);
+      if (g.maxHp && s.maxHp) s.maxHp = Math.max(0, s.maxHp - g.maxHp);
+      const gemName = item.socketGem.name;
+      delete item.socketGem;
+      if (isEquipped) addItemStats(player, item);
+      socket.emit("player", player);
+      socket.emit("system", `Đã gỡ ${gemName} (đá quý bị tiêu hao).`);
       this.markDirty(player);
     });
 

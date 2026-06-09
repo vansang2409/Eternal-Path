@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, mountLabel, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -89,7 +89,9 @@ export class Hud {
     private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {},
     private readonly onClaimStarterPack: () => void = () => {},
     private readonly onFuseGear: () => void = () => {},
-    private readonly onSacrificePet: (petId: string) => void = () => {}
+    private readonly onSacrificePet: (petId: string) => void = () => {},
+    private readonly onSocketGem: (itemId: string, gemId: string) => void = () => {},
+    private readonly onUnsocketGem: (itemId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -2082,6 +2084,21 @@ export class Hud {
     actions.querySelector('[data-action="lock"]')?.addEventListener("click", () => this.onToggleLock(item.id));
     actions.querySelector('[data-action="upgrade"]')?.addEventListener("click", () => this.onUpgradeItem(item.id));
     actions.querySelector('[data-action="drop"]')?.addEventListener("click", () => this.onDrop(item.id));
+    // Sprint 186: gem socketing controls for equipment.
+    if (item.kind === "equipment") {
+      const gemRow = document.createElement("div");
+      gemRow.style.cssText = "margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:11px";
+      if (item.socketGem) {
+        gemRow.innerHTML = `<span style="color:#bdfdff">💠 ${escapeHtml(item.socketGem.name)}</span><button type="button" data-unsocket="1" style="padding:3px 8px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#2c1c1c;cursor:pointer">Gỡ ngọc</button>`;
+        gemRow.querySelector("[data-unsocket]")?.addEventListener("click", () => this.onUnsocketGem(item.id));
+      } else {
+        gemRow.innerHTML = `<span style="color:#9aa0a6">Khảm:</span>` + GEM_CATALOG.map((g) =>
+          `<button type="button" data-gem="${g.id}" title="${escapeHtml(g.name)} (💎${g.gemPrice})" style="padding:3px 7px;border:none;border-radius:4px;color:#1d1500;font-weight:700;background:#${g.color.toString(16).padStart(6, "0")};cursor:pointer">${escapeHtml(g.name)} 💎${g.gemPrice}</button>`
+        ).join("");
+        gemRow.querySelectorAll<HTMLButtonElement>("[data-gem]").forEach((btn) => btn.addEventListener("click", () => this.onSocketGem(item.id, btn.dataset.gem!)));
+      }
+      actions.appendChild(gemRow);
+    }
   }
 
   private applyLanguage(): void {

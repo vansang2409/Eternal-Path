@@ -87,6 +87,8 @@ export interface EquipmentItem extends BaseItem {
   enchantCount?: number;
   /** Upgrade level (+N) from the gold enhancement system (Sprint 155). */
   plusLevel?: number;
+  /** Socketed stat gem (Sprint 186) — its stats are folded into `stats`. */
+  socketGem?: { gemId: string; name: string; stats: ItemStats };
   /** Theme/set the item belongs to — when 2+ items of the same theme are
    *  equipped, the player gets a set bonus. */
   themeId?: string;
@@ -530,6 +532,8 @@ export interface ClientToServerEvents {
   claimStarterPack: () => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;
+  socketGem: (payload: { itemId: string; gemId: string }) => void;
+  unsocketGem: (payload: { itemId: string }) => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;
