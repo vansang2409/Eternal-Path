@@ -197,6 +197,8 @@ export interface PlayerState {
   xpBoostUntil?: number;
   /** Timestamp (ms) the rage (combat) potion expires (Sprint 162). */
   rageUntil?: number;
+  /** Level milestones whose reward chest has been claimed (Sprint 165). */
+  claimedMilestones?: number[];
   // Active equippable title id (Sprint 62) — shown next to the name. Derived
   // titles are earned via stats; only the chosen one is persisted.
   activeTitle?: string;
@@ -521,6 +523,7 @@ export interface ClientToServerEvents {
   upgradeItem: (payload: { itemId: string }) => void;
   respecTalents: () => void;
   buyRagePotion: () => void;
+  claimLevelMilestone: (payload: { level: number }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

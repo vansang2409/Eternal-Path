@@ -103,6 +103,17 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// Level milestone reward chests (Sprint 165): one-time gold + gem rewards for
+// reaching key levels. Encourages pushing levels (and buying XP boosts).
+export interface LevelMilestone { level: number; gold: number; gems: number; }
+export const LEVEL_MILESTONES: LevelMilestone[] = [
+  { level: 10, gold: 5_000, gems: 20 },
+  { level: 25, gold: 20_000, gems: 50 },
+  { level: 50, gold: 100_000, gems: 150 }
+];
+export function levelMilestone(level: number): LevelMilestone | undefined {
+  return LEVEL_MILESTONES.find((m) => m.level === level);
+}
 // Rage potion (Sprint 162): premium combat buff — +25% attack damage for 10
 // minutes. A Gem sink that boosts farming/clear speed without permanent power.
 export const RAGE_GEM_COST = 30;

@@ -28,6 +28,7 @@ import {
   RAGE_DURATION_MS,
   RAGE_MULTIPLIER,
   isRageActive,
+  levelMilestone,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -669,6 +670,7 @@ export class GameWorld {
         goldBoostUntil: saved.goldBoostUntil,
         xpBoostUntil: saved.xpBoostUntil,
         rageUntil: saved.rageUntil,
+        claimedMilestones: saved.claimedMilestones ?? [],
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -2170,6 +2172,34 @@ export class GameWorld {
       player.rageUntil = Date.now() + RAGE_DURATION_MS;
       socket.emit("player", player);
       socket.emit("system", `⚔️ Bình Cuồng Nộ kích hoạt: +${Math.round((RAGE_MULTIPLIER - 1) * 100)}% sát thương trong 10 phút!`);
+      this.markDirty(player);
+    });
+
+    // Sprint 165: claim a one-time level-milestone reward chest.
+    socket.on("claimLevelMilestone", ({ level }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const milestone = levelMilestone(Number(level));
+      if (!milestone) {
+        socket.emit("system", "Mốc phần thưởng không hợp lệ.");
+        return;
+      }
+      if (player.stats.level < milestone.level) {
+        socket.emit("system", `Cần đạt cấp ${milestone.level} để nhận mốc này.`);
+        return;
+      }
+      const claimed = player.claimedMilestones ?? [];
+      if (claimed.includes(milestone.level)) {
+        socket.emit("system", "Bạn đã nhận mốc này rồi.");
+        return;
+      }
+      claimed.push(milestone.level);
+      player.claimedMilestones = claimed;
+      player.stats.gold += milestone.gold;
+      player.gems = (player.gems ?? 0) + milestone.gems;
+      socket.emit("player", player);
+      socket.emit("system", `🎁 Mốc cấp ${milestone.level}: nhận ${milestone.gold.toLocaleString("vi-VN")} vàng + ${milestone.gems} 💎!`);
+      this.emitFloating(player.id, player.position, milestone.gold, "loot", `Mốc cấp ${milestone.level}`);
       this.markDirty(player);
     });
 
