@@ -1764,17 +1764,32 @@ export class GameScene extends Phaser.Scene {
   private playMonsterProjectile(from: Vec2, to: Vec2, color: number): void {
     const a = worldToIso(from.x, from.y);
     const b = worldToIso(to.x, to.y);
+    const glow = this.add.circle(a.x, a.y, 8, color, 0.3).setDepth(99987);
     const orb = this.add.circle(a.x, a.y, 4, color, 0.95).setDepth(99989);
     const ring = this.add.circle(a.x, a.y, 6, color, 0).setStrokeStyle(1, color, 0.6).setDepth(99988);
+    // Trailing motes left along the flight path.
+    let trailPhase = 0;
+    const onUpdate = () => {
+      trailPhase += 1;
+      if (trailPhase % 2 === 0) {
+        const t = this.add.circle(orb.x, orb.y, 2.5, color, 0.6).setDepth(99986);
+        this.tweens.add({ targets: t, alpha: 0, scale: 0.2, duration: 220, onComplete: () => t.destroy() });
+      }
+    };
     this.tweens.add({
-      targets: [orb, ring],
+      targets: [orb, ring, glow],
       x: b.x,
       y: b.y,
       duration: 280,
       ease: "Cubic.Out",
+      onUpdate,
       onComplete: () => {
+        // Tiny impact burst at the target.
+        const flash = this.add.circle(b.x, b.y, 6, 0xffffff, 0.8).setDepth(99990);
+        this.tweens.add({ targets: flash, scale: 2, alpha: 0, duration: 160, onComplete: () => flash.destroy() });
         orb.destroy();
         ring.destroy();
+        glow.destroy();
       }
     });
   }
