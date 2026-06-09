@@ -61,6 +61,7 @@ export class GameScene extends Phaser.Scene {
   private playerEquipment = new Map<string, Phaser.GameObjects.Graphics>();
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
   private mountSprites = new Map<string, Phaser.GameObjects.Ellipse>();
+  private powerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
@@ -1770,6 +1771,8 @@ export class GameScene extends Phaser.Scene {
         this.petSprites.delete(id);
         this.mountSprites.get(id)?.destroy();
         this.mountSprites.delete(id);
+        this.powerAuras.get(id)?.destroy();
+        this.powerAuras.delete(id);
         this.playerAuras.get(id)?.destroy();
         this.playerAuras.delete(id);
       }
@@ -2049,6 +2052,7 @@ export class GameScene extends Phaser.Scene {
     this.drawPlayerEquipment(player, ip3, facing);
     this.updatePetSprite(player, ip3);
     this.updateMountSprite(player, ip3);
+    this.updatePowerAura(player, ip3);
     this.updatePlayerAura(player, ip3);
   }
 
@@ -2104,6 +2108,29 @@ export class GameScene extends Phaser.Scene {
     ell.setFillStyle(mount.color, 0.9);
     // Sit just below the hero's feet, beneath the body but above the shadow.
     ell.setPosition(position.x, position.y + 6).setDepth(position.y - 2);
+  }
+
+  /** Sprint 193: a golden power aura under the hero that grows with the total
+   *  enhancement (+N) of equipped gear — a power-level flex. */
+  private updatePowerAura(player: PlayerState, position: Vec2): void {
+    let total = 0;
+    for (const it of Object.values(player.inventory.equipped)) {
+      if (it && it.kind === "equipment") total += it.plusLevel ?? 0;
+    }
+    let aura = this.powerAuras.get(player.id);
+    if (total <= 0 || !this.fxHigh) {
+      if (aura) { aura.destroy(); this.powerAuras.delete(player.id); }
+      return;
+    }
+    const t = Math.min(total, 30) / 30; // 0..1
+    const rx = 26 + t * 26;
+    if (!aura) {
+      aura = this.add.ellipse(position.x, position.y, rx, rx * 0.5, 0xffd166, 0.16).setStrokeStyle(2, 0xffe39a, 0.35);
+      this.powerAuras.set(player.id, aura);
+      this.tweens.add({ targets: aura, scaleX: 1.12, scaleY: 1.12, alpha: 0.32, duration: 900, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+    }
+    aura.setSize(rx, rx * 0.5);
+    aura.setPosition(position.x, position.y + 8).setDepth(position.y - 3);
   }
 
   /** Name label text: optional title + guild tag prefix before the name. */
