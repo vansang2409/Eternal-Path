@@ -30,6 +30,9 @@ const run = async () => {
   ok("socket blocked without gems", sys.some((m) => m.includes("để khảm Hồng Ngọc")));
 
   // Grant gems, socket ruby → +8 atk folded in (10 → 18), gems -60.
+  // Pre-unlock the "jeweler" achievement so its +10 gem reward doesn't skew
+  // the gem-cost assertion (it fires on first socket otherwise).
+  s.emit("devGrantAchievement", { id: "jeweler" });
   s.emit("devGrant", { gems: 500 });
   await waitPlayer(s, (p) => (p.gems ?? 0) >= 500);
   s.emit("socketGem", { itemId: item.id, gemId: "ruby" });
