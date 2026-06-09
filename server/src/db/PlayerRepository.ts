@@ -50,6 +50,7 @@ interface SavedPlayer {
   ownedMounts?: string[];
   activeMount?: string;
   autoSalvageRarity?: "off" | "common" | "rare";
+  starterPackClaimed?: boolean;
   petBonusAttack?: number;
   petBonusDefense?: number;
   petBonusMaxHp?: number;
@@ -301,6 +302,7 @@ export class PlayerRepository {
       ownedMounts: player.ownedMounts ? [...player.ownedMounts] : undefined,
       activeMount: player.activeMount,
       autoSalvageRarity: player.autoSalvageRarity,
+      starterPackClaimed: player.starterPackClaimed,
       petBonusAttack: player.petBonusAttack,
       petBonusDefense: player.petBonusDefense,
       petBonusMaxHp: player.petBonusMaxHp,

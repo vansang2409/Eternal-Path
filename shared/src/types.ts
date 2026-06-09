@@ -241,6 +241,8 @@ export interface PlayerState {
   // Auto-salvage loot filter (Sprint 176): "off" | "common" | "rare" — gear at
   // or below the threshold is dismantled on pickup instead of bagged.
   autoSalvageRarity?: "off" | "common" | "rare";
+  /** Whether the one-time starter pack has been claimed (Sprint 180). */
+  starterPackClaimed?: boolean;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -525,6 +527,7 @@ export interface ClientToServerEvents {
   buyMount: (payload: { mountId: string }) => void;
   equipMount: (payload: { mountId: string | null }) => void;
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
+  claimStarterPack: () => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;

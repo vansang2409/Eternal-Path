@@ -738,6 +738,7 @@ export class GameWorld {
         ownedMounts: saved.ownedMounts ?? [],
         activeMount: saved.activeMount,
         autoSalvageRarity: saved.autoSalvageRarity ?? "off",
+        starterPackClaimed: saved.starterPackClaimed ?? false,
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
@@ -2757,6 +2758,31 @@ export class GameWorld {
       socket.emit("player", player);
       const label = player.autoSalvageRarity === "off" ? "TẮT" : player.autoSalvageRarity === "common" ? "đồ Thường" : "đồ Thường + Hiếm";
       socket.emit("system", `🔧 Tự phân giải: ${label}.`);
+      this.markDirty(player);
+    });
+
+    // Sprint 180: claim the one-time starter pack (welcome gift).
+    socket.on("claimStarterPack", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.starterPackClaimed) {
+        socket.emit("system", "Bạn đã nhận Gói Tân Thủ rồi.");
+        return;
+      }
+      player.starterPackClaimed = true;
+      player.stats.gold += 3000;
+      player.gems = (player.gems ?? 0) + 30;
+      for (let i = 0; i < 5; i += 1) {
+        const info = MATERIAL_CATALOG.slimeCore;
+        player.inventory.items.push({
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${i}`,
+          kind: "material", materialId: "slimeCore", name: info.name, rarity: info.rarity, value: info.value
+        });
+      }
+      player.xpBoostUntil = Date.now() + XP_BOOST_DURATION_MS;
+      socket.emit("player", player);
+      socket.emit("system", "🎁 Gói Tân Thủ: +3.000 vàng, +30 💎, 5 Lõi Slime, và Bình Tăng XP 30 phút!");
+      this.emitFloating(player.id, player.position, 3000, "loot", "Gói Tân Thủ");
       this.markDirty(player);
     });
 

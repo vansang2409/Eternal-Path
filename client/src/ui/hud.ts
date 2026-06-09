@@ -86,7 +86,8 @@ export class Hud {
     private readonly onBuyMount: (mountId: string) => void = () => {},
     private readonly onEquipMount: (mountId: string | null) => void = () => {},
     private readonly onClaimAchMilestone: (count: number) => void = () => {},
-    private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {}
+    private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {},
+    private readonly onClaimStarterPack: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -310,7 +311,12 @@ export class Hud {
       ).join("") + achReady.map((m) =>
         `<button type="button" data-ach="${m.count}" style="background:linear-gradient(to bottom,#ffd166,#c8a948);color:#1d1500;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🏅 Mốc ${m.count} thành tựu (+${m.gems}💎)</button>`
       ).join("");
-      msRow.style.display = (ready.length || achReady.length) ? "flex" : "none";
+      const starterBtn = !player.starterPackClaimed
+        ? `<button type="button" data-starter="1" style="background:linear-gradient(to bottom,#7db8ff,#3f6fd6);color:#06122a;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🎁 Nhận Gói Tân Thủ</button>`
+        : "";
+      msRow.innerHTML += starterBtn;
+      msRow.querySelector<HTMLButtonElement>("[data-starter]")?.addEventListener("click", () => this.onClaimStarterPack());
+      msRow.style.display = (ready.length || achReady.length || !player.starterPackClaimed) ? "flex" : "none";
       msRow.querySelectorAll<HTMLButtonElement>("[data-ms]").forEach((btn) =>
         btn.addEventListener("click", () => this.onClaimMilestone(Number(btn.dataset.ms)))
       );

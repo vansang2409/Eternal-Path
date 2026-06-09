@@ -179,7 +179,8 @@ export class GameScene extends Phaser.Scene {
       (mountId) => this.socket.emit("buyMount", { mountId }),
       (mountId) => this.socket.emit("equipMount", { mountId }),
       (count) => this.socket.emit("claimAchievementMilestone", { count }),
-      (rarity) => this.socket.emit("setAutoSalvage", { rarity })
+      (rarity) => this.socket.emit("setAutoSalvage", { rarity }),
+      () => this.socket.emit("claimStarterPack")
     );
     this.socket = createSocket();
     this.registerSocketEvents();
