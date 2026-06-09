@@ -62,6 +62,7 @@ export class GameScene extends Phaser.Scene {
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
   private lastAfterimageAt = 0;
+  private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
   private groundSparkleAt = new Map<string, number>();
   private lowHpOverlay?: Phaser.GameObjects.Rectangle;
@@ -285,6 +286,22 @@ export class GameScene extends Phaser.Scene {
           .setScale(self.scaleX, self.scaleY).setFlipX(self.flipX)
           .setAlpha(0.45).setTint(0x9ad0ff).setDepth(self.depth - 1);
         this.tweens.add({ targets: ghost, alpha: 0, duration: 240, onComplete: () => ghost.destroy() });
+      }
+    }
+    // Sprint 117: shounen dash speed-lines — faint streaks sweep inward from the
+    // screen edges while sprinting, selling a sense of momentum.
+    if (input.sprinting && moving && time - this.lastSpeedLineAt > 90) {
+      this.lastSpeedLineAt = time;
+      const w = this.scale.width;
+      const h = this.scale.height;
+      for (let s = 0; s < 2; s += 1) {
+        const fromLeft = Math.random() < 0.5;
+        const y = 40 + Math.random() * (h - 80);
+        const len = 40 + Math.random() * 60;
+        const x = fromLeft ? -len : w + len;
+        const line = this.add.rectangle(x, y, len, 2, 0xdff1ff, 0.28)
+          .setOrigin(0.5).setScrollFactor(0).setDepth(99955).setBlendMode(Phaser.BlendModes.ADD);
+        this.tweens.add({ targets: line, x: fromLeft ? x + 120 : x - 120, alpha: 0, duration: 260, ease: "Quad.Out", onComplete: () => line.destroy() });
       }
     }
   }
