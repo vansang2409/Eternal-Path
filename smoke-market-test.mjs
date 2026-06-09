@@ -75,6 +75,7 @@ const run = async () => {
   // Seller (online) receives net = 1000 - 5% = 950.
   const spPaid = await waitPlayer(seller, (p) => p.stats.gold >= 950, 4000).catch(() => null);
   ok("seller paid net after tax (950)", spPaid && spPaid.stats.gold === spAfterList.stats.gold + 950, `gold=${spPaid?.stats.gold} base=${spAfterList.stats.gold}`);
+  await sleep(700); // let the post-sale marketUpdate broadcast arrive
   ok("listing removed after sale", !bMarket.some((l) => l.id === listing.id) && !sMarket.some((l) => l.id === listing.id));
 
   // Cancel flow: seller lists again then cancels, item returns.
@@ -82,6 +83,7 @@ const run = async () => {
   const ring = sp3.inventory.items.find((i) => i.name === "Cancel Ring");
   seller.emit("listMarketItem", { itemId: ring.id, price: 300 });
   await sleep(400);
+  await sleep(300);
   const myListing = sMarket.find((l) => l.item.id === ring.id);
   seller.emit("cancelMarketListing", { listingId: myListing.id });
   const spReturned = await waitPlayer(seller, (p) => p.inventory.items.some((i) => i.id === ring.id));
