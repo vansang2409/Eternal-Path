@@ -1471,7 +1471,10 @@ export class GameScene extends Phaser.Scene {
       sprite.setTexture(textureKey);
       sprite.setScale(textureKey === "player" ? 3 : 2);
     }
-    sprite.setPosition(ip3.x, ip3.y);
+    // Subtle idle "breathing" bob when standing still (anime liveliness).
+    const speed2 = player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y;
+    const bob = speed2 < 4 ? Math.sin(this.time.now / 360 + ip3.x * 0.05) * 1.4 : 0;
+    sprite.setPosition(ip3.x, ip3.y + bob);
     sprite.setDepth(ip3.y);
     sprite.setFlipX(facing === "left");
     // Apply cosmetic skin tint when the player has one active.
