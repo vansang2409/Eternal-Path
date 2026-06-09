@@ -816,6 +816,11 @@ export class GameScene extends Phaser.Scene {
       const py = iso.y;
       const sprite = this.add.sprite(px, py, def.texture).setScale(3).setDepth(py);
       sprite.setInteractive({ useHandCursor: true });
+      // Sprint 118: living town — a soft warm glow beneath each NPC that gently
+      // breathes, plus a slow idle bob so vendors feel animate, not frozen.
+      const glow = this.add.ellipse(px, py + 10, 30, 14, 0xffe1a0, 0.18).setDepth(py - 1).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: glow, scaleX: 1.25, scaleY: 1.25, alpha: 0.32, duration: 1600 + Math.random() * 500, yoyo: true, repeat: -1, ease: "Sine.InOut" });
+      this.tweens.add({ targets: sprite, y: py - 3, duration: 1400 + Math.random() * 400, yoyo: true, repeat: -1, ease: "Sine.InOut" });
       const nameLabel = this.add.text(px, py - 32, def.name, {
         fontFamily: "monospace",
         fontSize: "11px",
