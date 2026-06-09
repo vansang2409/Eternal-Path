@@ -72,7 +72,8 @@ export class Hud {
     private readonly onBuyBagSlots: () => void = () => {},
     private readonly onExchangeGems: (gems: number) => void = () => {},
     private readonly onBuyGoldBoost: () => void = () => {},
-    private readonly onSellAllMaterials: () => void = () => {}
+    private readonly onSellAllMaterials: () => void = () => {},
+    private readonly onSalvage: (itemId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1846,15 +1847,21 @@ export class Hud {
     actions.classList.remove("hidden");
     const primaryAction = item.kind === "consumable" ? "use" : "equip";
     const primaryLabel = item.kind === "consumable" ? t("use") : t("equipment");
+    // Salvage (Phân Giải) only applies to equipment — turns it into materials.
+    const salvageBtn = item.kind === "equipment"
+      ? `<button type="button" data-action="salvage">🔨 Phân giải</button>`
+      : "";
     actions.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <button type="button" data-action="${primaryAction}">${primaryLabel}</button>
       <button type="button" data-action="sell">${t("sell")}</button>
+      ${salvageBtn}
       <button type="button" data-action="drop">${t("drop")}</button>
     `;
     actions.querySelector('[data-action="equip"]')?.addEventListener("click", () => this.onEquip(item.id));
     actions.querySelector('[data-action="use"]')?.addEventListener("click", () => this.onUse(item.id));
     actions.querySelector('[data-action="sell"]')?.addEventListener("click", () => this.onSell(item.id));
+    actions.querySelector('[data-action="salvage"]')?.addEventListener("click", () => this.onSalvage(item.id));
     actions.querySelector('[data-action="drop"]')?.addEventListener("click", () => this.onDrop(item.id));
   }
 

@@ -506,6 +506,7 @@ export interface ClientToServerEvents {
   leaderboardRequest: () => void;
   rerollDailyQuests: () => void;
   enchantItem: (payload: { itemId: string }) => void;
+  salvageItem: (payload: { itemId: string }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

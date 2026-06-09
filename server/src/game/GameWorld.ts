@@ -97,6 +97,7 @@ import {
   getRecipe,
   isPlayerClass,
   materialDropForMonster,
+  salvageYield,
   MONSTER_ATTACK_COOLDOWN_MS,
   MONSTER_ATTACK_RANGE,
   MONSTER_SPEED,
@@ -2415,6 +2416,12 @@ export class GameWorld {
       this.enchantItem(player, itemId);
     });
 
+    socket.on("salvageItem", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.salvageItem(player, itemId);
+    });
+
     socket.on("selectClass", ({ playerClass }) => {
       const player = this.players.get(socket.id);
       if (!player) {
@@ -3173,6 +3180,48 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã tinh luyện ${item.name} (lần ${item.enchantCount}).`);
     this.emitFloating(player.id, player.position, 0, "loot", `+Tinh luyện`);
+    this.markDirty(player);
+  }
+
+  // Salvage (Phân Giải): dismantle an unequipped equipment item into crafting
+  // materials by rarity. Cannot salvage the item you're wearing.
+  private salvageItem(player: PlayerState, itemId: string): void {
+    const idx = player.inventory.items.findIndex((it) => it.id === itemId);
+    if (idx < 0) {
+      this.sockets.get(player.id)?.emit("system", "Không tìm thấy vật phẩm trong túi.");
+      return;
+    }
+    const item = player.inventory.items[idx];
+    if (item.kind !== "equipment") {
+      this.sockets.get(player.id)?.emit("system", "Chỉ phân giải được trang bị.");
+      return;
+    }
+    if (player.inventory.equipped[item.slot]?.id === item.id) {
+      this.sockets.get(player.id)?.emit("system", "Hãy tháo trang bị trước khi phân giải.");
+      return;
+    }
+    // Remove the gear, then grant salvage materials by rarity.
+    player.inventory.items.splice(idx, 1);
+    const yields = salvageYield(item.rarity);
+    const granted: string[] = [];
+    for (const [matId, qty] of Object.entries(yields) as [MaterialId, number][]) {
+      const info = MATERIAL_CATALOG[matId];
+      for (let n = 0; n < qty; n += 1) {
+        const mat: MaterialItem = {
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${n}`,
+          kind: "material",
+          materialId: matId,
+          name: info.name,
+          rarity: info.rarity,
+          value: info.value
+        };
+        player.inventory.items.push(mat);
+      }
+      granted.push(`${qty}x ${info.name}`);
+    }
+    this.sockets.get(player.id)?.emit("player", player);
+    this.sockets.get(player.id)?.emit("system", `Đã phân giải ${item.name} → ${granted.join(", ")}.`);
+    this.emitFloating(player.id, player.position, 0, "loot", "Phân giải");
     this.markDirty(player);
   }
 

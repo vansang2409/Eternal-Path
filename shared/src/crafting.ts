@@ -239,3 +239,12 @@ export const RECIPES: Recipe[] = [
 export function getRecipe(id: string): Recipe | undefined {
   return RECIPES.find((r) => r.id === id);
 }
+
+// Salvage (Phân Giải): dismantle an equipment item into crafting materials by
+// rarity. Yields are modest so salvaging is a way to convert unwanted gear into
+// crafting progress, not a faster material faucet than farming.
+export function salvageYield(rarity: Rarity): Partial<Record<MaterialId, number>> {
+  if (rarity === "epic") return { voidAsh: 1, crystalShard: 1 };
+  if (rarity === "rare") return { emberHeart: 1 };
+  return { slimeCore: 1 };
+}
