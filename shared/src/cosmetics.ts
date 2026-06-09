@@ -160,6 +160,24 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x6ea8ff,
     gemPrice: 150
+  },
+  // ── Season 5 content drop (Sprint 177) ──
+  {
+    id: "skin-void-monarch",
+    name: "Hư Vô Đế Bào",
+    description: "Sắc tím hư vô cuộn xoáy — uy áp của bậc đế vương bóng tối.",
+    type: "skinTint",
+    color: 0x7a3fd6,
+    gemPrice: 240,
+    featured: true
+  },
+  {
+    id: "skill-fx-blood",
+    name: "Hiệu Ứng Phép Huyết",
+    description: "Hiệu ứng kỹ năng nhuốm sắc huyết đỏ thẫm.",
+    type: "skillEffectColor",
+    color: 0xd6294a,
+    gemPrice: 160
   }
 ];
 
