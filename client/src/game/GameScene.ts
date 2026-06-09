@@ -810,6 +810,28 @@ export class GameScene extends Phaser.Scene {
 
   // ------- top banner notifications -------
 
+  // Sprint 168: warm golden screen-edge glow that lingers for the whole Happy
+  // Hour, giving the world a festive sheen while x2 gold is live.
+  private happyHourGlowTimer?: ReturnType<typeof setTimeout>;
+  private setHappyHourGlow(durationMs: number): void {
+    let glow = document.getElementById("happy-hour-glow");
+    if (!glow) {
+      glow = document.createElement("div");
+      glow.id = "happy-hour-glow";
+      glow.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:90000;box-shadow:inset 0 0 140px 30px rgba(255,196,70,0.28);animation:hhPulse 3.2s ease-in-out infinite";
+      const style = document.createElement("style");
+      style.textContent = "@keyframes hhPulse{0%,100%{opacity:0.65}50%{opacity:1}}";
+      glow.appendChild(style);
+      document.body.appendChild(glow);
+    }
+    glow.style.display = "block";
+    if (this.happyHourGlowTimer) clearTimeout(this.happyHourGlowTimer);
+    this.happyHourGlowTimer = setTimeout(() => {
+      const g = document.getElementById("happy-hour-glow");
+      if (g) g.style.display = "none";
+    }, Math.max(1000, durationMs));
+  }
+
   private showTopBanner(text: string, kind: "level" | "achievement", durationMs: number): void {
     const stack = document.querySelector("#top-banner-stack");
     if (!stack) return;
@@ -1608,10 +1630,11 @@ export class GameScene extends Phaser.Scene {
       );
       if (kind === "defeat") this.playBossFinisher();
     });
-    // Sprint 167: Happy Hour world event banner.
-    this.socket.on("worldEvent", ({ kind, multiplier }) => {
+    // Sprint 167/168: Happy Hour world event banner + persistent golden glow.
+    this.socket.on("worldEvent", ({ kind, multiplier, until }) => {
       if (kind === "happyHour") {
         this.showTopBanner(`🌟 GIỜ VÀNG! x${multiplier} vàng rơi ra!`, "level", 3500);
+        this.setHappyHourGlow(Math.max(0, until - Date.now()));
       }
     });
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
