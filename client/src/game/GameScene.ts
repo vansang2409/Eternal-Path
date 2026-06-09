@@ -60,6 +60,7 @@ export class GameScene extends Phaser.Scene {
   private petSprites = new Map<string, Phaser.GameObjects.Arc>();
   private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
+  private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
   private lastAfterimageAt = 0;
   private statusFxAt = new Map<string, number>();
   private groundSparkleAt = new Map<string, number>();
@@ -327,6 +328,35 @@ export class GameScene extends Phaser.Scene {
       }
       const cur = this.lowHpOverlay.alpha;
       this.lowHpOverlay.setAlpha(cur + (target - cur) * Math.min(1, dt * 8));
+    }
+    this.updateNightFireflies(dt);
+  }
+
+  // Sprint 112: warm drifting fireflies that fade in at night/dusk and out by
+  // day — screen-space (scrollFactor 0) so they read as foreground atmosphere.
+  private updateNightFireflies(dt: number): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    if (this.nightFireflies.length === 0) {
+      for (let i = 0; i < 16; i += 1) {
+        const go = this.add.circle(Math.random() * w, Math.random() * h, 1.6 + Math.random() * 1.6, 0xfff1a8, 0)
+          .setScrollFactor(0).setDepth(99950).setBlendMode(Phaser.BlendModes.ADD);
+        this.nightFireflies.push({ go, t: Math.random() * Math.PI * 2, speed: 0.4 + Math.random() * 0.6, ampX: 18 + Math.random() * 26, ampY: 12 + Math.random() * 20, baseX: go.x, baseY: go.y });
+      }
+    }
+    const night = this.currentDayPhase === "night";
+    const dusk = this.currentDayPhase === "dusk" || this.currentDayPhase === "dawn";
+    const targetMax = night ? 0.85 : dusk ? 0.35 : 0;
+    for (const f of this.nightFireflies) {
+      f.t += dt * f.speed;
+      f.go.x = f.baseX + Math.cos(f.t) * f.ampX;
+      f.go.y = f.baseY + Math.sin(f.t * 1.3) * f.ampY;
+      // Re-anchor drifting fireflies if the window resized under them.
+      if (f.baseX > w) f.baseX = Math.random() * w;
+      if (f.baseY > h) f.baseY = Math.random() * h;
+      const flicker = 0.55 + 0.45 * Math.sin(f.t * 3.1);
+      const target = targetMax * flicker;
+      f.go.setAlpha(f.go.alpha + (target - f.go.alpha) * Math.min(1, dt * 2));
     }
   }
 
