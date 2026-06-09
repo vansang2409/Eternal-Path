@@ -591,6 +591,7 @@ export class GameWorld {
     // Sprint 170: consecutive-kill streak pays escalating gem milestones.
     attacker.arenaStreak = (attacker.arenaStreak ?? 0) + 1;
     const streakBonus: Record<number, number> = { 3: 5, 5: 10, 10: 30 };
+    if ((attacker.arenaStreak ?? 0) >= 5) this.unlockAchievement(attacker, "streak-master");
     const bonus = streakBonus[attacker.arenaStreak];
     if (bonus) {
       attacker.gems = (attacker.gems ?? 0) + bonus;
@@ -2681,6 +2682,7 @@ export class GameWorld {
       owned.push(mount.id);
       player.ownedMounts = owned;
       player.activeMount = mount.id;
+      this.unlockAchievement(player, "rider");
       socket.emit("player", player);
       socket.emit("system", `🐎 Đã mua & cưỡi ${mount.name} (${mount.desc})!`);
       this.markDirty(player);
@@ -3744,6 +3746,7 @@ export class GameWorld {
       heal: recipe.heal
     });
     this.sockets.get(player.id)?.emit("player", player);
+    this.unlockAchievement(player, "alchemist");
     this.sockets.get(player.id)?.emit("system", `⚗️ Luyện đan thành công: ${recipe.name} (+${recipe.heal} HP).`);
     this.emitFloating(player.id, player.position, 0, "loot", recipe.name);
     this.markDirty(player);

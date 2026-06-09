@@ -41,7 +41,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 159 — achievements for the gear-deepening loop (S151-158).
   { id: "enhancer",        title: "Thợ Cường Hóa",        description: "Cường hóa trang bị thành công lần đầu.", reward: { gems: 10 } },
   { id: "recycler",        title: "Bậc Thầy Tái Chế",     description: "Phân giải hàng loạt trang bị.",          reward: { gems: 10 } },
-  { id: "apex-smith",      title: "Thợ Rèn Thượng Thừa",  description: "Chế tạo 1 trang bị apex.",               reward: { gems: 15 } }
+  { id: "apex-smith",      title: "Thợ Rèn Thượng Thừa",  description: "Chế tạo 1 trang bị apex.",               reward: { gems: 15 } },
+  // Sprint 179 — achievements for mounts / alchemy / arena streak.
+  { id: "rider",           title: "Kỵ Sĩ Đường Trường",   description: "Tậu 1 thú cưỡi.",                        reward: { gems: 10 } },
+  { id: "alchemist",       title: "Luyện Đan Sư",         description: "Luyện 1 bình thuốc.",                    reward: { gems: 10 } },
+  { id: "streak-master",   title: "Chuỗi Bất Bại",        description: "Đạt chuỗi 5 hạ gục tại Đấu Trường.",    reward: { gems: 25 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {
