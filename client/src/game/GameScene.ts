@@ -97,6 +97,7 @@ export class GameScene extends Phaser.Scene {
   private minimapBase?: ImageData;
   private lastMinimapAt = 0;
   private aliveMonsters = new Set<string>();
+  private monsterAggroPrev = new Map<string, boolean>();
   private recentFloating: Array<{ id: string; at: number }> = [];
 
   preload(): void {}
@@ -1381,6 +1382,13 @@ export class GameScene extends Phaser.Scene {
       if (!wasAlive && isAlive && this.monsters.has(monster.id)) {
         this.playSpawnShimmer(monster.position, monster.boss || monster.elite);
       }
+      // Sprint 121: aggro alert — flash a red "!" the moment a monster locks
+      // onto the local player, so incoming threats read instantly.
+      const aggroOnMe = isAlive && monster.targetPlayerId === this.selfId;
+      if (aggroOnMe && !this.monsterAggroPrev.get(monster.id)) {
+        this.playAggroAlert(monster.position, monster.boss || monster.elite);
+      }
+      this.monsterAggroPrev.set(monster.id, aggroOnMe);
       if (isAlive) this.aliveMonsters.add(monster.id);
       else this.aliveMonsters.delete(monster.id);
       this.renderMonster(monster, this.monsters.get(monster.id) ?? monster.position);
@@ -2067,6 +2075,22 @@ export class GameScene extends Phaser.Scene {
       const mote = this.add.circle(sx, sy, 2.5, 0xc9b6ff, 0.95).setDepth(99997);
       this.tweens.add({ targets: mote, x: iso.x, y: iso.y, alpha: 0, scale: 0.3, duration: 340, ease: "Quad.In", onComplete: () => mote.destroy() });
     }
+  }
+
+  // Sprint 121: brief red "!" alert that pops above a monster the instant it
+  // aggroes onto the local player.
+  private playAggroAlert(position: Vec2, big: boolean): void {
+    const iso = worldToIso(position.x, position.y);
+    if (!this.cameras.main.worldView.contains(iso.x, iso.y)) return;
+    const y0 = iso.y - (big ? 52 : 40);
+    const mark = this.add.text(iso.x, y0, "!", {
+      fontFamily: "monospace", fontSize: big ? "24px" : "18px", color: "#ff4d4d",
+      stroke: "#2a0000", strokeThickness: 4, fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(99992).setScale(0.4);
+    this.tweens.add({ targets: mark, scale: 1, y: y0 - 8, duration: 180, ease: "Back.Out" });
+    this.tweens.add({ targets: mark, alpha: 0, duration: 360, delay: 480, onComplete: () => mark.destroy() });
+    const ring = this.add.circle(iso.x, iso.y - 6, 6).setStrokeStyle(2, 0xff4d4d, 0.9).setDepth(99991);
+    this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 380, ease: "Cubic.Out", onComplete: () => ring.destroy() });
   }
 
   // Element-specific flourish at an impact point (Sprint 94).
