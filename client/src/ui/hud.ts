@@ -956,6 +956,11 @@ export class Hud {
     rb.querySelector<HTMLButtonElement>("#rage-btn")?.addEventListener("click", () => this.onBuyRagePotion());
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
+    // Sprint 197: cosmetics collection progress header.
+    const cosHeader = document.createElement("div");
+    cosHeader.style.cssText = "font-size:12px;color:#9be7a8;margin:8px 0 4px;font-weight:700";
+    cosHeader.textContent = `👗 Trang phục — Sưu tập: ${owned.size}/${COSMETICS.length}`;
+    root.appendChild(cosHeader);
     for (const cosmetic of COSMETICS) {
       const card = document.createElement("div");
       card.className = "gem-shop-card";
@@ -1656,7 +1661,10 @@ export class Hud {
       </div>`;
     }).join("");
     const mountSection = `<div style="margin-top:14px;border-top:1px solid #2a2a2a;padding-top:10px"><p style="color:#d6dddf;font-size:12px;margin:0 0 8px"><strong>🐎 Thú cưỡi</strong> — tăng tốc chạy (mua bằng vàng).</p>${mountCards}</div>`;
-    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con; nuôi để lên cấp tăng buff.</p>${feedPanel}${cards}${mountSection}`;
+    // Sprint 197: collection progress.
+    const petTotal = PET_CATALOG.length;
+    const petOwned = (this.player.ownedPets ?? []).length;
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Linh thú đi theo bạn và cộng chỉ số. Mỗi lúc chỉ trang bị 1 con; nuôi để lên cấp tăng buff. <strong style="color:#9be7a8">Sưu tập: ${petOwned}/${petTotal}</strong></p>${feedPanel}${cards}${mountSection}`;
     body.querySelectorAll<HTMLButtonElement>("[data-mount-buy]").forEach((btn) => btn.addEventListener("click", () => this.onBuyMount(btn.dataset.mountBuy!)));
     body.querySelectorAll<HTMLButtonElement>("[data-mount-equip]").forEach((btn) => btn.addEventListener("click", () => { const id = btn.dataset.mountEquip; this.onEquipMount(id ? id : null); }));
     body.querySelector<HTMLButtonElement>("#pet-feed-btn")?.addEventListener("click", () => this.onFeedPet());
