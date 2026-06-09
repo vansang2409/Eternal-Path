@@ -1212,6 +1212,7 @@ export class GameWorld {
       player.gems = gems - cosmetic.gemPrice;
       const owned = [...(player.cosmetics ?? []), cosmeticId];
       player.cosmetics = owned;
+      this.checkCollectionAchievements(player);
       socket.emit("player", player);
       socket.emit("system", `Đã mua ${cosmetic.name}.`);
       this.markDirty(player);
@@ -2177,6 +2178,7 @@ export class GameWorld {
         player.stats.gold -= pet.goldPrice;
       }
       player.ownedPets = [...(player.ownedPets ?? []), pet.id];
+      this.checkCollectionAchievements(player);
       this.unlockAchievement(player, "beast-tamer");
       socket.emit("player", player);
       socket.emit("system", `🐾 Đã thu phục ${pet.name}! Mở bảng Linh Thú (P) để trang bị.`);
@@ -2498,6 +2500,7 @@ export class GameWorld {
           label = `${reward.label} (đã có → +${MYSTERY_DUP_GEMS} 💎)`;
         } else {
           player.cosmetics = [...(player.cosmetics ?? []), reward.id];
+          this.checkCollectionAchievements(player);
         }
       } else if (reward.kind === "pet" && reward.id) {
         if ((player.ownedPets ?? []).includes(reward.id)) {
@@ -2506,6 +2509,7 @@ export class GameWorld {
           label = `${reward.label} (đã có → +${MYSTERY_DUP_GEMS} 💎)`;
         } else {
           player.ownedPets = [...(player.ownedPets ?? []), reward.id];
+          this.checkCollectionAchievements(player);
         }
       }
       socket.emit("player", player);
@@ -3495,6 +3499,13 @@ export class GameWorld {
     if (player.stats.level >= 5) this.unlockAchievement(player, "reach-level-5");
     if (player.stats.level >= 10) this.unlockAchievement(player, "reach-level-10");
     if (player.stats.level >= 20) this.unlockAchievement(player, "reach-level-20");
+  }
+
+  // Sprint 196: unlock collection achievements once the player owns enough
+  // pets / cosmetics.
+  private checkCollectionAchievements(player: PlayerState): void {
+    if ((player.ownedPets?.length ?? 0) >= 6) this.unlockAchievement(player, "pet-collector");
+    if ((player.cosmetics?.length ?? 0) >= 6) this.unlockAchievement(player, "cosmetic-collector");
   }
 
   private unlockAchievement(player: PlayerState, achievementId: string): boolean {
