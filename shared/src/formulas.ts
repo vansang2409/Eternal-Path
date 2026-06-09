@@ -103,6 +103,11 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// Weekly login reward (Sprint 190): a chunky once-per-week gold + gem payout on
+// a 7-day cooldown, separate from the smaller daily claim.
+export const WEEKLY_CLAIM_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
+export const WEEKLY_REWARD_GOLD = 20000;
+export const WEEKLY_REWARD_GEMS = 50;
 // Achievement completion milestones (Sprint 174): claim escalating gem rewards
 // as your unlocked-achievement count crosses thresholds.
 export interface AchievementMilestone { count: number; gems: number; }

@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -91,7 +91,8 @@ export class Hud {
     private readonly onFuseGear: () => void = () => {},
     private readonly onSacrificePet: (petId: string) => void = () => {},
     private readonly onSocketGem: (itemId: string, gemId: string) => void = () => {},
-    private readonly onUnsocketGem: (itemId: string) => void = () => {}
+    private readonly onUnsocketGem: (itemId: string) => void = () => {},
+    private readonly onClaimWeekly: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -328,9 +329,14 @@ export class Hud {
       const starterBtn = !player.starterPackClaimed
         ? `<button type="button" data-starter="1" style="background:linear-gradient(to bottom,#7db8ff,#3f6fd6);color:#06122a;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🎁 Nhận Gói Tân Thủ</button>`
         : "";
-      msRow.innerHTML += starterBtn;
+      const weeklyReady = Date.now() - (player.lastWeeklyClaimAt ?? 0) >= WEEKLY_CLAIM_INTERVAL_MS;
+      const weeklyBtn = weeklyReady
+        ? `<button type="button" data-weekly="1" style="background:linear-gradient(to bottom,#c79bff,#7b5fb0);color:#1a0c2e;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">📦 Thưởng tuần</button>`
+        : "";
+      msRow.innerHTML += starterBtn + weeklyBtn;
       msRow.querySelector<HTMLButtonElement>("[data-starter]")?.addEventListener("click", () => this.onClaimStarterPack());
-      msRow.style.display = (ready.length || achReady.length || !player.starterPackClaimed) ? "flex" : "none";
+      msRow.querySelector<HTMLButtonElement>("[data-weekly]")?.addEventListener("click", () => this.onClaimWeekly());
+      msRow.style.display = (ready.length || achReady.length || !player.starterPackClaimed || weeklyReady) ? "flex" : "none";
       msRow.querySelectorAll<HTMLButtonElement>("[data-ms]").forEach((btn) =>
         btn.addEventListener("click", () => this.onClaimMilestone(Number(btn.dataset.ms)))
       );

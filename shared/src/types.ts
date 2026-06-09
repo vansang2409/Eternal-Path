@@ -245,6 +245,8 @@ export interface PlayerState {
   autoSalvageRarity?: "off" | "common" | "rare";
   /** Whether the one-time starter pack has been claimed (Sprint 180). */
   starterPackClaimed?: boolean;
+  /** Timestamp (ms) of the last weekly reward claim (Sprint 190). */
+  lastWeeklyClaimAt?: number;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -530,6 +532,7 @@ export interface ClientToServerEvents {
   equipMount: (payload: { mountId: string | null }) => void;
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
   claimStarterPack: () => void;
+  claimWeeklyReward: () => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;
   socketGem: (payload: { itemId: string; gemId: string }) => void;

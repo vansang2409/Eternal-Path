@@ -30,6 +30,9 @@ import {
   isRageActive,
   levelMilestone,
   achievementMilestone,
+  WEEKLY_CLAIM_INTERVAL_MS,
+  WEEKLY_REWARD_GOLD,
+  WEEKLY_REWARD_GEMS,
   HAPPY_HOUR_MULTIPLIER,
   HAPPY_HOUR_DURATION_MS,
   HAPPY_HOUR_INTERVAL_MS,
@@ -749,6 +752,7 @@ export class GameWorld {
         activeMount: saved.activeMount,
         autoSalvageRarity: saved.autoSalvageRarity ?? "off",
         starterPackClaimed: saved.starterPackClaimed ?? false,
+        lastWeeklyClaimAt: saved.lastWeeklyClaimAt ?? 0,
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
@@ -2882,6 +2886,26 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", "🎁 Gói Tân Thủ: +3.000 vàng, +30 💎, 5 Lõi Slime, và Bình Tăng XP 30 phút!");
       this.emitFloating(player.id, player.position, 3000, "loot", "Gói Tân Thủ");
+      this.markDirty(player);
+    });
+
+    // Sprint 190: claim the weekly login reward (7-day cooldown).
+    socket.on("claimWeeklyReward", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const now = Date.now();
+      const last = player.lastWeeklyClaimAt ?? 0;
+      if (now - last < WEEKLY_CLAIM_INTERVAL_MS) {
+        const days = ((WEEKLY_CLAIM_INTERVAL_MS - (now - last)) / 86400000).toFixed(1);
+        socket.emit("system", `Thưởng tuần đã nhận — còn ${days} ngày nữa.`);
+        return;
+      }
+      player.lastWeeklyClaimAt = now;
+      player.stats.gold += WEEKLY_REWARD_GOLD;
+      player.gems = (player.gems ?? 0) + WEEKLY_REWARD_GEMS;
+      socket.emit("player", player);
+      socket.emit("system", `📦 Thưởng tuần: +${WEEKLY_REWARD_GOLD.toLocaleString("vi-VN")} vàng, +${WEEKLY_REWARD_GEMS} 💎!`);
+      this.emitFloating(player.id, player.position, WEEKLY_REWARD_GOLD, "loot", "Thưởng tuần");
       this.markDirty(player);
     });
 
