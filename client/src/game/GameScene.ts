@@ -706,6 +706,7 @@ export class GameScene extends Phaser.Scene {
   // ------- day / night cycle -------
 
   private dayOverlay?: Phaser.GameObjects.Rectangle;
+  private vignette?: Phaser.GameObjects.Image;
   private lastDayPhase = "";
 
   private currentDayPhase: string = "day";
@@ -742,7 +743,33 @@ export class GameScene extends Phaser.Scene {
         .setScrollFactor(0);
       this.scale.on("resize", () => this.fitDayOverlay());
     }
+    // Sprint 122: cinematic vignette — a soft radial darkening at the screen
+    // edges that deepens at night, framing the action like an anime shot.
+    if (!this.vignette) {
+      if (!this.textures.exists("vignette")) {
+        const size = 256;
+        const canvasTex = this.textures.createCanvas("vignette", size, size);
+        const ctx = canvasTex?.getContext();
+        if (ctx) {
+          const grd = ctx.createRadialGradient(size / 2, size / 2, size * 0.32, size / 2, size / 2, size * 0.52);
+          grd.addColorStop(0, "rgba(0,0,0,0)");
+          grd.addColorStop(1, "rgba(0,0,0,1)");
+          ctx.fillStyle = grd;
+          ctx.fillRect(0, 0, size, size);
+          canvasTex?.refresh();
+        }
+      }
+      this.vignette = this.add.image(this.scale.width / 2, this.scale.height / 2, "vignette")
+        .setScrollFactor(0).setDepth(99965).setAlpha(0.34);
+    }
     this.fitDayOverlay();
+    {
+      let vAlpha = 0.34;
+      if (payload.phase === "night") vAlpha = 0.6;
+      else if (payload.phase === "dawn" || payload.phase === "dusk") vAlpha = 0.46;
+      this.tweens.killTweensOf(this.vignette);
+      this.tweens.add({ targets: this.vignette, alpha: vAlpha, duration: 1800, ease: "Sine.InOut" });
+    }
     const t01 = payload.timeOfDay;
     // Tint color + alpha by phase.
     // Night: deep blue / strong alpha. Dawn/dusk: warm orange / mid alpha.
@@ -771,6 +798,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   private fitDayOverlay(): void {
+    if (this.vignette) {
+      // Stretch a bit past the edges so the gradient's darkest rim is off-screen.
+      this.vignette.setPosition(this.scale.width / 2, this.scale.height / 2)
+        .setDisplaySize(this.scale.width * 1.15, this.scale.height * 1.15);
+    }
     if (!this.dayOverlay) return;
     this.dayOverlay.setSize(this.scale.width, this.scale.height);
   }
