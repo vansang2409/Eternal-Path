@@ -1242,6 +1242,7 @@ export class GameScene extends Phaser.Scene {
         if (event.entityId === this.selfId) {
           this.showTopBanner(`🎉 LEVEL ${event.amount}!`, "level", 2000);
           this.cameras.main.flash(260, 255, 226, 140);
+          this.playSelfLevelUpFlash();
         }
       }
     });
@@ -2449,6 +2450,24 @@ export class GameScene extends Phaser.Scene {
       const sx = iso.x + (Math.random() - 0.5) * 30;
       const spark = this.add.circle(sx, iso.y + 4, 2.5, 0xfff1a8, 0.95).setDepth(58);
       this.tweens.add({ targets: spark, y: iso.y - 46 - Math.random() * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
+    }
+  }
+
+  // Sprint 130: screen-space golden radiance on the local player's level-up —
+  // expanding ring + sunburst rays + drifting gold motes for a triumphant beat.
+  private playSelfLevelUpFlash(): void {
+    const cx = this.scale.width / 2;
+    const cy = this.scale.height / 2;
+    const ring = this.add.circle(cx, cy, 30).setStrokeStyle(4, 0xffe9a8, 0.9)
+      .setScrollFactor(0).setDepth(99968).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: ring, scale: 12, alpha: 0, duration: 620, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    for (let i = 0; i < 18; i += 1) {
+      const ang = (Math.PI * 2 * i) / 18;
+      const ray = this.add.rectangle(cx, cy, 60, 3, 0xffd98a, 0.7)
+        .setOrigin(0, 0.5).setRotation(ang).setScrollFactor(0).setDepth(99967).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: ray, scaleX: 4, alpha: 0, duration: 520, delay: 40, ease: "Quad.Out", onComplete: () => ray.destroy() });
+      const mote = this.add.circle(cx, cy, 3, 0xfff3c4, 0.95).setScrollFactor(0).setDepth(99969).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: mote, x: cx + Math.cos(ang) * (160 + Math.random() * 80), y: cy + Math.sin(ang) * (120 + Math.random() * 60), alpha: 0, duration: 700 + Math.random() * 200, ease: "Quad.Out", onComplete: () => mote.destroy() });
     }
   }
 
