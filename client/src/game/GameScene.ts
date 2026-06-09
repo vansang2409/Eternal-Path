@@ -273,6 +273,7 @@ export class GameScene extends Phaser.Scene {
     this.renderBufferedWorld(time);
     this.updateAmbient(delta);
     this.drawTargetReticle(time);
+    this.updateWaterShimmer(time);
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
     // Footstep dust puffs while moving (anime grounding).
@@ -355,6 +356,37 @@ export class GameScene extends Phaser.Scene {
     this.updateNightFireflies(dt);
     this.updateWeather(dt);
     this.updateShootingStars();
+  }
+
+  // Sprint 125: water sparkle — occasional specular glints dance over nearby
+  // water tiles so lakes and coastline feel alive instead of flat.
+  private lastWaterShimmerAt = 0;
+  private updateWaterShimmer(time: number): void {
+    if (!this.worldMap || !this.selfPlayer) return;
+    if (time - this.lastWaterShimmerAt < 220) return;
+    this.lastWaterShimmerAt = time;
+    const ptx = Math.floor(this.selfPlayer.position.x / TILE_SIZE);
+    const pty = Math.floor(this.selfPlayer.position.y / TILE_SIZE);
+    const candidates: Array<{ x: number; y: number }> = [];
+    for (let dy = -6; dy <= 6; dy += 1) {
+      for (let dx = -6; dx <= 6; dx += 1) {
+        const tx = ptx + dx;
+        const ty = pty + dy;
+        if (tx < 0 || ty < 0 || tx >= this.worldMap.width || ty >= this.worldMap.height) continue;
+        const tile = this.worldMap.tiles[ty][tx] as TileId;
+        if (tile === TileId.Water || tile === TileId.Deep) candidates.push({ x: tx, y: ty });
+      }
+    }
+    if (candidates.length === 0) return;
+    const picks = Math.min(2, candidates.length);
+    for (let i = 0; i < picks; i += 1) {
+      const c = candidates[Math.floor(Math.random() * candidates.length)];
+      const wx = (c.x + 0.3 + Math.random() * 0.4) * TILE_SIZE;
+      const wy = (c.y + 0.3 + Math.random() * 0.4) * TILE_SIZE;
+      const iso = worldToIso(wx, wy);
+      const glint = this.add.ellipse(iso.x, iso.y, 6, 2.5, 0xdaf4ff, 0).setDepth(2).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({ targets: glint, alpha: 0.75, duration: 320, yoyo: true, ease: "Sine.InOut", onComplete: () => glint.destroy() });
+    }
   }
 
   // Sprint 123: rare shooting star streaking across the night sky — a quiet
