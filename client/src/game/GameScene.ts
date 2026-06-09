@@ -1552,6 +1552,16 @@ export class GameScene extends Phaser.Scene {
     });
     this.socket.on("announce", ({ accountName, itemName, rarity }) => {
       this.hud.announceDrop(accountName, itemName, rarity);
+      // Sprint 143: when it's YOUR rare/epic drop, a colored screen flash +
+      // celebratory burst makes the moment feel earned.
+      if (this.selfPlayer && accountName === this.selfPlayer.accountName) {
+        const epic = rarity === "epic";
+        const [r, g, b] = epic ? [217, 140, 255] : [105, 167, 255];
+        this.cameras.main.flash(360, r, g, b, false);
+        const self = this.players.get(this.selfId);
+        if (self) this.playCelebration(self.x, self.y);
+        if (this.loggedIn) this.showTopBanner(`${epic ? "🟣" : "🔵"} Nhặt được ${itemName}!`, "achievement", 2400);
+      }
     });
     this.socket.on("bossAnnounce", ({ kind, bossName, accountName }) => {
       this.hud.log(
