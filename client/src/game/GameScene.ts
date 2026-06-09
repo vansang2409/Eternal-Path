@@ -1451,6 +1451,11 @@ export class GameScene extends Phaser.Scene {
     }
     for (const [id, sprite] of this.players) {
       if (!seenPlayers.has(id)) {
+        // Sprint 129: departure poof when another player leaves view/logs out.
+        if (id !== this.selfId && this.cameras.main.worldView.contains(sprite.x, sprite.y)) {
+          const ring = this.add.circle(sprite.x, sprite.y, 6).setStrokeStyle(2, 0x9be3ff, 0.8).setDepth(99990);
+          this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 360, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+        }
         sprite.destroy();
         this.players.delete(id);
         this.names.get(id)?.destroy();
@@ -1682,6 +1687,14 @@ export class GameScene extends Phaser.Scene {
         });
       }
       this.players.set(player.id, sprite);
+      // Sprint 129: graceful arrival — other players fade in with a soft ring
+      // instead of popping into existence.
+      if (player.id !== this.selfId) {
+        sprite.setAlpha(0);
+        this.tweens.add({ targets: sprite, alpha: 1, duration: 360, ease: "Quad.Out" });
+        const ring = this.add.circle(ip.x, ip.y, 8).setStrokeStyle(2, 0x9be3ff, 0.9).setDepth(99990);
+        this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 480, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+      }
       const ip2 = worldToIso(position.x, position.y);
       const name = this.add.text(ip2.x, ip2.y - 34, this.displayName(player), {
         fontFamily: "monospace",
