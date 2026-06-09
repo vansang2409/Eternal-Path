@@ -3363,6 +3363,7 @@ export class GameWorld {
       if (s.maxHp) s.maxHp = Math.max(s.maxHp + 1, Math.round(s.maxHp * 1.1));
       if (s.speed) s.speed = Math.max(s.speed + 1, Math.round(s.speed * 1.1));
       item.plusLevel = plus + 1;
+      this.unlockAchievement(player, "enhancer");
     }
     if (isEquipped) addItemStats(player, item);
     this.sockets.get(player.id)?.emit("player", player);
@@ -3410,6 +3411,7 @@ export class GameWorld {
       granted.push(`${qty}x ${info.name}`);
     }
     this.unlockAchievement(player, "salvager");
+    this.unlockAchievement(player, "recycler");
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${targets.length} trang bị → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", `Phân giải x${targets.length}`);
@@ -3471,6 +3473,10 @@ export class GameWorld {
     this.bumpQuestProgress(player, ["craftItem"]);
     player.itemsCrafted = (player.itemsCrafted ?? 0) + 1;
     if (player.itemsCrafted >= 5) this.unlockAchievement(player, "craft-master");
+    // Sprint 159: apex recipes unlock the master smith achievement.
+    if (recipe.id === "abyssal-greatsword" || recipe.id === "dragonscale-plate" || recipe.id === "eternal-signet") {
+      this.unlockAchievement(player, "apex-smith");
+    }
   }
 
   private updateRespawns(now: number): void {

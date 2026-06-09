@@ -37,7 +37,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 146 — achievements for crafting-loop & cosmetic features.
   { id: "salvager",        title: "Thợ Tháo Dỡ",          description: "Phân giải 1 trang bị thành nguyên liệu.", reward: { gems: 10 } },
   { id: "enchanter",       title: "Nghệ Nhân Tinh Luyện", description: "Tinh luyện 1 trang bị.",       reward: { gems: 10 } },
-  { id: "fashionista",     title: "Tín Đồ Thời Trang",    description: "Trang bị 1 bộ trang phục.",    reward: { gold: 300 } }
+  { id: "fashionista",     title: "Tín Đồ Thời Trang",    description: "Trang bị 1 bộ trang phục.",    reward: { gold: 300 } },
+  // Sprint 159 — achievements for the gear-deepening loop (S151-158).
+  { id: "enhancer",        title: "Thợ Cường Hóa",        description: "Cường hóa trang bị thành công lần đầu.", reward: { gems: 10 } },
+  { id: "recycler",        title: "Bậc Thầy Tái Chế",     description: "Phân giải hàng loạt trang bị.",          reward: { gems: 10 } },
+  { id: "apex-smith",      title: "Thợ Rèn Thượng Thừa",  description: "Chế tạo 1 trang bị apex.",               reward: { gems: 15 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {
