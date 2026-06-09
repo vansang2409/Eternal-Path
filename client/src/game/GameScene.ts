@@ -70,7 +70,7 @@ export class GameScene extends Phaser.Scene {
   private fxHigh = !(typeof localStorage !== "undefined" && localStorage.getItem("fxHigh") === "0");
   private selfWasDead = false;
   private prevSelfGold?: number;
-  private showNameplates = true;
+  private showNameplates = !(typeof localStorage !== "undefined" && localStorage.getItem("showNameplates") === "0");
   private cinematicBars?: { top: Phaser.GameObjects.Rectangle; bottom: Phaser.GameObjects.Rectangle };
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
@@ -267,22 +267,18 @@ export class GameScene extends Phaser.Scene {
       if (isEditableFocused()) return;
       const k = e.key.toLowerCase();
       if (k === "g") {
-        this.fxHigh = !this.fxHigh;
-        try { localStorage.setItem("fxHigh", this.fxHigh ? "1" : "0"); } catch (_) { /* noop */ }
-        if (this.loggedIn) this.showTopBanner(this.fxHigh ? "✨ Hiệu ứng: CAO" : "🔅 Hiệu ứng: THẤP", "achievement", 1600);
+        this.toggleFx();
       } else if (k === "v") {
-        // Sprint 148: toggle all nameplates for a cleaner view.
-        this.showNameplates = !this.showNameplates;
-        if (this.loggedIn) this.showTopBanner(this.showNameplates ? "🏷️ Hiện tên" : "🏷️ Ẩn tên", "achievement", 1200);
+        this.toggleNameplates();
       } else if (k === "h") {
-        // Sprint 149: hide the side panels + toolbar for clean screenshots.
         this.toggleHudPanels();
       } else if (k === "c") {
-        // Sprint 150: cinematic letterbox bars toggle.
         this.toggleCinematicBars();
       } else if (k === "k") {
-        // Sprint 160: keybind cheat-sheet overlay.
         this.toggleKeybindHelp();
+      } else if (k === "o") {
+        // Sprint 191: open the settings/options panel.
+        this.toggleSettings();
       }
     });
 
@@ -2382,6 +2378,46 @@ export class GameScene extends Phaser.Scene {
     this.cinematicBars = { top, bottom };
   }
 
+  // Sprint 191: extracted FX/nameplate toggles so both the hotkey and the
+  // settings panel can drive them; nameplate choice persists across sessions.
+  private toggleFx(): void {
+    this.fxHigh = !this.fxHigh;
+    try { localStorage.setItem("fxHigh", this.fxHigh ? "1" : "0"); } catch (_) { /* noop */ }
+    if (this.loggedIn) this.showTopBanner(this.fxHigh ? "✨ Hiệu ứng: CAO" : "🔅 Hiệu ứng: THẤP", "achievement", 1400);
+  }
+  private toggleNameplates(): void {
+    this.showNameplates = !this.showNameplates;
+    try { localStorage.setItem("showNameplates", this.showNameplates ? "1" : "0"); } catch (_) { /* noop */ }
+    if (this.loggedIn) this.showTopBanner(this.showNameplates ? "🏷️ Hiện tên" : "🏷️ Ẩn tên", "achievement", 1200);
+  }
+
+  // Sprint 191: a clickable settings panel mirroring the keyboard toggles, for
+  // players who'd rather not memorise hotkeys. Press O (or ✕) to close.
+  private toggleSettings(): void {
+    const existing = document.getElementById("settings-panel");
+    if (existing) { existing.remove(); return; }
+    const panel = document.createElement("div");
+    panel.id = "settings-panel";
+    panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(12,14,20,0.97);border:1px solid #3a4256;border-radius:12px;padding:18px 22px;min-width:280px;color:#e8ecf5;box-shadow:0 12px 40px rgba(0,0,0,0.6)";
+    const btn = (label: string, key: string) => `<button type="button" data-key="${key}" style="display:block;width:100%;text-align:left;margin:5px 0;padding:8px 12px;background:#1a1d27;border:1px solid #2a2f3a;border-radius:6px;color:#e8ecf5;cursor:pointer;font-size:13px">${label}</button>`;
+    panel.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong style="font-size:15px">⚙️ Cài đặt</strong><button id="settings-close" type="button" style="background:none;border:none;color:#9aa0a6;font-size:18px;cursor:pointer">✕</button></div>`
+      + btn("✨ Hiệu ứng nền: Cao / Thấp", "g")
+      + btn("🏷️ Ẩn / hiện tên nhân vật", "v")
+      + btn("🖥️ Ẩn / hiện bảng & thanh công cụ", "h")
+      + btn("🎬 Khung điện ảnh (letterbox)", "c")
+      + btn("⌨️ Bảng phím tắt", "k");
+    document.body.appendChild(panel);
+    panel.querySelector("#settings-close")?.addEventListener("click", () => panel.remove());
+    panel.querySelectorAll<HTMLButtonElement>("[data-key]").forEach((b) => b.addEventListener("click", () => {
+      const key = b.dataset.key;
+      if (key === "g") this.toggleFx();
+      else if (key === "v") this.toggleNameplates();
+      else if (key === "h") this.toggleHudPanels();
+      else if (key === "c") this.toggleCinematicBars();
+      else if (key === "k") this.toggleKeybindHelp();
+    }));
+  }
+
   // Sprint 160: toggleable keybind cheat-sheet so the growing list of hotkeys
   // is discoverable. Press K (or the ✕) to close.
   private toggleKeybindHelp(): void {
@@ -2395,7 +2431,8 @@ export class GameScene extends Phaser.Scene {
       ["V", "Ẩn / hiện tên nhân vật"],
       ["H", "Ẩn / hiện bảng & thanh công cụ"],
       ["C", "Khung điện ảnh (letterbox)"],
-      ["K", "Bảng phím tắt này"]
+      ["K", "Bảng phím tắt này"],
+      ["O", "Bảng cài đặt"]
     ];
     const panel = document.createElement("div");
     panel.id = "keybind-help";
