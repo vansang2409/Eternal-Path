@@ -100,6 +100,7 @@ export class GameScene extends Phaser.Scene {
   private aliveMonsters = new Set<string>();
   private monsterAggroPrev = new Map<string, boolean>();
   private lastBossAggroBannerAt = 0;
+  private monsterHpLag = new Map<string, number>();
   private recentFloating: Array<{ id: string; at: number }> = [];
 
   preload(): void {}
@@ -1948,8 +1949,19 @@ export class GameScene extends Phaser.Scene {
     if (monster.respawnsAt) return;
     const pct = Phaser.Math.Clamp(monster.hp / monster.maxHp, 0, 1);
     const width = monster.boss ? 76 : monster.elite ? 58 : 48;
-    bar.fillStyle(0x151515, 0.9).fillRect(position.x - width / 2, position.y - 34, width, 6);
-    bar.fillStyle(monster.boss ? 0xffd36b : monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(position.x - width / 2 + 1, position.y - 33, (width - 2) * pct, 4);
+    const innerW = width - 2;
+    const x0 = position.x - width / 2;
+    bar.fillStyle(0x151515, 0.9).fillRect(x0, position.y - 34, width, 6);
+    // Sprint 127: damage-lag — a pale "ghost" chunk drains down to the real HP
+    // a beat later, making each hit land with visible weight.
+    let lag = this.monsterHpLag.get(monster.id);
+    if (lag === undefined || pct > lag) lag = pct;
+    else lag = Math.max(pct, lag - 0.035);
+    this.monsterHpLag.set(monster.id, lag);
+    if (lag > pct) {
+      bar.fillStyle(0xfff1f1, 0.85).fillRect(x0 + 1 + innerW * pct, position.y - 33, innerW * (lag - pct), 4);
+    }
+    bar.fillStyle(monster.boss ? 0xffd36b : monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(x0 + 1, position.y - 33, innerW * pct, 4);
     if (this.selfPlayer && this.selfPlayer.targetId === monster.id) {
       bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 1, position.y - 35, width + 2, 8);
     }
