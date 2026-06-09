@@ -1820,11 +1820,20 @@ export class Hud {
     if (this.selectedItemId && !this.player.inventory.items.some((item) => item.id === this.selectedItemId)) {
       this.selectedItemId = undefined;
     }
-    for (const item of this.player.inventory.items) {
+    // Sprint 154: render a rarity-sorted copy (epic → rare → common, then by
+    // value) without mutating the authoritative inventory order. Locked items
+    // get a 🔒 badge so protected gear is obvious at a glance.
+    const rarityRank: Record<string, number> = { epic: 0, rare: 1, common: 2 };
+    const displayItems = [...this.player.inventory.items].sort((a, b) => {
+      const r = (rarityRank[a.rarity] ?? 9) - (rarityRank[b.rarity] ?? 9);
+      return r !== 0 ? r : (b.value - a.value);
+    });
+    for (const item of displayItems) {
       const button = document.createElement("button");
-      button.className = `item ${rarityClass[item.rarity]}${item.kind === "consumable" ? " consumable" : ""}${item.id === this.selectedItemId ? " selected" : ""}`;
+      button.className = `item ${rarityClass[item.rarity]}${item.kind === "consumable" ? " consumable" : ""}${item.id === this.selectedItemId ? " selected" : ""}${item.locked ? " locked" : ""}`;
       button.draggable = true;
-      button.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><small>${itemIcon(item)}</small>`;
+      button.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><small>${itemIcon(item)}</small>${item.locked ? `<span class="item-lock" style="position:absolute;top:1px;right:2px;font-size:10px;line-height:1;text-shadow:0 1px 2px #000">🔒</span>` : ""}`;
+      button.style.position = "relative";
       button.title = describeItem(item);
       button.dataset.tooltip = describeItem(item);
       button.addEventListener("dragstart", (event) => {
