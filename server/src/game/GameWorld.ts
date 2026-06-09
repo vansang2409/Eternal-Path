@@ -29,6 +29,7 @@ import {
   RAGE_MULTIPLIER,
   isRageActive,
   levelMilestone,
+  achievementMilestone,
   HAPPY_HOUR_MULTIPLIER,
   HAPPY_HOUR_DURATION_MS,
   HAPPY_HOUR_INTERVAL_MS,
@@ -727,6 +728,7 @@ export class GameWorld {
         xpBoostUntil: saved.xpBoostUntil,
         rageUntil: saved.rageUntil,
         claimedMilestones: saved.claimedMilestones ?? [],
+        claimedAchTiers: saved.claimedAchTiers ?? [],
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -1331,6 +1333,12 @@ export class GameWorld {
       });
       (socket as Socket).on("devHappyHour", () => {
         this.startHappyHour();
+      });
+      (socket as Socket).on("devGrantAchievement", (payload: { id?: string }) => {
+        const player = this.players.get(socket.id);
+        if (!player || !payload?.id) return;
+        if (!player.achievements.includes(payload.id)) player.achievements.push(payload.id);
+        socket.emit("player", player);
       });
       (socket as Socket).on("devArenaKill", () => {
         const player = this.players.get(socket.id);
@@ -2279,6 +2287,32 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `🎁 Mốc cấp ${milestone.level}: nhận ${milestone.gold.toLocaleString("vi-VN")} vàng + ${milestone.gems} 💎!`);
       this.emitFloating(player.id, player.position, milestone.gold, "loot", `Mốc cấp ${milestone.level}`);
+      this.markDirty(player);
+    });
+
+    // Sprint 174: claim a one-time achievement-count completion reward.
+    socket.on("claimAchievementMilestone", ({ count }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const milestone = achievementMilestone(Number(count));
+      if (!milestone) {
+        socket.emit("system", "Mốc thành tựu không hợp lệ.");
+        return;
+      }
+      if ((player.achievements?.length ?? 0) < milestone.count) {
+        socket.emit("system", `Cần mở ${milestone.count} thành tựu để nhận mốc này (đang có ${player.achievements?.length ?? 0}).`);
+        return;
+      }
+      const claimed = player.claimedAchTiers ?? [];
+      if (claimed.includes(milestone.count)) {
+        socket.emit("system", "Bạn đã nhận mốc thành tựu này rồi.");
+        return;
+      }
+      claimed.push(milestone.count);
+      player.claimedAchTiers = claimed;
+      player.gems = (player.gems ?? 0) + milestone.gems;
+      socket.emit("player", player);
+      socket.emit("system", `🏅 Mốc ${milestone.count} thành tựu: nhận ${milestone.gems} 💎!`);
       this.markDirty(player);
     });
 

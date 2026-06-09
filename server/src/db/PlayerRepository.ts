@@ -38,6 +38,7 @@ interface SavedPlayer {
   xpBoostUntil?: number;
   rageUntil?: number;
   claimedMilestones?: number[];
+  claimedAchTiers?: number[];
   activeTitle?: string;
   // Set-bonus tracked fields are baked into saved stats — persist them so a
   // relogin doesn't lose track and double-count on the next equip change.
@@ -289,6 +290,7 @@ export class PlayerRepository {
       xpBoostUntil: player.xpBoostUntil,
       rageUntil: player.rageUntil,
       claimedMilestones: player.claimedMilestones,
+      claimedAchTiers: player.claimedAchTiers,
       activeTitle: player.activeTitle,
       setBonusAttack: player.setBonusAttack,
       setBonusDefense: player.setBonusDefense,

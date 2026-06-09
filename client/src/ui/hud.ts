@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -84,7 +84,8 @@ export class Hud {
     private readonly onClaimMilestone: (level: number) => void = () => {},
     private readonly onBrew: (recipeId: string) => void = () => {},
     private readonly onBuyMount: (mountId: string) => void = () => {},
-    private readonly onEquipMount: (mountId: string | null) => void = () => {}
+    private readonly onEquipMount: (mountId: string | null) => void = () => {},
+    private readonly onClaimAchMilestone: (count: number) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -289,12 +290,20 @@ export class Hud {
     if (msRow) {
       const claimed = new Set(player.claimedMilestones ?? []);
       const ready = LEVEL_MILESTONES.filter((m) => player.stats.level >= m.level && !claimed.has(m.level));
+      const claimedAch = new Set(player.claimedAchTiers ?? []);
+      const achCount = player.achievements?.length ?? 0;
+      const achReady = ACHIEVEMENT_MILESTONES.filter((m) => achCount >= m.count && !claimedAch.has(m.count));
       msRow.innerHTML = ready.map((m) =>
         `<button type="button" data-ms="${m.level}" style="background:linear-gradient(to bottom,#7bd88f,#3fa85f);color:#08240f;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🎁 Nhận mốc cấp ${m.level}</button>`
+      ).join("") + achReady.map((m) =>
+        `<button type="button" data-ach="${m.count}" style="background:linear-gradient(to bottom,#ffd166,#c8a948);color:#1d1500;font-weight:700;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🏅 Mốc ${m.count} thành tựu (+${m.gems}💎)</button>`
       ).join("");
-      msRow.style.display = ready.length ? "flex" : "none";
+      msRow.style.display = (ready.length || achReady.length) ? "flex" : "none";
       msRow.querySelectorAll<HTMLButtonElement>("[data-ms]").forEach((btn) =>
         btn.addEventListener("click", () => this.onClaimMilestone(Number(btn.dataset.ms)))
+      );
+      msRow.querySelectorAll<HTMLButtonElement>("[data-ach]").forEach((btn) =>
+        btn.addEventListener("click", () => this.onClaimAchMilestone(Number(btn.dataset.ach)))
       );
     }
     const canAllocate = player.unspentPoints > 0;

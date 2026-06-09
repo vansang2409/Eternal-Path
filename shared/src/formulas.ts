@@ -103,6 +103,17 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// Achievement completion milestones (Sprint 174): claim escalating gem rewards
+// as your unlocked-achievement count crosses thresholds.
+export interface AchievementMilestone { count: number; gems: number; }
+export const ACHIEVEMENT_MILESTONES: AchievementMilestone[] = [
+  { count: 5, gems: 15 },
+  { count: 15, gems: 40 },
+  { count: 30, gems: 100 }
+];
+export function achievementMilestone(count: number): AchievementMilestone | undefined {
+  return ACHIEVEMENT_MILESTONES.find((m) => m.count === count);
+}
 // Arena kill rewards (Sprint 169): each PvP arena kill pays out a flat gold +
 // gem bounty, rewarding active arena play.
 export const ARENA_KILL_GOLD = 400;
