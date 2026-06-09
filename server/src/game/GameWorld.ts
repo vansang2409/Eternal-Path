@@ -232,7 +232,9 @@ type QuestObjective =
   | { kind: "learnSkill" }
   | { kind: "equipRarity"; rarity: "rare" | "epic" }
   | { kind: "craftItem" }
-  | { kind: "collectGold"; amount: number };
+  | { kind: "collectGold"; amount: number }
+  | { kind: "salvageGear" }
+  | { kind: "upgradeGear" };
 
 interface QuestTemplate {
   id: string;
@@ -388,6 +390,21 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     description: "Hạ 6 Dire Wolf.",
     required: 6, rewardGold: 240, rewardExp: 380,
     category: "daily", objective: { kind: "killSpecific", monsterType: "direWolf" }
+  },
+  // Sprint 166: daily quests tied to the gear-deepening loop (S151-158).
+  {
+    id: "daily-salvage-3",
+    title: "Hằng ngày: Phân giải 3 trang bị",
+    description: "Phân giải 3 trang bị thành nguyên liệu.",
+    required: 3, rewardGold: 260, rewardExp: 360,
+    category: "daily", objective: { kind: "salvageGear" }
+  },
+  {
+    id: "daily-upgrade-1",
+    title: "Hằng ngày: Cường hóa 1 lần",
+    description: "Cường hóa trang bị thành công 1 lần.",
+    required: 1, rewardGold: 300, rewardExp: 420,
+    category: "daily", objective: { kind: "upgradeGear" }
   }
 ];
 
@@ -1270,6 +1287,12 @@ export class GameWorld {
         };
         player.inventory.items.push(item);
         socket.emit("player", player);
+      });
+      (socket as Socket).on("devClearQuests", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        this.activeQuests.set(socket.id, []);
+        this.emitQuestList(player);
       });
       (socket as Socket).on("devGrantMaterial", (payload: { count?: number; value?: number; materialId?: MaterialId }) => {
         const player = this.players.get(socket.id);
@@ -3382,6 +3405,7 @@ export class GameWorld {
       granted.push(`${qty}x ${info.name}`);
     }
     this.unlockAchievement(player, "salvager");
+    this.bumpQuestProgress(player, ["salvageGear"]);
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${item.name} → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", "Phân giải");
@@ -3421,6 +3445,7 @@ export class GameWorld {
       if (s.speed) s.speed = Math.max(s.speed + 1, Math.round(s.speed * 1.1));
       item.plusLevel = plus + 1;
       this.unlockAchievement(player, "enhancer");
+      this.bumpQuestProgress(player, ["upgradeGear"]);
     }
     if (isEquipped) addItemStats(player, item);
     this.sockets.get(player.id)?.emit("player", player);
@@ -3469,6 +3494,7 @@ export class GameWorld {
     }
     this.unlockAchievement(player, "salvager");
     this.unlockAchievement(player, "recycler");
+    for (let i = 0; i < targets.length; i += 1) this.bumpQuestProgress(player, ["salvageGear"]);
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${targets.length} trang bị → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", `Phân giải x${targets.length}`);
