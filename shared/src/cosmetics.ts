@@ -214,6 +214,16 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x6a3a8a,
     gemPrice: 170
+  },
+  // ── Sprint 200 capstone: marquee cosmetic ──
+  {
+    id: "skin-eternal-radiance",
+    name: "Vĩnh Hằng Thánh Thể",
+    description: "Hào quang vàng bạch kim vĩnh cửu — vinh quang tột đỉnh của Eternal Path.",
+    type: "skinTint",
+    color: 0xfff0c0,
+    gemPrice: 500,
+    featured: true
   }
 ];
 

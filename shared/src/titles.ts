@@ -44,7 +44,9 @@ export const TITLES: TitleDef[] = [
   { id: "gem-lord", label: "Ngọc Vương", desc: "Mở thành tựu Thợ Kim Hoàn.", earned: (p) => (p.achievements ?? []).includes("jeweler") },
   // ── Sprint 194: high-level + gear-power titles ──
   { id: "demigod", label: "Bán Thần", desc: "Đạt cấp 80.", earned: (p) => p.stats.level >= 80 },
-  { id: "perfectionist", label: "Hoàn Mỹ", desc: "Tổng cường hóa (+N) trang bị ≥ 20.", earned: (p) => Object.values(p.inventory?.equipped ?? {}).reduce((s, it) => s + (it && it.kind === "equipment" ? (it.plusLevel ?? 0) : 0), 0) >= 20 }
+  { id: "perfectionist", label: "Hoàn Mỹ", desc: "Tổng cường hóa (+N) trang bị ≥ 20.", earned: (p) => Object.values(p.inventory?.equipped ?? {}).reduce((s, it) => s + (it && it.kind === "equipment" ? (it.plusLevel ?? 0) : 0), 0) >= 20 },
+  // ── Sprint 200 capstone: the ultimate endgame title ──
+  { id: "eternal", label: "Vĩnh Hằng", desc: "Đạt cấp 100 — huyền thoại của Eternal Path.", earned: (p) => p.stats.level >= 100 }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

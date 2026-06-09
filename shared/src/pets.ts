@@ -53,7 +53,9 @@ export const PET_CATALOG: PetDef[] = [
   { id: "fenrir", name: "Cuồng Lang", desc: "+15 công, +4 thủ, +70 HP", rarity: "epic", goldPrice: 0, gemPrice: 340, buff: { attack: 15, defense: 4, maxHp: 70 }, color: 0x8a8a9a },
   // ── Season 7 pets (Sprint 195) ──
   { id: "sphinx", name: "Nhân Sư", desc: "+10 công, +10 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 330, buff: { attack: 10, defense: 10, maxHp: 100 }, color: 0xe0c068 },
-  { id: "wyvern", name: "Phi Long", desc: "+16 công, +5 thủ, +60 HP", rarity: "epic", goldPrice: 0, gemPrice: 360, buff: { attack: 16, defense: 5, maxHp: 60 }, color: 0xc0504a }
+  { id: "wyvern", name: "Phi Long", desc: "+16 công, +5 thủ, +60 HP", rarity: "epic", goldPrice: 0, gemPrice: 360, buff: { attack: 16, defense: 5, maxHp: 60 }, color: 0xc0504a },
+  // ── Sprint 200 capstone: apex companion ──
+  { id: "celestial-dragon", name: "Thiên Long Vương", desc: "+18 công, +10 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 500, buff: { attack: 18, defense: 10, maxHp: 120 }, color: 0xfff0c0 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
