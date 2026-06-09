@@ -974,8 +974,9 @@ export class GameScene extends Phaser.Scene {
 
     this.socket.on("floatingText", (event) => {
       const isHeavyHit = event.kind === "damage" && event.amount >= 60;
+      const isMegaHit = event.kind === "damage" && event.amount >= 120;
       const color = event.kind === "damage" ? (isHeavyHit ? "#ffbe3c" : "#ff6961") : event.kind === "loot" ? "#f7d774" : "#8be78b";
-      const fontSize = event.kind === "level" ? 20 : isHeavyHit ? 24 : 15;
+      const fontSize = event.kind === "level" ? 20 : isMegaHit ? 30 : isHeavyHit ? 24 : 15;
       const ftIso = worldToIso(event.position.x, event.position.y);
       // Stack damage numbers vertically: bump up by recent-text count near
       // the same entity to avoid overlap.
@@ -1021,6 +1022,20 @@ export class GameScene extends Phaser.Scene {
               onComplete: () => dot.destroy()
             });
           }
+        }
+        // Sprint 111: MEGA crit — chromatic split echoes behind the number +
+        // an expanding shock ripple + a harder camera punch.
+        if (isMegaHit) {
+          this.cameras.main.shake(220, 0.013);
+          for (const [dx, tint] of [[-3, "#22e0ff"], [3, "#ff2bd6"]] as const) {
+            const ghost = this.add.text(text.x + dx, text.y, event.text ?? `${event.amount}`, {
+              fontFamily: "monospace", fontSize: `${fontSize}px`, color: tint, fontStyle: "bold"
+            }).setDepth(99989).setOrigin(0.5).setAlpha(0.6);
+            ghost.setScale(text.scale);
+            this.tweens.add({ targets: ghost, x: ghost.x + dx * 4, alpha: 0, duration: 260, ease: "Quad.Out", onComplete: () => ghost.destroy() });
+          }
+          const ripple = this.add.circle(ftIso.x, ftIso.y - 20, 10).setStrokeStyle(3, 0xffe066, 0.9).setDepth(99987);
+          this.tweens.add({ targets: ripple, scale: 5, alpha: 0, duration: 420, ease: "Cubic.Out", onComplete: () => ripple.destroy() });
         }
       }
       if (event.kind === "level") {
@@ -1265,6 +1280,10 @@ export class GameScene extends Phaser.Scene {
           // Extra screen-wide golden flash for boss kills.
           this.cameras.main.flash(420, 255, 220, 120);
         }
+      }
+      // Respawn materialize: not-alive -> alive on a sprite we already have.
+      if (!wasAlive && isAlive && this.monsters.has(monster.id)) {
+        this.playSpawnShimmer(monster.position, monster.boss || monster.elite);
       }
       if (isAlive) this.aliveMonsters.add(monster.id);
       else this.aliveMonsters.delete(monster.id);
@@ -1874,6 +1893,25 @@ export class GameScene extends Phaser.Scene {
       });
     }
     if (big) this.cameras.main.shake(180, 0.006);
+  }
+
+  // Sprint 110: monster respawn materialize — implode ring + rising sparkles so
+  // foes fade in instead of popping into existence.
+  private playSpawnShimmer(position: Vec2, big: boolean): void {
+    const iso = worldToIso(position.x, position.y);
+    const ring = this.add.circle(iso.x, iso.y, big ? 30 : 20).setStrokeStyle(2, 0x9b7bff, 0.85).setDepth(99996);
+    this.tweens.add({ targets: ring, scale: 0.15, alpha: 0, duration: 360, ease: "Cubic.In", onComplete: () => ring.destroy() });
+    const core = this.add.circle(iso.x, iso.y, big ? 6 : 4, 0xe0d4ff, 0).setDepth(99997);
+    this.tweens.add({ targets: core, alpha: 0.9, duration: 180, yoyo: true, ease: "Sine.InOut", onComplete: () => core.destroy() });
+    const motes = big ? 8 : 5;
+    for (let i = 0; i < motes; i += 1) {
+      const angle = (Math.PI * 2 * i) / motes;
+      const dist = big ? 26 : 18;
+      const sx = iso.x + Math.cos(angle) * dist;
+      const sy = iso.y + Math.sin(angle) * dist;
+      const mote = this.add.circle(sx, sy, 2.5, 0xc9b6ff, 0.95).setDepth(99997);
+      this.tweens.add({ targets: mote, x: iso.x, y: iso.y, alpha: 0, scale: 0.3, duration: 340, ease: "Quad.In", onComplete: () => mote.destroy() });
+    }
   }
 
   // Element-specific flourish at an impact point (Sprint 94).
