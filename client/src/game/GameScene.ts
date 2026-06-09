@@ -101,6 +101,7 @@ export class GameScene extends Phaser.Scene {
   private monsterAggroPrev = new Map<string, boolean>();
   private lastBossAggroBannerAt = 0;
   private monsterHpLag = new Map<string, number>();
+  private chatBubbles = new Map<string, { text: Phaser.GameObjects.Text; bg: Phaser.GameObjects.Rectangle; expires: number }>();
   private recentFloating: Array<{ id: string; at: number }> = [];
 
   preload(): void {}
@@ -275,6 +276,7 @@ export class GameScene extends Phaser.Scene {
     this.updateAmbient(delta);
     this.drawTargetReticle(time);
     this.updateWaterShimmer(time);
+    this.updateChatBubbles(time);
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
     // Footstep dust puffs while moving (anime grounding).
@@ -357,6 +359,41 @@ export class GameScene extends Phaser.Scene {
     this.updateNightFireflies(dt);
     this.updateWeather(dt);
     this.updateShootingStars();
+  }
+
+  // Sprint 131: speech bubbles — a player's chat line pops above their head for
+  // a few seconds so conversation happens in-world, not just the chat log.
+  private showChatBubble(playerId: string, message: string): void {
+    const old = this.chatBubbles.get(playerId);
+    if (old) { old.text.destroy(); old.bg.destroy(); this.chatBubbles.delete(playerId); }
+    const trimmed = message.length > 42 ? message.slice(0, 41) + "…" : message;
+    const text = this.add.text(0, 0, trimmed, {
+      fontFamily: "monospace", fontSize: "11px", color: "#fffdf2",
+      stroke: "#10141a", strokeThickness: 2, align: "center", wordWrap: { width: 150 }
+    }).setOrigin(0.5).setDepth(99986);
+    const bg = this.add.rectangle(0, 0, text.width + 12, text.height + 8, 0x10141a, 0.72)
+      .setOrigin(0.5).setDepth(99985).setStrokeStyle(1, 0x3a4a5a, 0.9);
+    this.chatBubbles.set(playerId, { text, bg, expires: this.time.now + 4800 });
+  }
+
+  private updateChatBubbles(time: number): void {
+    for (const [id, b] of this.chatBubbles) {
+      const sprite = this.players.get(id);
+      if (!sprite || time > b.expires) {
+        b.text.destroy(); b.bg.destroy();
+        this.chatBubbles.delete(id);
+        continue;
+      }
+      const x = sprite.x;
+      const y = sprite.y - 52;
+      b.text.setPosition(x, y);
+      b.bg.setPosition(x, y);
+      // Gentle fade-out over the final 600ms of life.
+      const remaining = b.expires - time;
+      const a = remaining < 600 ? remaining / 600 : 1;
+      b.text.setAlpha(a);
+      b.bg.setAlpha(a * 0.72);
+    }
   }
 
   // Sprint 125: water sparkle — occasional specular glints dance over nearby
@@ -1350,7 +1387,10 @@ export class GameScene extends Phaser.Scene {
       if (kind === "defeat") this.playBossFinisher();
     });
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
-    this.socket.on("chatMessage", (message) => this.hud.appendChat(message));
+    this.socket.on("chatMessage", (message) => {
+      this.hud.appendChat(message);
+      this.showChatBubble(message.playerId, message.message);
+    });
     this.socket.on("shopStock", (items) => this.hud.setShopStock(items));
     this.socket.on("questList", (quests) => this.hud.setQuests(quests));
     this.socket.on("partyUpdate", (party) => {
