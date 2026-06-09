@@ -265,6 +265,23 @@ export const RECIPES: Recipe[] = [
   }
 ];
 
+// Alchemy brewing (Sprint 171): turn farmed materials into HP potions — a
+// utility sink for the common materials that pile up.
+export interface BrewRecipe {
+  id: string;
+  name: string;
+  heal: number;
+  value: number;
+  cost: Partial<Record<MaterialId, number>>;
+}
+export const BREW_RECIPES: BrewRecipe[] = [
+  { id: "minor-potion", name: "Tiểu Hồng Dược", heal: 120, value: 60, cost: { slimeCore: 2 } },
+  { id: "greater-potion", name: "Đại Hồng Dược", heal: 280, value: 160, cost: { slimeCore: 3, wolfFang: 2 } }
+];
+export function getBrewRecipe(id: string): BrewRecipe | undefined {
+  return BREW_RECIPES.find((r) => r.id === id);
+}
+
 export function getRecipe(id: string): Recipe | undefined {
   return RECIPES.find((r) => r.id === id);
 }

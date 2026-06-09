@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -81,7 +81,8 @@ export class Hud {
     private readonly onBuyRagePotion: () => void = () => {},
     private readonly onUpgradeItem: (itemId: string) => void = () => {},
     private readonly onRespecTalents: () => void = () => {},
-    private readonly onClaimMilestone: (level: number) => void = () => {}
+    private readonly onClaimMilestone: (level: number) => void = () => {},
+    private readonly onBrew: (recipeId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -362,6 +363,35 @@ export class Hud {
       btn.disabled = !canCraft;
       btn.textContent = canCraft ? "Chế tạo" : "Thiếu nguyên liệu";
       btn.addEventListener("click", () => this.onCraft(recipe.id));
+      card.appendChild(btn);
+      root.appendChild(card);
+    }
+    // Sprint 171: alchemy brewing — HP potions from materials.
+    for (const brew of BREW_RECIPES) {
+      const card = document.createElement("div");
+      card.className = "forge-recipe rarity-common";
+      const header = document.createElement("div");
+      header.className = "forge-name";
+      header.textContent = `⚗️ ${brew.name} (+${brew.heal} HP)`;
+      card.appendChild(header);
+      const cost = document.createElement("div");
+      cost.className = "forge-cost";
+      let canBrew = true;
+      for (const [mid, qty] of Object.entries(brew.cost) as [MaterialId, number][]) {
+        const have = owned.get(mid) ?? 0;
+        if (have < qty) canBrew = false;
+        const span = document.createElement("span");
+        span.className = have >= qty ? "ok" : "missing";
+        span.textContent = `${MATERIAL_CATALOG[mid].name}: ${have}/${qty}`;
+        cost.appendChild(span);
+      }
+      card.appendChild(cost);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "forge-craft";
+      btn.disabled = !canBrew;
+      btn.textContent = canBrew ? "Luyện đan" : "Thiếu nguyên liệu";
+      btn.addEventListener("click", () => this.onBrew(brew.id));
       card.appendChild(btn);
       root.appendChild(card);
     }

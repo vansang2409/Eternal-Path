@@ -513,6 +513,7 @@ export interface ClientToServerEvents {
   sellItem: (payload: { itemId: string }) => void;
   sellJunk: () => void;
   craftRecipe: (payload: { recipeId: string }) => void;
+  brewPotion: (payload: { recipeId: string }) => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;

@@ -113,6 +113,7 @@ import {
   classCanLearnSkill,
   getCosmetic,
   getRecipe,
+  getBrewRecipe,
   isPlayerClass,
   materialDropForMonster,
   salvageYield,
@@ -2595,6 +2596,17 @@ export class GameWorld {
       this.craftRecipe(player, recipeId);
     });
 
+    // Sprint 171: brew HP potions from materials at the alchemy bench.
+    socket.on("brewPotion", ({ recipeId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Cần về thị trấn để luyện đan.");
+        return;
+      }
+      this.brewPotion(player, recipeId);
+    });
+
     socket.on("enchantItem", ({ itemId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -3549,6 +3561,56 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${targets.length} trang bị → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", `Phân giải x${targets.length}`);
+    this.markDirty(player);
+  }
+
+  // Sprint 171: brew an HP potion from materials, mirroring craftRecipe's
+  // material-consumption logic but producing a consumable.
+  private brewPotion(player: PlayerState, recipeId: string): void {
+    const recipe = getBrewRecipe(recipeId);
+    if (!recipe) {
+      this.sockets.get(player.id)?.emit("system", "Công thức luyện đan không tồn tại.");
+      return;
+    }
+    const needed = new Map(Object.entries(recipe.cost) as [MaterialId, number][]);
+    const indexByMaterial = new Map<MaterialId, number[]>();
+    const owned = new Map<MaterialId, number>();
+    player.inventory.items.forEach((item, idx) => {
+      if (item.kind !== "material") return;
+      const m = item as MaterialItem;
+      owned.set(m.materialId, (owned.get(m.materialId) ?? 0) + 1);
+      const arr = indexByMaterial.get(m.materialId) ?? [];
+      arr.push(idx);
+      indexByMaterial.set(m.materialId, arr);
+    });
+    for (const [mid, qty] of needed) {
+      if ((owned.get(mid) ?? 0) < qty) {
+        this.sockets.get(player.id)?.emit("system", `Thiếu ${MATERIAL_CATALOG[mid].name} (${owned.get(mid) ?? 0}/${qty}).`);
+        return;
+      }
+    }
+    if (isBagFull(player)) {
+      this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
+      return;
+    }
+    const toRemove: number[] = [];
+    for (const [mid, qty] of needed) {
+      const arr = indexByMaterial.get(mid)!;
+      for (let i = 0; i < qty; i += 1) toRemove.push(arr[i]);
+    }
+    toRemove.sort((a, b) => b - a);
+    for (const idx of toRemove) player.inventory.items.splice(idx, 1);
+    player.inventory.items.push({
+      id: `potion-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      kind: "consumable",
+      name: recipe.name,
+      rarity: "common",
+      value: recipe.value,
+      heal: recipe.heal
+    });
+    this.sockets.get(player.id)?.emit("player", player);
+    this.sockets.get(player.id)?.emit("system", `⚗️ Luyện đan thành công: ${recipe.name} (+${recipe.heal} HP).`);
+    this.emitFloating(player.id, player.position, 0, "loot", recipe.name);
     this.markDirty(player);
   }
 
