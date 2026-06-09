@@ -191,6 +191,8 @@ export interface PlayerState {
   bagBonus?: number;
   /** Timestamp (ms) the personal +50% gold boost potion expires (Sprint 79). */
   goldBoostUntil?: number;
+  /** Timestamp (ms) the personal +50% XP boost potion expires (Sprint 153). */
+  xpBoostUntil?: number;
   // Active equippable title id (Sprint 62) — shown next to the name. Derived
   // titles are earned via stats; only the chosen one is persisted.
   activeTitle?: string;
@@ -511,6 +513,7 @@ export interface ClientToServerEvents {
   salvageItem: (payload: { itemId: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
+  buyXpBoost: () => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

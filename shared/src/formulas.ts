@@ -68,6 +68,14 @@ export function isGoldBoostActive(until: number | undefined, now: number = Date.
 export function gemsToGold(gems: number): number {
   return Math.max(0, Math.floor(gems)) * GEM_TO_GOLD_RATE;
 }
+// Personal XP boost potion (Sprint 153): premium +50% EXP for 30 min. Stacks
+// multiplicatively with VIP and guild EXP perks, speeding up leveling.
+export const XP_BOOST_GEM_COST = 40;
+export const XP_BOOST_DURATION_MS = 30 * 60 * 1000;
+export const XP_BOOST_MULTIPLIER = 1.5;
+export function isXpBoostActive(until: number | undefined, now: number = Date.now()): boolean {
+  return typeof until === "number" && until > now;
+}
 export const POWER_STRIKE_COOLDOWN_MS = 4000;
 export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;

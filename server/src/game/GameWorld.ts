@@ -17,6 +17,10 @@ import {
   GOLD_BOOST_DURATION_MS,
   GOLD_BOOST_MULTIPLIER,
   isGoldBoostActive,
+  XP_BOOST_GEM_COST,
+  XP_BOOST_DURATION_MS,
+  XP_BOOST_MULTIPLIER,
+  isXpBoostActive,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -656,6 +660,7 @@ export class GameWorld {
         streakLastClaimDate: saved.streakLastClaimDate,
         bagBonus: saved.bagBonus ?? 0,
         goldBoostUntil: saved.goldBoostUntil,
+        xpBoostUntil: saved.xpBoostUntil,
         activeTitle: saved.activeTitle,
         setBonusAttack: saved.setBonusAttack ?? 0,
         setBonusDefense: saved.setBonusDefense ?? 0,
@@ -2116,6 +2121,26 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 153: premium XP boost potion — +50% EXP for 30 minutes.
+    socket.on("buyXpBoost", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (isXpBoostActive(player.xpBoostUntil)) {
+        socket.emit("system", "Bình Tăng XP đang còn hiệu lực.");
+        return;
+      }
+      const gems = player.gems ?? 0;
+      if (gems < XP_BOOST_GEM_COST) {
+        socket.emit("system", `Cần ${XP_BOOST_GEM_COST} 💎 để mua Bình Tăng XP (đang có ${gems}).`);
+        return;
+      }
+      player.gems = gems - XP_BOOST_GEM_COST;
+      player.xpBoostUntil = Date.now() + XP_BOOST_DURATION_MS;
+      socket.emit("player", player);
+      socket.emit("system", `📘 Bình Tăng XP kích hoạt: +${Math.round((XP_BOOST_MULTIPLIER - 1) * 100)}% XP trong 30 phút!`);
+      this.markDirty(player);
+    });
+
     socket.on("exchangeGemsForGold", ({ gems }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
@@ -2998,6 +3023,7 @@ export class GameWorld {
     // Stack VIP (+20%) and guild perk/boost EXP multipliers.
     let mult = isVipActive(player.vipUntil) ? VIP_EXP_MULTIPLIER : 1;
     mult *= this.guildExpMultiplier(player);
+    if (isXpBoostActive(player.xpBoostUntil)) mult *= XP_BOOST_MULTIPLIER;
     const boosted = mult === 1 ? exp : Math.round(exp * mult);
     const result = grantExp(player.stats, boosted);
     player.stats = result.stats;
