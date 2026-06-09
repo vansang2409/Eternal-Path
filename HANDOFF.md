@@ -20,7 +20,32 @@ Bạn đang tiếp quản một MMORPG trình duyệt đang phát triển dở. 
 
 ---
 
-Resume point after **Sprint 150** (đang tiến tới mục tiêu S200), `origin/master` = `1076eac`. Total: **~271 commits** on `master`, all pushed. **S147-150 (client QoL):** S147=mouse-wheel camera zoom (clamped 0.7–1.8, persisted localStorage `camZoom`), S148=press **V** toggle nameplates, S149=press **H** hide side panels+toolbar, S150=press **C** cinematic letterbox bars. (All in GameScene.ts; keybinds live in the window keydown handler next to **G**.) Goal: continue sprints toward S200 — mix client polish + smoke-tested server gameplay.
+Resume point after **Sprint 200** ✅ (mục tiêu S200 ĐÃ HOÀN THÀNH), `origin/master` = `ae7fbb3`. Total: **305 commits**, all pushed. Regression: **68 smoke suite** PASS (`node run-smoke.mjs`).
+
+### ★ Sprint 151–200 — tóm tắt theo nhóm (mỗi sprint có smoke test, build PASS, đã push)
+
+**Vòng lặp trang bị sâu:** S151 Khóa vật phẩm, S152 Phân giải hàng loạt, S155 Cường hóa +N (gold sink, tỉ lệ fail), S158+S192 công thức apex đủ 5 ô, S171 Luyện đan (HP potion), S176 Tự phân giải loot, S181 Hợp nhất 3→1, S186 Khảm ngọc (4 stat gem, fold stats, nhận biết đang trang bị).
+
+**Boost/gem sink:** S153 Bình Tăng XP, S162 Bình Cuồng Nộ (+25% sát thương).
+
+**Pet/tài năng/mount:** S156 respec tài năng, S184 hiến tế pet lấy XP, S172 Thú cưỡi (+tốc, sprite+pulse S173/183).
+
+**Giữ chân/world event:** S165 mốc cấp, S174 mốc thành tựu, S180 Gói Tân Thủ, S190 thưởng tuần, S167 Giờ Vàng (x2 vàng toàn server, S168 quầng vàng), S169/170 thưởng+chuỗi Đấu Trường, S198 loa thành tựu cao quý.
+
+**Nhiệm vụ ngày mới:** S166 salvage/upgrade, S189 socket gem.
+
+**Nội dung mùa (auto vào shop/gacha):** S161 M4, S177 M5, S185 M6, S195 M7, S200 capstone (Vĩnh Hằng + Thiên Long Vương). Thành tựu→**44**; danh hiệu mở rộng (wealthlord/demigod/perfectionist/eternal...).
+
+**Client QoL/đồ hoạ:** S154 túi sắp xếp+khóa, S157/163 buff đếm ngược, S160 phím tắt (K), S175 chỉ số Sức mạnh +N, S178 tooltip +N/khóa/khảm, S188 dấu ngọc lấp lánh, S191 bảng Cài Đặt (phím O), S193 quầng power-level, S197 tiến độ sưu tập, S199 % thành tựu.
+
+**Dev cheats mới (DEV_CHEATS):** `devGrant`(+talentPoints/exp), `devGrantMaterial`(materialId), `devGrantAchievement`, `devClearQuests`, `devHappyHour`, `devArenaKill`, `devArenaDeath`, `devLootItem`.
+
+**Lưu ý phiên sau:** test đếm `ACHIEVEMENTS.length` dùng `>=` (không `===`). Test đa-client (market/guild) cần `sleep` chờ broadcast; runner cần save path riêng mỗi lần + giãn cách 800ms. Sandbox Cowork: symlink `@mmorpg/*` hỏng qua mount → build/test trong sandbox cần ESM resolver shim + tsconfig path-map (xem ghi chú phiên); push/build-live chạy ở Windows.
+
+---
+
+Resume point after **Sprint 150** (lịch sử), 
+`origin/master` = `1076eac`. Total: **~271 commits** on `master`, all pushed. **S147-150 (client QoL):** S147=mouse-wheel camera zoom (clamped 0.7–1.8, persisted localStorage `camZoom`), S148=press **V** toggle nameplates, S149=press **H** hide side panels+toolbar, S150=press **C** cinematic letterbox bars. (All in GameScene.ts; keybinds live in the window keydown handler next to **G**.) Goal: continue sprints toward S200 — mix client polish + smoke-tested server gameplay.
 
 **S134-143 (client VFX/UX):** S140=zone-name banner on entering a new biome, S141=self death screen wash + revive flash, S142=rising gold "+N" pop on gold gain, S143=your-own rare/epic drop screen flash + celebration. Press **G** in-game toggles ambient FX High/Low (localStorage `fxHigh`).
 
