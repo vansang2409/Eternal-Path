@@ -2594,3 +2594,6 @@ h2 {
     padding: 34px 26px 28px;
   }
 }
+
+/* Sprint 188: socketed-gem twinkle on inventory items. */
+@keyframes gemTwinkle { 0%, 100% { opacity: 0.55; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }

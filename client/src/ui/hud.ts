@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -1949,10 +1949,11 @@ export class Hud {
     for (const slot of ["weapon", "helmet", "armor", "boots", "ring"] as const) {
       const item = this.player.inventory.equipped[slot];
       const plusBadge = item && item.kind === "equipment" && item.plusLevel ? ` <span style="color:#ffd166;font-size:10px">+${item.plusLevel}</span>` : "";
+      const gemBadge = item && item.kind === "equipment" && item.socketGem ? ` <span title="${escapeHtml(item.socketGem.name)}" style="font-size:10px">💠</span>` : "";
       const row = document.createElement("div");
       row.className = "slot";
       row.dataset.slot = slot;
-      row.innerHTML = `<span>${t(slot)}${plusBadge}</span><strong><i class="material-symbols-outlined">${item ? materialIcon(item.slot) : materialIcon(slot)}</i></strong>`;
+      row.innerHTML = `<span>${t(slot)}${plusBadge}${gemBadge}</span><strong><i class="material-symbols-outlined">${item ? materialIcon(item.slot) : materialIcon(slot)}</i></strong>`;
       row.title = item ? describeItem(item) : `${t("dropHere")}: ${t(slot)}`;
       if (item) row.classList.add(rarityClass[item.rarity]);
       row.addEventListener("dragover", (event) => event.preventDefault());
@@ -2011,7 +2012,10 @@ export class Hud {
       const button = document.createElement("button");
       button.className = `item ${rarityClass[item.rarity]}${item.kind === "consumable" ? " consumable" : ""}${item.id === this.selectedItemId ? " selected" : ""}${item.locked ? " locked" : ""}`;
       button.draggable = true;
-      button.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><small>${itemIcon(item)}</small>${item.locked ? `<span class="item-lock" style="position:absolute;top:1px;right:2px;font-size:10px;line-height:1;text-shadow:0 1px 2px #000">🔒</span>` : ""}`;
+      const gemDot = item.kind === "equipment" && item.socketGem
+        ? `<span class="item-gem" title="${escapeHtml(item.socketGem.name)}" style="position:absolute;bottom:1px;left:2px;width:7px;height:7px;border-radius:50%;background:#${(getStatGem(item.socketGem.gemId)?.color ?? 0xffffff).toString(16).padStart(6, "0")};box-shadow:0 0 4px 1px #fff8;animation:gemTwinkle 1.4s ease-in-out infinite"></span>`
+        : "";
+      button.innerHTML = `<i class="material-symbols-outlined">${itemMaterialIcon(item)}</i><small>${itemIcon(item)}</small>${item.locked ? `<span class="item-lock" style="position:absolute;top:1px;right:2px;font-size:10px;line-height:1;text-shadow:0 1px 2px #000">🔒</span>` : ""}${gemDot}`;
       button.style.position = "relative";
       button.title = describeItem(item);
       button.dataset.tooltip = describeItem(item);
