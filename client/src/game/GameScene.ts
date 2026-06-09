@@ -264,6 +264,9 @@ export class GameScene extends Phaser.Scene {
       } else if (k === "c") {
         // Sprint 150: cinematic letterbox bars toggle.
         this.toggleCinematicBars();
+      } else if (k === "k") {
+        // Sprint 160: keybind cheat-sheet overlay.
+        this.toggleKeybindHelp();
       }
     });
 
@@ -2309,6 +2312,32 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: top, y: barH / 2, duration: 420, ease: "Quad.Out" });
     this.tweens.add({ targets: bottom, y: h - barH / 2, duration: 420, ease: "Quad.Out" });
     this.cinematicBars = { top, bottom };
+  }
+
+  // Sprint 160: toggleable keybind cheat-sheet so the growing list of hotkeys
+  // is discoverable. Press K (or the ✕) to close.
+  private toggleKeybindHelp(): void {
+    const existing = document.getElementById("keybind-help");
+    if (existing) { existing.remove(); return; }
+    const rows: Array<[string, string]> = [
+      ["Chuột phải", "Di chuyển tới điểm"],
+      ["Q / W / E / R", "Dùng kỹ năng"],
+      ["Cuộn chuột", "Phóng to / thu nhỏ camera"],
+      ["G", "Mật độ hiệu ứng Cao / Thấp"],
+      ["V", "Ẩn / hiện tên nhân vật"],
+      ["H", "Ẩn / hiện bảng & thanh công cụ"],
+      ["C", "Khung điện ảnh (letterbox)"],
+      ["K", "Bảng phím tắt này"]
+    ];
+    const panel = document.createElement("div");
+    panel.id = "keybind-help";
+    panel.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(12,14,20,0.96);border:1px solid #3a4256;border-radius:12px;padding:18px 22px;min-width:300px;color:#e8ecf5;font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,0.6)";
+    const list = rows.map(([key, desc]) =>
+      `<div style="display:flex;justify-content:space-between;gap:24px;padding:5px 0;border-bottom:1px solid #232838"><span style="color:#9fb4ff;font-weight:700">${key}</span><span>${desc}</span></div>`
+    ).join("");
+    panel.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong style="font-size:15px">⌨️ Phím tắt</strong><button id="keybind-close" type="button" style="background:none;border:none;color:#9aa0a6;font-size:18px;cursor:pointer">✕</button></div>${list}`;
+    document.body.appendChild(panel);
+    panel.querySelector("#keybind-close")?.addEventListener("click", () => panel.remove());
   }
 
   private drawMoveMarker(): void {
