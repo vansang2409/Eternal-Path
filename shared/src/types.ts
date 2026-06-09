@@ -157,6 +157,8 @@ export interface PlayerState {
   targetId?: string;
   pvpKills?: number;
   pvpDeaths?: number;
+  /** Consecutive arena kills without dying (Sprint 170) — drives streak bonuses. */
+  arenaStreak?: number;
   inArena?: boolean;
   // Class assignment. Undefined means the player has not yet picked one.
   playerClass?: "warrior" | "mage" | "ranger";

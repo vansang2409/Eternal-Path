@@ -583,6 +583,14 @@ export class GameWorld {
     attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
     attacker.stats.gold += ARENA_KILL_GOLD;
     attacker.gems = (attacker.gems ?? 0) + ARENA_KILL_GEMS;
+    // Sprint 170: consecutive-kill streak pays escalating gem milestones.
+    attacker.arenaStreak = (attacker.arenaStreak ?? 0) + 1;
+    const streakBonus: Record<number, number> = { 3: 5, 5: 10, 10: 30 };
+    const bonus = streakBonus[attacker.arenaStreak];
+    if (bonus) {
+      attacker.gems = (attacker.gems ?? 0) + bonus;
+      this.sockets.get(attacker.id)?.emit("system", `🔥 Chuỗi ${attacker.arenaStreak} hạ gục! Thưởng +${bonus} 💎.`);
+    }
     this.unlockAchievement(attacker, "pvp-victor");
     if ((attacker.pvpKills ?? 0) >= 10) this.unlockAchievement(attacker, "pvp-champion");
   }
@@ -692,6 +700,7 @@ export class GameWorld {
         equippedSkills: [],
         pvpKills: 0,
         pvpDeaths: 0,
+        arenaStreak: 0,
         inArena: false,
         playerClass: saved.playerClass,
         dailyQuestIds: saved.dailyQuestIds,
@@ -1321,6 +1330,12 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         this.creditArenaKill(player);
+        socket.emit("player", player);
+      });
+      (socket as Socket).on("devArenaDeath", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.arenaStreak = 0;
         socket.emit("player", player);
       });
       (socket as Socket).on("devClearQuests", () => {
@@ -3847,6 +3862,7 @@ export class GameWorld {
       target.stats.hp = target.stats.maxHp; // full heal on arena death
       attacker.targetId = undefined;
       target.pvpDeaths = (target.pvpDeaths ?? 0) + 1;
+      target.arenaStreak = 0;
       this.creditArenaKill(attacker);
       this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ tại Đấu Trường.`);
       this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! +${ARENA_KILL_GOLD} vàng, +${ARENA_KILL_GEMS} 💎 (Kills: ${attacker.pvpKills})`);
