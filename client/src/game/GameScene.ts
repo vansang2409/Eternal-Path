@@ -63,6 +63,7 @@ export class GameScene extends Phaser.Scene {
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
   private weatherPetals: Array<{ go: Phaser.GameObjects.Rectangle; vy: number; sway: number; phase: number; spin: number; a: number }> = [];
   private nextShootingStarAt = 4000;
+  private godRays: Array<{ go: Phaser.GameObjects.Rectangle; baseX: number; drift: number; a: number }> = [];
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -361,6 +362,37 @@ export class GameScene extends Phaser.Scene {
     this.updateNightFireflies(dt);
     this.updateWeather(dt);
     this.updateShootingStars();
+    this.updateGodRays(dt);
+  }
+
+  // Sprint 138: soft god-rays — translucent diagonal light shafts that fade in
+  // when standing in a sunlit forest by day, for a dreamy anime atmosphere.
+  private updateGodRays(dt: number): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    if (this.godRays.length === 0) {
+      for (let i = 0; i < 5; i += 1) {
+        const baseX = w * (0.15 + Math.random() * 0.7);
+        const go = this.add.rectangle(baseX, h * 0.5, 26 + Math.random() * 26, h * 1.6, 0xfff4c2, 0)
+          .setScrollFactor(0).setDepth(99952).setAngle(22).setBlendMode(Phaser.BlendModes.ADD);
+        this.godRays.push({ go, baseX, drift: 6 + Math.random() * 8, a: 0 });
+      }
+    }
+    let lit = false;
+    if (this.worldMap && this.selfPlayer && this.currentDayPhase === "day") {
+      const tx = Math.floor(this.selfPlayer.position.x / TILE_SIZE);
+      const ty = Math.floor(this.selfPlayer.position.y / TILE_SIZE);
+      if (tx >= 0 && ty >= 0 && tx < this.worldMap.width && ty < this.worldMap.height) {
+        const tile = this.worldMap.tiles[ty][tx] as TileId;
+        lit = tile === TileId.Forest || tile === TileId.Grass;
+      }
+    }
+    const target = lit ? 0.06 : 0;
+    for (const r of this.godRays) {
+      r.go.x += Math.sin(this.time.now / 4000 + r.baseX) * r.drift * dt;
+      r.a += (target - r.a) * Math.min(1, dt * 0.8);
+      r.go.setFillStyle(0xfff4c2, r.a);
+    }
   }
 
   // Sprint 132: off-screen party arrows — green pointers at the screen edge show
