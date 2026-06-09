@@ -67,6 +67,8 @@ export class GameScene extends Phaser.Scene {
   private fxHigh = !(typeof localStorage !== "undefined" && localStorage.getItem("fxHigh") === "0");
   private selfWasDead = false;
   private prevSelfGold?: number;
+  private showNameplates = true;
+  private cinematicBars?: { top: Phaser.GameObjects.Rectangle; bottom: Phaser.GameObjects.Rectangle };
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -241,11 +243,34 @@ export class GameScene extends Phaser.Scene {
     // culls the heavy atmospheric layers (motes, fireflies, weather, god-rays)
     // for weaker machines while keeping all combat/UX feedback intact.
     window.addEventListener("keydown", (e) => {
-      if (e.key !== "g" && e.key !== "G") return;
       if (isEditableFocused()) return;
-      this.fxHigh = !this.fxHigh;
-      try { localStorage.setItem("fxHigh", this.fxHigh ? "1" : "0"); } catch (_) { /* noop */ }
-      if (this.loggedIn) this.showTopBanner(this.fxHigh ? "✨ Hiệu ứng: CAO" : "🔅 Hiệu ứng: THẤP", "achievement", 1600);
+      const k = e.key.toLowerCase();
+      if (k === "g") {
+        this.fxHigh = !this.fxHigh;
+        try { localStorage.setItem("fxHigh", this.fxHigh ? "1" : "0"); } catch (_) { /* noop */ }
+        if (this.loggedIn) this.showTopBanner(this.fxHigh ? "✨ Hiệu ứng: CAO" : "🔅 Hiệu ứng: THẤP", "achievement", 1600);
+      } else if (k === "v") {
+        // Sprint 148: toggle all nameplates for a cleaner view.
+        this.showNameplates = !this.showNameplates;
+        if (this.loggedIn) this.showTopBanner(this.showNameplates ? "🏷️ Hiện tên" : "🏷️ Ẩn tên", "achievement", 1200);
+      } else if (k === "h") {
+        // Sprint 149: hide the side panels + toolbar for clean screenshots.
+        this.toggleHudPanels();
+      } else if (k === "c") {
+        // Sprint 150: cinematic letterbox bars toggle.
+        this.toggleCinematicBars();
+      }
+    });
+
+    // Sprint 147: mouse-wheel camera zoom (clamped), persisted across sessions.
+    {
+      const savedZoom = Number(localStorage.getItem("camZoom"));
+      if (savedZoom >= 0.7 && savedZoom <= 1.8) this.cameras.main.setZoom(savedZoom);
+    }
+    this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      const z = Phaser.Math.Clamp(this.cameras.main.zoom - Math.sign(dy) * 0.1, 0.7, 1.8);
+      this.cameras.main.setZoom(z);
+      try { localStorage.setItem("camZoom", z.toFixed(2)); } catch (_) { /* noop */ }
     });
 
     this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
@@ -1963,7 +1988,7 @@ export class GameScene extends Phaser.Scene {
       sprite.setInteractive({ useHandCursor: true });
     }
     const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
-    this.names.get(player.id)?.setText(this.displayName(player)).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2);
+    this.names.get(player.id)?.setText(this.displayName(player)).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2).setVisible(this.showNameplates || player.id === this.selfId);
     // Iso depth sort: bar + gear must follow sprite's depth, otherwise the
     // fixed (12,13) depth set at creation puts them under the sprite once
     // ip3.y exceeds those values (which it always does in a 200x150 world).
@@ -2130,7 +2155,7 @@ export class GameScene extends Phaser.Scene {
       .setColor(monster.boss ? "#fff1a8" : threatColor)
       .setPosition(iso.x, iso.y - (monster.boss ? 66 : monster.elite ? 52 : 45))
       .setDepth(iso.y + 2)
-      .setVisible(!monster.respawnsAt);
+      .setVisible(this.showNameplates && !monster.respawnsAt);
     this.monsterBars.get(monster.id)?.setDepth(iso.y + 1);
     this.drawMonsterBar(monster, iso);
   }
@@ -2253,6 +2278,32 @@ export class GameScene extends Phaser.Scene {
       g.lineTo(cx + Math.cos(t2) * rr, cy + Math.sin(t2) * rr);
       g.strokePath();
     }
+  }
+
+  // Sprint 149: toggle the HTML side panels + toolbar (reuses the .hidden class).
+  private toggleHudPanels(): void {
+    const els = document.querySelectorAll<HTMLElement>(".panel, #hud-toolbar, #minimap");
+    let anyVisible = false;
+    els.forEach((el) => { if (!el.classList.contains("hidden")) anyVisible = true; });
+    els.forEach((el) => el.classList.toggle("hidden", anyVisible));
+  }
+
+  // Sprint 150: cinematic letterbox bars (top + bottom) for a filmic look.
+  private toggleCinematicBars(): void {
+    if (this.cinematicBars) {
+      this.cinematicBars.top.destroy();
+      this.cinematicBars.bottom.destroy();
+      this.cinematicBars = undefined;
+      return;
+    }
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const barH = Math.round(h * 0.11);
+    const top = this.add.rectangle(w / 2, -barH / 2, w, barH, 0x000000, 0.92).setScrollFactor(0).setDepth(99994);
+    const bottom = this.add.rectangle(w / 2, h + barH / 2, w, barH, 0x000000, 0.92).setScrollFactor(0).setDepth(99994);
+    this.tweens.add({ targets: top, y: barH / 2, duration: 420, ease: "Quad.Out" });
+    this.tweens.add({ targets: bottom, y: h - barH / 2, duration: 420, ease: "Quad.Out" });
+    this.cinematicBars = { top, bottom };
   }
 
   private drawMoveMarker(): void {
