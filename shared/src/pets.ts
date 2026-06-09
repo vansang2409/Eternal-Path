@@ -38,7 +38,10 @@ export const PET_CATALOG: PetDef[] = [
   // ── Season 2 pets (Sprint 69) ──
   { id: "kirin", name: "Kỳ Lân", desc: "+8 công, +8 thủ, +80 HP", rarity: "epic", goldPrice: 0, gemPrice: 260, buff: { attack: 8, defense: 8, maxHp: 80 }, color: 0xf0e68c },
   { id: "turtle", name: "Huyền Vũ", desc: "+2 công, +12 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 240, buff: { attack: 2, defense: 12, maxHp: 120 }, color: 0x4a8c6a },
-  { id: "cat", name: "Mèo May Mắn", desc: "+5 công, +20 HP", rarity: "rare", goldPrice: 12000, gemPrice: 0, buff: { attack: 5, maxHp: 20 }, color: 0xf5b942 }
+  { id: "cat", name: "Mèo May Mắn", desc: "+5 công, +20 HP", rarity: "rare", goldPrice: 12000, gemPrice: 0, buff: { attack: 5, maxHp: 20 }, color: 0xf5b942 },
+  // ── Season 3 pets (Sprint 145) ──
+  { id: "griffin", name: "Sư Thứu", desc: "+9 công, +6 thủ, +70 HP", rarity: "epic", goldPrice: 0, gemPrice: 280, buff: { attack: 9, defense: 6, maxHp: 70 }, color: 0xd8c08a },
+  { id: "bear", name: "Hùng Vương", desc: "+4 công, +10 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 220, buff: { attack: 4, defense: 10, maxHp: 110 }, color: 0x9a6b4a }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));

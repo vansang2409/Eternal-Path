@@ -115,6 +115,33 @@ export const COSMETICS: Cosmetic[] = [
     color: 0x8a4dff,
     gemPrice: 130,
     featured: true
+  },
+  // ── Season 3 content drop (Sprint 145) ──
+  {
+    id: "skin-celestial",
+    name: "Thiên Quang Thánh Y",
+    description: "Phủ ánh thiên quang xanh bạc — thần thái xuất trần.",
+    type: "skinTint",
+    color: 0x9fd8ff,
+    gemPrice: 180,
+    featured: true
+  },
+  {
+    id: "skin-inferno",
+    name: "Viêm Long Chiến Bào",
+    description: "Rực cháy sắc lửa cam đỏ như vảy viêm long.",
+    type: "skinTint",
+    color: 0xff5a1e,
+    gemPrice: 200
+  },
+  {
+    id: "skill-fx-gold",
+    name: "Hiệu Ứng Phép Hoàng Kim",
+    description: "Hiệu ứng kỹ năng toả ánh vàng kim rực rỡ.",
+    type: "skillEffectColor",
+    color: 0xffd54a,
+    gemPrice: 140,
+    featured: true
   }
 ];
 

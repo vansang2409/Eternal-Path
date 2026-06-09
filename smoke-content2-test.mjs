@@ -21,8 +21,8 @@ const newPets = ["kirin", "turtle", "cat"];
 ok("3 new pets present", newPets.every((id) => getPet(id)));
 ok("new gem cosmetics in mystery pool", MYSTERY_COSMETIC_POOL.includes("skin-rose") && MYSTERY_COSMETIC_POOL.includes("skill-fx-void"));
 ok("new gem pets in mystery pool", MYSTERY_PET_POOL.includes("kirin") && MYSTERY_PET_POOL.includes("turtle"));
-ok("cosmetic count grew to 12", COSMETICS.length === 12, `len=${COSMETICS.length}`);
-ok("pet count grew to 9", PET_CATALOG.length === 9, `len=${PET_CATALOG.length}`);
+ok("cosmetic count >= 12 (grows with seasons)", COSMETICS.length >= 12, `len=${COSMETICS.length}`);
+ok("pet count >= 9 (grows with seasons)", PET_CATALOG.length >= 9, `len=${PET_CATALOG.length}`);
 
 const run = async () => {
   const sfx = Date.now() % 100000;
