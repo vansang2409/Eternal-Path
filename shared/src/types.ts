@@ -510,6 +510,7 @@ export interface ClientToServerEvents {
   enchantItem: (payload: { itemId: string }) => void;
   salvageItem: (payload: { itemId: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
+  salvageAll: (payload: { rarity: string }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

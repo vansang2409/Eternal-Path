@@ -74,7 +74,8 @@ export class Hud {
     private readonly onBuyGoldBoost: () => void = () => {},
     private readonly onSellAllMaterials: () => void = () => {},
     private readonly onSalvage: (itemId: string) => void = () => {},
-    private readonly onToggleLock: (itemId: string) => void = () => {}
+    private readonly onToggleLock: (itemId: string) => void = () => {},
+    private readonly onSalvageJunk: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -83,6 +84,15 @@ export class Hud {
     const muteButton = document.querySelector("#sound-toggle") as HTMLButtonElement;
     const sellJunkButton = document.querySelector("#sell-junk-button") as HTMLButtonElement;
     sellJunkButton.addEventListener("click", () => this.onSellJunk());
+    // Sprint 152: one-click mass-salvage of common "junk" gear into materials.
+    if (sellJunkButton && !document.querySelector("#salvage-junk-button")) {
+      const salvageJunkButton = document.createElement("button");
+      salvageJunkButton.id = "salvage-junk-button";
+      salvageJunkButton.type = "button";
+      salvageJunkButton.textContent = "🔨 Phân giải rác";
+      salvageJunkButton.addEventListener("click", () => this.onSalvageJunk());
+      sellJunkButton.insertAdjacentElement("afterend", salvageJunkButton);
+    }
     document.querySelector("#bag-expand-button")?.addEventListener("click", () => this.onBuyBagSlots());
     document.querySelector("#sell-materials-button")?.addEventListener("click", () => this.onSellAllMaterials());
     muteButton.addEventListener("click", () => {

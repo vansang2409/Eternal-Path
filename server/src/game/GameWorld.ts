@@ -2443,6 +2443,13 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 152: mass-salvage unequipped, unlocked gear by rarity / junk.
+    socket.on("salvageAll", ({ rarity }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.salvageAll(player, String(rarity ?? "junk"));
+    });
+
     socket.on("selectClass", ({ playerClass }) => {
       const player = this.players.get(socket.id);
       if (!player) {
@@ -3253,6 +3260,46 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${item.name} → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", "Phân giải");
+    this.markDirty(player);
+  }
+
+  // Sprint 152: salvage every unequipped, UNLOCKED equipment item matching a
+  // rarity filter ("junk" = common + uncommon) in one action. Respects the
+  // Sprint 151 item lock so prized gear is never mass-dismantled.
+  private salvageAll(player: PlayerState, filter: string): void {
+    const matches = (r: Rarity): boolean =>
+      filter === "junk" ? r === "common" : r === filter;
+    const targets = player.inventory.items.filter(
+      (it) => it.kind === "equipment" && !it.locked && matches(it.rarity) &&
+        player.inventory.equipped[(it as EquipmentItem).slot]?.id !== it.id
+    );
+    if (targets.length === 0) {
+      this.sockets.get(player.id)?.emit("system", "Không có trang bị phù hợp để phân giải hàng loạt.");
+      return;
+    }
+    const totals: Partial<Record<MaterialId, number>> = {};
+    for (const it of targets) {
+      const idx = player.inventory.items.findIndex((x) => x.id === it.id);
+      if (idx >= 0) player.inventory.items.splice(idx, 1);
+      for (const [matId, qty] of Object.entries(salvageYield(it.rarity)) as [MaterialId, number][]) {
+        totals[matId] = (totals[matId] ?? 0) + qty;
+      }
+    }
+    const granted: string[] = [];
+    for (const [matId, qty] of Object.entries(totals) as [MaterialId, number][]) {
+      const info = MATERIAL_CATALOG[matId];
+      for (let n = 0; n < qty; n += 1) {
+        player.inventory.items.push({
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${n}`,
+          kind: "material", materialId: matId, name: info.name, rarity: info.rarity, value: info.value
+        });
+      }
+      granted.push(`${qty}x ${info.name}`);
+    }
+    this.unlockAchievement(player, "salvager");
+    this.sockets.get(player.id)?.emit("player", player);
+    this.sockets.get(player.id)?.emit("system", `Đã phân giải ${targets.length} trang bị → ${granted.join(", ")}.`);
+    this.emitFloating(player.id, player.position, 0, "loot", `Phân giải x${targets.length}`);
     this.markDirty(player);
   }
 
