@@ -2245,6 +2245,18 @@ export class GameScene extends Phaser.Scene {
         repeat: 1,
         onComplete: () => sprite.setAlpha(1)
       });
+      // Sprint 116: squash-and-stretch impact punch — the struck sprite briefly
+      // compresses then springs back (classic anime hit feel).
+      const bx = sprite.scaleX, by = sprite.scaleY;
+      this.tweens.add({
+        targets: sprite,
+        scaleX: bx * 1.18,
+        scaleY: by * 0.82,
+        duration: 80,
+        yoyo: true,
+        ease: "Quad.Out",
+        onComplete: () => sprite.setScale(bx, by)
+      });
       if (entityId === this.selfId) {
         this.cameras.main.shake(110, 0.004);
         // Brief red damage flash at screen edges when the local player is hit.
