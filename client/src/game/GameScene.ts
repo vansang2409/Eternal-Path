@@ -1971,9 +1971,19 @@ export class GameScene extends Phaser.Scene {
     // Face direction of movement (or last facing if stationary).
     if (monster.velocity.x !== 0) sprite.setFlipX(monster.velocity.x < 0);
     const name = `${monster.boss ? `${t("bossPrefix")} ` : monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
+    // Sprint 133: con-style threat coloring — tint the nameplate by how the
+    // monster's level compares to the player's so danger reads at a glance.
+    const selfLevel = this.selfPlayer?.stats.level ?? monster.level;
+    const delta = monster.level - selfLevel;
+    let threatColor = "#f3e7bf";
+    if (delta >= 5) threatColor = "#ff5a5a";
+    else if (delta >= 2) threatColor = "#ff9d4d";
+    else if (delta >= -1) threatColor = "#ffe088";
+    else if (delta >= -4) threatColor = "#9be88b";
+    else threatColor = "#9aa0a6";
     this.monsterLabels.get(monster.id)
       ?.setText(`${t("levelShort")} ${monster.level} ${name}`)
-      .setColor(monster.boss ? "#fff1a8" : monster.elite ? "#ffe088" : "#f3e7bf")
+      .setColor(monster.boss ? "#fff1a8" : threatColor)
       .setPosition(iso.x, iso.y - (monster.boss ? 66 : monster.elite ? 52 : 45))
       .setDepth(iso.y + 2)
       .setVisible(!monster.respawnsAt);
