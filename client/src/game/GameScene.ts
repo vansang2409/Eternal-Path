@@ -78,6 +78,7 @@ export class GameScene extends Phaser.Scene {
   private moveTarget?: Phaser.Math.Vector2;
   private moveMarker?: Phaser.GameObjects.Graphics;
   private targetReticle?: Phaser.GameObjects.Graphics;
+  private partyArrows?: Phaser.GameObjects.Graphics;
   private selfPlayer?: PlayerState;
   private partyMemberIds = new Set<string>();
   private snapshotBuffer: WorldSnapshot[] = [];
@@ -277,6 +278,7 @@ export class GameScene extends Phaser.Scene {
     this.drawTargetReticle(time);
     this.updateWaterShimmer(time);
     this.updateChatBubbles(time);
+    this.drawPartyArrows();
     // Sprint afterimage: leave fading ghost copies of the hero while dashing.
     const moving = input.up || input.down || input.left || input.right || !!input.moveTarget;
     // Footstep dust puffs while moving (anime grounding).
@@ -359,6 +361,47 @@ export class GameScene extends Phaser.Scene {
     this.updateNightFireflies(dt);
     this.updateWeather(dt);
     this.updateShootingStars();
+  }
+
+  // Sprint 132: off-screen party arrows — green pointers at the screen edge show
+  // where allies are when they roam out of view, so groups stay together.
+  private drawPartyArrows(): void {
+    if (!this.partyArrows) this.partyArrows = this.add.graphics().setScrollFactor(0).setDepth(99964);
+    const g = this.partyArrows;
+    g.clear();
+    if (this.partyMemberIds.size === 0) return;
+    const cam = this.cameras.main;
+    const vx = cam.worldView;
+    const w = this.scale.width;
+    const h = this.scale.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const margin = 36;
+    for (const id of this.partyMemberIds) {
+      if (id === this.selfId) continue;
+      const sprite = this.players.get(id);
+      if (!sprite || vx.contains(sprite.x, sprite.y)) continue;
+      const screenX = ((sprite.x - vx.x) / vx.width) * w;
+      const screenY = ((sprite.y - vx.y) / vx.height) * h;
+      const angle = Math.atan2(screenY - cy, screenX - cx);
+      const dirx = Math.cos(angle);
+      const diry = Math.sin(angle);
+      const halfW = cx - margin;
+      const halfH = cy - margin;
+      const s = Math.min(Math.abs(dirx) < 1e-3 ? Infinity : halfW / Math.abs(dirx), Math.abs(diry) < 1e-3 ? Infinity : halfH / Math.abs(diry));
+      const ex = cx + dirx * s;
+      const ey = cy + diry * s;
+      const size = 10;
+      const tipX = ex + dirx * size;
+      const tipY = ey + diry * size;
+      g.fillStyle(0x8be78b, 0.9);
+      g.beginPath();
+      g.moveTo(tipX, tipY);
+      g.lineTo(ex + Math.cos(angle + 2.5) * size, ey + Math.sin(angle + 2.5) * size);
+      g.lineTo(ex + Math.cos(angle - 2.5) * size, ey + Math.sin(angle - 2.5) * size);
+      g.closePath();
+      g.fillPath();
+    }
   }
 
   // Sprint 131: speech bubbles — a player's chat line pops above their head for
