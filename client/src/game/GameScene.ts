@@ -1056,12 +1056,23 @@ export class GameScene extends Phaser.Scene {
       ctx.fillRect(mx, my, 2, 2);
     }
     // Monsters
+    const bossPulse = 0.5 + 0.5 * Math.sin(this.time.now / 220);
     for (const m of snapshot.monsters) {
       if (m.respawnsAt) continue;
       const mx = Math.floor(m.position.x / TILE_SIZE);
       const my = Math.floor(m.position.y / TILE_SIZE);
       ctx.fillStyle = m.boss ? "#ff5d7a" : m.elite ? "#ffb55a" : "#ff8181";
       ctx.fillRect(mx, my, m.boss ? 3 : 2, m.boss ? 3 : 2);
+      // Sprint 126: pulsing halo around alive bosses so they're easy to find.
+      if (m.boss) {
+        ctx.save();
+        ctx.globalAlpha = 0.25 + 0.55 * bossPulse;
+        ctx.strokeStyle = "#ff5d7a";
+        ctx.lineWidth = 1;
+        const r = 2 + bossPulse * 3;
+        ctx.strokeRect(mx + 1.5 - r, my + 1.5 - r, r * 2, r * 2);
+        ctx.restore();
+      }
     }
     // Other players
     ctx.fillStyle = "#9be3ff";
