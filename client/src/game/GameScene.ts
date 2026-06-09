@@ -66,6 +66,7 @@ export class GameScene extends Phaser.Scene {
   private godRays: Array<{ go: Phaser.GameObjects.Rectangle; baseX: number; drift: number; a: number }> = [];
   private fxHigh = !(typeof localStorage !== "undefined" && localStorage.getItem("fxHigh") === "0");
   private selfWasDead = false;
+  private prevSelfGold?: number;
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -1351,6 +1352,11 @@ export class GameScene extends Phaser.Scene {
         if (dead && !this.selfWasDead) this.playSelfDeath();
         else if (!dead && this.selfWasDead) this.playSelfRevive(player.position);
         this.selfWasDead = dead;
+        // Sprint 142: gold-gain pop — a rising "+N" above the hero when gold rises.
+        if (this.prevSelfGold !== undefined && player.stats.gold > this.prevSelfGold) {
+          this.playGoldGain(player.stats.gold - this.prevSelfGold, player.position);
+        }
+        this.prevSelfGold = player.stats.gold;
         this.selfPlayer = player;
         this.reconcileLocalPlayer(player.position);
         this.updateTargetPanel();
@@ -2671,6 +2677,17 @@ export class GameScene extends Phaser.Scene {
       const spark = this.add.circle(sx, iso.y + 4, 2.5, 0xfff1a8, 0.95).setDepth(58);
       this.tweens.add({ targets: spark, y: iso.y - 46 - Math.random() * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
     }
+  }
+
+  // Sprint 142: rising gold "+N" with a coin glint when the player earns gold.
+  private playGoldGain(amount: number, position: Vec2): void {
+    const iso = worldToIso(position.x, position.y);
+    const x = iso.x + 14 + (Math.random() - 0.5) * 8;
+    const text = this.add.text(x, iso.y - 18, `+${amount}⨎`, {
+      fontFamily: "monospace", fontSize: "12px", color: "#ffd54a", stroke: "#3a2a00", strokeThickness: 3, fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(99989).setScale(0.6);
+    this.tweens.add({ targets: text, scale: 1, duration: 150, ease: "Back.Out" });
+    this.tweens.add({ targets: text, y: text.y - 26, alpha: 0, duration: 850, delay: 200, ease: "Quad.Out", onComplete: () => text.destroy() });
   }
 
   // Sprint 141: self death — a heavy dark-red screen wash + fallen banner so
