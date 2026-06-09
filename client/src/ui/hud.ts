@@ -2335,7 +2335,13 @@ function describeItem(item: Item): string {
     return `${item.name}\nNguyên liệu chế tạo\n${t("value")}: ${item.value} ${t("gold")}`;
   }
   const stats = Object.entries(item.stats).map(([key, value]) => `+${value} ${statLabel(key)}`).join(" ");
-  return `${item.name}\n${t(item.rarity)} ${t(item.slot)}\n${stats}\n${t("value")}: ${item.value} ${t("gold")}`;
+  // Sprint 178: surface enhancement (+N), enchant count, and lock state.
+  const plus = item.plusLevel ? ` +${item.plusLevel}` : "";
+  const extras: string[] = [];
+  if (item.enchantCount) extras.push(`✨ Tinh luyện: ${item.enchantCount}`);
+  if (item.locked) extras.push("🔒 Đã khóa");
+  const extraLine = extras.length ? `\n${extras.join(" · ")}` : "";
+  return `${item.name}${plus}\n${t(item.rarity)} ${t(item.slot)}\n${stats}\n${t("value")}: ${item.value} ${t("gold")}${extraLine}`;
 }
 
 function shortStats(item: Item): string {
