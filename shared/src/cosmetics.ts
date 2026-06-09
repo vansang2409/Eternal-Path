@@ -178,6 +178,24 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xd6294a,
     gemPrice: 160
+  },
+  // ── Season 6 content drop (Sprint 185) ──
+  {
+    id: "skin-frost-sovereign",
+    name: "Băng Tuyết Quân Vương",
+    description: "Phủ sắc băng lam bạc lấp lánh như tuyết vĩnh hằng.",
+    type: "skinTint",
+    color: 0xa8e0ff,
+    gemPrice: 220,
+    featured: true
+  },
+  {
+    id: "skill-fx-emerald",
+    name: "Hiệu Ứng Phép Lục Ngọc",
+    description: "Hiệu ứng kỹ năng toả ánh lục ngọc trong vắt.",
+    type: "skillEffectColor",
+    color: 0x3fe0a0,
+    gemPrice: 150
   }
 ];
 
