@@ -529,6 +529,7 @@ export interface ClientToServerEvents {
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
   claimStarterPack: () => void;
   fuseGear: () => void;
+  sacrificePet: (payload: { petId: string }) => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;

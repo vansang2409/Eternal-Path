@@ -88,7 +88,8 @@ export class Hud {
     private readonly onClaimAchMilestone: (count: number) => void = () => {},
     private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {},
     private readonly onClaimStarterPack: () => void = () => {},
-    private readonly onFuseGear: () => void = () => {}
+    private readonly onFuseGear: () => void = () => {},
+    private readonly onSacrificePet: (petId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1601,7 +1602,7 @@ export class Hud {
       } else if (isActive) {
         action = `<button type="button" data-pet-equip="" style="padding:6px 12px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#402c2c;cursor:pointer">Thu hồi</button>`;
       } else {
-        action = `<button type="button" data-pet-equip="${p.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Trang bị</button>`;
+        action = `<button type="button" data-pet-equip="${p.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#fff;background:linear-gradient(to bottom,#6e4c9b,#523a73);cursor:pointer">Trang bị</button><button type="button" data-pet-sac="${p.id}" title="Hiến tế lấy XP cho linh thú đang dùng" style="padding:6px 9px;margin-left:4px;border:1px solid #5a3939;border-radius:4px;color:#ff8181;background:#2c1c1c;cursor:pointer">🔥</button>`;
       }
       // XP bar (owned pets only).
       const prog = petXpProgress(xp);
@@ -1657,6 +1658,9 @@ export class Hud {
     });
     body.querySelectorAll<HTMLButtonElement>("[data-pet-equip]").forEach((btn) => {
       btn.addEventListener("click", () => { const id = btn.dataset.petEquip; this.onEquipPet(id ? id : null); });
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-pet-sac]").forEach((btn) => {
+      btn.addEventListener("click", () => { if (confirm("Hiến tế linh thú này để lấy XP? Không hoàn lại.")) this.onSacrificePet(btn.dataset.petSac!); });
     });
   }
 

@@ -2218,6 +2218,33 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 184: sacrifice an owned (non-active) pet to feed XP to the active.
+    socket.on("sacrificePet", ({ petId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!player.activePet) {
+        socket.emit("system", "Hãy trang bị linh thú để nhận XP trước khi hiến tế.");
+        return;
+      }
+      if (petId === player.activePet) {
+        socket.emit("system", "Không thể hiến tế linh thú đang dùng.");
+        return;
+      }
+      const owned = player.ownedPets ?? [];
+      if (!owned.includes(petId)) {
+        socket.emit("system", "Bạn không sở hữu linh thú này.");
+        return;
+      }
+      const sac = getPet(petId);
+      const xpGain = 300 + (player.petXp?.[petId] ?? 0);
+      player.ownedPets = owned.filter((id) => id !== petId);
+      if (player.petXp) delete player.petXp[petId];
+      this.grantPetXp(player, xpGain);
+      socket.emit("player", player);
+      socket.emit("system", `🔥 Đã hiến tế ${sac?.name ?? "linh thú"} → +${xpGain} XP cho linh thú đang dùng.`);
+      this.markDirty(player);
+    });
+
     socket.on("buyGoldBoost", () => {
       const player = this.players.get(socket.id);
       if (!player) return;
