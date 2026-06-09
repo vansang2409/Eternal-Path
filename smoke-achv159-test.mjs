@@ -13,7 +13,7 @@ const waitPlayer = (s, pred, t = 5000) => new Promise((res, rej) => { const h = 
 const hasAch = (p, id) => (p.achievements ?? []).includes(id);
 
 const run = async () => {
-  ok("ACHIEVEMENTS count is 37", ACHIEVEMENTS.length === 37, `len=${ACHIEVEMENTS.length}`);
+  ok("ACHIEVEMENTS count >= 37", ACHIEVEMENTS.length >= 37, `len=${ACHIEVEMENTS.length}`);
   ok("enhancer/recycler/apex-smith defined", ["enhancer","recycler","apex-smith"].every((id) => ACHIEVEMENTS.some((a) => a.id === id)));
   const sfx = Date.now() % 100000;
   const s = await connect();

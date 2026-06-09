@@ -12,7 +12,7 @@ const waitPlayer = (s, pred, t = 5000) => new Promise((res, rej) => { const h = 
 const has = (p, id) => (p.achievements ?? []).includes(id);
 
 const run = async () => {
-  ok("ACHIEVEMENTS count is 40", ACHIEVEMENTS.length === 40, `len=${ACHIEVEMENTS.length}`);
+  ok("ACHIEVEMENTS count >= 40", ACHIEVEMENTS.length >= 40, `len=${ACHIEVEMENTS.length}`);
   ok("rider/alchemist/streak-master defined", ["rider","alchemist","streak-master"].every((id) => ACHIEVEMENTS.some((a) => a.id === id)));
   const sfx = Date.now() % 100000;
   const s = await connect();

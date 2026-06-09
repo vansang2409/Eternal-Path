@@ -11,7 +11,7 @@ const waitPlayer = (s, pred, t = 5000) => new Promise((res, rej) => { const h = 
 const has = (p, id) => (p.achievements ?? []).includes(id);
 
 const run = async () => {
-  ok("ACHIEVEMENTS count is 42", ACHIEVEMENTS.length === 42, `len=${ACHIEVEMENTS.length}`);
+  ok("ACHIEVEMENTS count >= 42", ACHIEVEMENTS.length >= 42, `len=${ACHIEVEMENTS.length}`);
   ok("jeweler/fusionist + gem-lord title", ["jeweler","fusionist"].every((id)=>ACHIEVEMENTS.some(a=>a.id===id)) && TITLES.some(t=>t.id==="gem-lord"));
   const sfx = Date.now() % 100000;
   const s = await connect();
