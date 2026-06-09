@@ -1608,6 +1608,12 @@ export class GameScene extends Phaser.Scene {
       );
       if (kind === "defeat") this.playBossFinisher();
     });
+    // Sprint 167: Happy Hour world event banner.
+    this.socket.on("worldEvent", ({ kind, multiplier }) => {
+      if (kind === "happyHour") {
+        this.showTopBanner(`🌟 GIỜ VÀNG! x${multiplier} vàng rơi ra!`, "level", 3500);
+      }
+    });
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
     this.socket.on("chatMessage", (message) => {
       this.hud.appendChat(message);

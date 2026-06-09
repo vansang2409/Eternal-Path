@@ -460,6 +460,7 @@ export interface ServerToClientEvents {
   achievementUnlocked: (payload: Achievement) => void;
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
+  worldEvent: (payload: { kind: string; until: number; multiplier: number }) => void;
   questList: (payload: QuestListPayload) => void;
   partyUpdate: (payload: PartyView | null) => void;
   partyInvite: (payload: PartyInvite) => void;

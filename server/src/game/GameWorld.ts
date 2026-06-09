@@ -29,6 +29,10 @@ import {
   RAGE_MULTIPLIER,
   isRageActive,
   levelMilestone,
+  HAPPY_HOUR_MULTIPLIER,
+  HAPPY_HOUR_DURATION_MS,
+  HAPPY_HOUR_INTERVAL_MS,
+  isHappyHourActive,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -559,6 +563,16 @@ export class GameWorld {
     // Broadcast a low-rate world clock so the client can animate the day/night
     // tint without each player having to compute time independently.
     setInterval(() => this.broadcastWorldTime(), 5000);
+    // Sprint 167: auto-start the Happy Hour world event on a fixed cadence.
+    setInterval(() => this.startHappyHour(), HAPPY_HOUR_INTERVAL_MS);
+  }
+
+  // Sprint 167: server-wide x2 gold-drop window, broadcast to everyone.
+  private happyHourUntil = 0;
+  private startHappyHour(): void {
+    this.happyHourUntil = Date.now() + HAPPY_HOUR_DURATION_MS;
+    this.io.emit("worldEvent", { kind: "happyHour", until: this.happyHourUntil, multiplier: HAPPY_HOUR_MULTIPLIER });
+    this.io.emit("system", `🌟 GIỜ VÀNG bắt đầu! x${HAPPY_HOUR_MULTIPLIER} vàng rơi ra trong ${Math.round(HAPPY_HOUR_DURATION_MS / 60000)} phút!`);
   }
 
   private broadcastWorldTime(): void {
@@ -1287,6 +1301,9 @@ export class GameWorld {
         };
         player.inventory.items.push(item);
         socket.emit("player", player);
+      });
+      (socket as Socket).on("devHappyHour", () => {
+        this.startHappyHour();
       });
       (socket as Socket).on("devClearQuests", () => {
         const player = this.players.get(socket.id);
@@ -3200,6 +3217,7 @@ export class GameWorld {
     let goldMult = isVipActive(player.vipUntil) ? VIP_GOLD_MULTIPLIER : 1;
     goldMult *= this.guildGoldMultiplier(player);
     if (isGoldBoostActive(player.goldBoostUntil)) goldMult *= GOLD_BOOST_MULTIPLIER;
+    if (isHappyHourActive(this.happyHourUntil)) goldMult *= HAPPY_HOUR_MULTIPLIER;
     let gold = goldForMonster(monster);
     if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;

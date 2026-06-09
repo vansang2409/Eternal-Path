@@ -103,6 +103,15 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// "Happy Hour" world event (Sprint 167): server-wide x2 gold-drop window that
+// auto-starts on a fixed cadence and lasts a fixed duration. Encourages
+// players to log in during the window.
+export const HAPPY_HOUR_MULTIPLIER = 2;
+export const HAPPY_HOUR_DURATION_MS = 15 * 60 * 1000;
+export const HAPPY_HOUR_INTERVAL_MS = 3 * 60 * 60 * 1000;
+export function isHappyHourActive(until: number | undefined, now: number = Date.now()): boolean {
+  return typeof until === "number" && until > now;
+}
 // Level milestone reward chests (Sprint 165): one-time gold + gem rewards for
 // reaching key levels. Encourages pushing levels (and buying XP boosts).
 export interface LevelMilestone { level: number; gold: number; gems: number; }
