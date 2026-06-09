@@ -1032,6 +1032,9 @@ export class GameScene extends Phaser.Scene {
 
     this.socket.on("achievementUnlocked", (payload) => {
       this.showTopBanner(`🏆 ${payload.title}`, "achievement", 3000);
+      soundManager.play("levelUp");
+      const self = this.players.get(this.selfId);
+      if (self) this.playCelebration(self.x, self.y);
     });
 
     this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
@@ -2084,6 +2087,27 @@ export class GameScene extends Phaser.Scene {
       const sx = iso.x + (Math.random() - 0.5) * 30;
       const spark = this.add.circle(sx, iso.y + 4, 2.5, 0xfff1a8, 0.95).setDepth(58);
       this.tweens.add({ targets: spark, y: iso.y - 46 - Math.random() * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
+    }
+  }
+
+  // Celebration burst (achievement unlock): gold stars arc up + ring.
+  private playCelebration(x: number, y: number): void {
+    const ring = this.add.circle(x, y, 8).setStrokeStyle(3, 0xffd166, 0.95).setDepth(99998);
+    this.tweens.add({ targets: ring, scale: 4, alpha: 0, duration: 600, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    for (let i = 0; i < 14; i += 1) {
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.2;
+      const dist = 30 + Math.random() * 40;
+      const star = this.add.star(x, y - 8, 5, 2, 4, i % 2 ? 0xffd166 : 0xfff1a8, 0.95).setDepth(99999);
+      this.tweens.add({
+        targets: star,
+        x: x + Math.cos(ang) * dist,
+        y: y - 8 + Math.sin(ang) * dist + 20,
+        angle: 360,
+        alpha: 0,
+        duration: 700 + Math.random() * 300,
+        ease: "Quad.Out",
+        onComplete: () => star.destroy()
+      });
     }
   }
 
