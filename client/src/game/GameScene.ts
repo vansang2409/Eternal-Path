@@ -1174,6 +1174,21 @@ export class GameScene extends Phaser.Scene {
       ctx.fillStyle = "#000";
       ctx.fillRect(px, py, 1, 1);
     }
+    // Sprint 135: camera viewport box — outline the on-screen area on the
+    // minimap so the player knows which slice of the world they're looking at.
+    const view = this.cameras.main.worldView;
+    if (view.width > 0) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.55)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(
+        view.x / TILE_SIZE,
+        view.y / TILE_SIZE,
+        view.width / TILE_SIZE,
+        view.height / TILE_SIZE
+      );
+      ctx.restore();
+    }
   }
 
   private isClientTileWalkable(position: Vec2): boolean {
