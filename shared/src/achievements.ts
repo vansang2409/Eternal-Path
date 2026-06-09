@@ -33,7 +33,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 82 — economy-feature achievements.
   { id: "bag-master",      title: "Túi Thần Kỳ",          description: "Mở rộng túi đồ tối đa.",       reward: { gems: 20 } },
   { id: "high-roller",     title: "Con Bạc",              description: "Mở 1 Rương Bí Ẩn.",            reward: { gold: 500 } },
-  { id: "philanthropist",  title: "Mạnh Thường Quân",     description: "Góp vàng vào Quỹ Guild.",      reward: { gems: 10 } }
+  { id: "philanthropist",  title: "Mạnh Thường Quân",     description: "Góp vàng vào Quỹ Guild.",      reward: { gems: 10 } },
+  // Sprint 146 — achievements for crafting-loop & cosmetic features.
+  { id: "salvager",        title: "Thợ Tháo Dỡ",          description: "Phân giải 1 trang bị thành nguyên liệu.", reward: { gems: 10 } },
+  { id: "enchanter",       title: "Nghệ Nhân Tinh Luyện", description: "Tinh luyện 1 trang bị.",       reward: { gems: 10 } },
+  { id: "fashionista",     title: "Tín Đồ Thời Trang",    description: "Trang bị 1 bộ trang phục.",    reward: { gold: 300 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

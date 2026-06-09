@@ -1140,6 +1140,7 @@ export class GameWorld {
         return;
       }
       player.activeCosmeticSkin = cosmeticId;
+      this.unlockAchievement(player, "fashionista");
       socket.emit("player", player);
       socket.emit("system", "Đã trang bị cosmetic.");
       this.markDirty(player);
@@ -3177,6 +3178,7 @@ export class GameWorld {
     item.stats = newStats;
     item.enchantCount = (item.enchantCount ?? 0) + 1;
     if (isEquipped) addItemStats(player, item);
+    this.unlockAchievement(player, "enchanter");
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã tinh luyện ${item.name} (lần ${item.enchantCount}).`);
     this.emitFloating(player.id, player.position, 0, "loot", `+Tinh luyện`);
@@ -3219,6 +3221,7 @@ export class GameWorld {
       }
       granted.push(`${qty}x ${info.name}`);
     }
+    this.unlockAchievement(player, "salvager");
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${item.name} → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", "Phân giải");
