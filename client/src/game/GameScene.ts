@@ -430,6 +430,7 @@ export class GameScene extends Phaser.Scene {
         else if (tile === TileId.Snow) { color = 0xffffff; active = true; drift = 14; }
         else if (tile === TileId.Swamp) { color = 0x86c98f; active = true; drift = 16; }
         else if (tile === TileId.Sand) { color = 0xe8d4a0; active = true; drift = 40; }
+        else if (tile === TileId.DungeonFloor || tile === TileId.DungeonWall) { color = 0x9a9488; active = true; drift = 8; }
       }
     }
     if (this.weatherPetals.length === 0) {
