@@ -246,7 +246,8 @@ type QuestObjective =
   | { kind: "craftItem" }
   | { kind: "collectGold"; amount: number }
   | { kind: "salvageGear" }
-  | { kind: "upgradeGear" };
+  | { kind: "upgradeGear" }
+  | { kind: "socketGem" };
 
 interface QuestTemplate {
   id: string;
@@ -417,6 +418,14 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     description: "Cường hóa trang bị thành công 1 lần.",
     required: 1, rewardGold: 300, rewardExp: 420,
     category: "daily", objective: { kind: "upgradeGear" }
+  },
+  // Sprint 189: socket-a-gem daily quest.
+  {
+    id: "daily-socket-1",
+    title: "Hằng ngày: Khảm 1 đá quý",
+    description: "Khảm 1 viên đá quý vào trang bị.",
+    required: 1, rewardGold: 280, rewardExp: 380,
+    category: "daily", objective: { kind: "socketGem" }
   }
 ];
 
@@ -2277,6 +2286,7 @@ export class GameWorld {
       item.socketGem = { gemId: gem.id, name: gem.name, stats: { ...gem.stats } };
       if (isEquipped) addItemStats(player, item);
       this.unlockAchievement(player, "jeweler");
+      this.bumpQuestProgress(player, ["socketGem"]);
       socket.emit("player", player);
       socket.emit("system", `💠 Đã khảm ${gem.name} vào ${item.name}.`);
       this.markDirty(player);
