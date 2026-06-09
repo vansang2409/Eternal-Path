@@ -62,6 +62,7 @@ export class GameScene extends Phaser.Scene {
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
   private weatherPetals: Array<{ go: Phaser.GameObjects.Rectangle; vy: number; sway: number; phase: number; spin: number; a: number }> = [];
+  private nextShootingStarAt = 4000;
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -352,6 +353,28 @@ export class GameScene extends Phaser.Scene {
     }
     this.updateNightFireflies(dt);
     this.updateWeather(dt);
+    this.updateShootingStars();
+  }
+
+  // Sprint 123: rare shooting star streaking across the night sky — a quiet
+  // wow-moment that only appears after dark.
+  private updateShootingStars(): void {
+    if (this.currentDayPhase !== "night") return;
+    const now = this.time.now;
+    if (now < this.nextShootingStarAt) return;
+    this.nextShootingStarAt = now + 5000 + Math.random() * 7000;
+    const w = this.scale.width;
+    const startX = w * (0.2 + Math.random() * 0.6);
+    const startY = this.scale.height * (0.05 + Math.random() * 0.2);
+    const dx = 160 + Math.random() * 120;
+    const dy = dx * (0.4 + Math.random() * 0.2);
+    const star = this.add.circle(startX, startY, 2, 0xffffff, 1).setScrollFactor(0).setDepth(99959).setBlendMode(Phaser.BlendModes.ADD);
+    const trail = this.add.rectangle(startX, startY, 26, 2, 0xbfe0ff, 0.7).setScrollFactor(0).setDepth(99958)
+      .setOrigin(1, 0.5).setAngle(Phaser.Math.RadToDeg(Math.atan2(dy, dx))).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: [star, trail], x: startX + dx, y: startY + dy, alpha: 0, duration: 700, ease: "Quad.In",
+      onComplete: () => { star.destroy(); trail.destroy(); }
+    });
   }
 
   // Sprint 120: biome-aware weather — drifting petals/leaves in the forest,
