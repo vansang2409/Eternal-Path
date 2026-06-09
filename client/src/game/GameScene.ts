@@ -61,6 +61,7 @@ export class GameScene extends Phaser.Scene {
   private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
+  private weatherPetals: Array<{ go: Phaser.GameObjects.Rectangle; vy: number; sway: number; phase: number; spin: number; a: number }> = [];
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -349,6 +350,47 @@ export class GameScene extends Phaser.Scene {
       this.lowHpOverlay.setAlpha(cur + (target - cur) * Math.min(1, dt * 8));
     }
     this.updateNightFireflies(dt);
+    this.updateWeather(dt);
+  }
+
+  // Sprint 120: biome-aware weather — drifting petals/leaves in the forest,
+  // snowflakes on the peaks, spores over the swamp, dust in the dunes. A pooled
+  // screen-space layer that recolors itself to whatever biome the hero stands in.
+  private updateWeather(dt: number): void {
+    const w = this.scale.width;
+    const h = this.scale.height;
+    // Decide the active weather palette from the tile under the player.
+    let color = 0x000000;
+    let active = false;
+    let drift = 22;
+    if (this.worldMap && this.selfPlayer) {
+      const tx = Math.floor(this.selfPlayer.position.x / TILE_SIZE);
+      const ty = Math.floor(this.selfPlayer.position.y / TILE_SIZE);
+      if (tx >= 0 && ty >= 0 && tx < this.worldMap.width && ty < this.worldMap.height) {
+        const tile = this.worldMap.tiles[ty][tx] as TileId;
+        if (tile === TileId.Forest || tile === TileId.Grass) { color = 0x8fd98f; active = true; drift = 22; }
+        else if (tile === TileId.Snow) { color = 0xffffff; active = true; drift = 14; }
+        else if (tile === TileId.Swamp) { color = 0x86c98f; active = true; drift = 16; }
+        else if (tile === TileId.Sand) { color = 0xe8d4a0; active = true; drift = 40; }
+      }
+    }
+    if (this.weatherPetals.length === 0) {
+      for (let i = 0; i < 16; i += 1) {
+        const go = this.add.rectangle(Math.random() * w, Math.random() * h, 4, 6, 0xffffff, 0)
+          .setScrollFactor(0).setDepth(99958).setAngle(Math.random() * 360);
+        this.weatherPetals.push({ go, vy: 24 + Math.random() * 26, sway: 12 + Math.random() * 16, phase: Math.random() * Math.PI * 2, spin: (Math.random() - 0.5) * 60, a: 0 });
+      }
+    }
+    for (const p of this.weatherPetals) {
+      p.phase += dt;
+      p.go.y += p.vy * dt;
+      p.go.x += Math.sin(p.phase * 1.3) * p.sway * dt + drift * dt * 0.4;
+      p.go.angle += p.spin * dt;
+      if (p.go.y > h + 8 || p.go.x > w + 8) { p.go.y = -8; p.go.x = Math.random() * w; }
+      const target = active ? 0.5 : 0;
+      p.a += (target - p.a) * Math.min(1, dt * 1.5);
+      p.go.setFillStyle(color === 0x000000 ? 0xffffff : color, p.a);
+    }
   }
 
   // Sprint 112: warm drifting fireflies that fade in at night/dusk and out by
