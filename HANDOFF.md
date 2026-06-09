@@ -20,7 +20,7 @@ Bạn đang tiếp quản một MMORPG trình duyệt đang phát triển dở. 
 
 ---
 
-Resume point after **Sprint 146** (gameplay pivot), `origin/master` = `9cf91f8`. Total: **~267 commits** on `master`, all pushed.
+Resume point after **Sprint 150** (đang tiến tới mục tiêu S200), `origin/master` = `1076eac`. Total: **~271 commits** on `master`, all pushed. **S147-150 (client QoL):** S147=mouse-wheel camera zoom (clamped 0.7–1.8, persisted localStorage `camZoom`), S148=press **V** toggle nameplates, S149=press **H** hide side panels+toolbar, S150=press **C** cinematic letterbox bars. (All in GameScene.ts; keybinds live in the window keydown handler next to **G**.) Goal: continue sprints toward S200 — mix client polish + smoke-tested server gameplay.
 
 **S134-143 (client VFX/UX):** S140=zone-name banner on entering a new biome, S141=self death screen wash + revive flash, S142=rising gold "+N" pop on gold gain, S143=your-own rare/epic drop screen flash + celebration. Press **G** in-game toggles ambient FX High/Low (localStorage `fxHigh`).
 
