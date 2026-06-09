@@ -99,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   private lastMinimapAt = 0;
   private aliveMonsters = new Set<string>();
   private monsterAggroPrev = new Map<string, boolean>();
+  private lastBossAggroBannerAt = 0;
   private recentFloating: Array<{ id: string; at: number }> = [];
 
   preload(): void {}
@@ -1442,6 +1443,13 @@ export class GameScene extends Phaser.Scene {
       const aggroOnMe = isAlive && monster.targetPlayerId === this.selfId;
       if (aggroOnMe && !this.monsterAggroPrev.get(monster.id)) {
         this.playAggroAlert(monster.position, monster.boss || monster.elite);
+        // Sprint 124: dramatic banner + flash when a BOSS turns on the player.
+        if (monster.boss && this.time.now - this.lastBossAggroBannerAt > 12000) {
+          this.lastBossAggroBannerAt = this.time.now;
+          this.showTopBanner(`⚔ ${translateMonsterName(monster.name)} đã chú ý đến ngươi!`, "achievement", 2600);
+          this.cameras.main.flash(260, 120, 0, 0, false);
+          this.cameras.main.shake(200, 0.006);
+        }
       }
       this.monsterAggroPrev.set(monster.id, aggroOnMe);
       if (isAlive) this.aliveMonsters.add(monster.id);
