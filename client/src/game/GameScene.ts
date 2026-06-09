@@ -1285,6 +1285,16 @@ export class GameScene extends Phaser.Scene {
       if (event.kind === "damage") {
         if (this.monsters.has(event.entityId)) soundManager.play("hit");
         this.playHitEffect(event.entityId, event.position);
+        // Sprint 134: punchy crit word that pops above big damage numbers.
+        if (isHeavyHit) {
+          const label = isMegaHit ? "CỰC MẠNH!" : "CHÍ MẠNG!";
+          const tag = this.add.text(ftIso.x, ftIso.y - 46, label, {
+            fontFamily: "monospace", fontSize: isMegaHit ? "15px" : "12px",
+            color: isMegaHit ? "#ff4df0" : "#ffd166", stroke: "#2a0a00", strokeThickness: 3, fontStyle: "bold"
+          }).setOrigin(0.5).setDepth(99991).setScale(0.4).setAngle(-8);
+          this.tweens.add({ targets: tag, scale: 1, duration: 200, ease: "Back.Out" });
+          this.tweens.add({ targets: tag, y: tag.y - 18, alpha: 0, duration: 760, delay: 260, onComplete: () => tag.destroy() });
+        }
         if (isHeavyHit) {
           this.cameras.main.shake(160, 0.008);
           // Crit indicator: 8 brief golden particles.
