@@ -19,7 +19,7 @@ const FAST = [
   "smoke-market-test", "smoke-market59-test", "smoke-streak-test",
   "smoke-titles-test", "smoke-pets-test", "smoke-petlevel-test",
   "smoke-setbonus-test", "smoke-raid-test", "smoke-achv-test",
-  "smoke-mystery-test", "smoke-content2-test", "smoke-titles2-test", "smoke-guildbank-test", "smoke-disband-test", "smoke-inspect-test", "smoke-bagslot-test", "smoke-exchange-test", "smoke-goldboost-test", "smoke-friendnoti-test", "smoke-sellmat-test", "smoke-ecoachv-test", "smoke-pay-test", "smoke-who-test", "smoke-raidannounce-test", "smoke-motd-test", "smoke-guilddesc-test", "smoke-salvage-test", "smoke-content3-test", "smoke-achv146-test", "smoke-itemlock-test", "smoke-salvageall-test", "smoke-xpboost-test", "smoke-upgrade-test", "smoke-respec-test", "smoke-recipes158-test", "smoke-achv159-test", "smoke-content4-test", "smoke-rage-test"
+  "smoke-mystery-test", "smoke-content2-test", "smoke-titles2-test", "smoke-guildbank-test", "smoke-disband-test", "smoke-inspect-test", "smoke-bagslot-test", "smoke-exchange-test", "smoke-goldboost-test", "smoke-friendnoti-test", "smoke-sellmat-test", "smoke-ecoachv-test", "smoke-pay-test", "smoke-who-test", "smoke-raidannounce-test", "smoke-motd-test", "smoke-guilddesc-test", "smoke-salvage-test", "smoke-content3-test", "smoke-achv146-test", "smoke-itemlock-test", "smoke-salvageall-test", "smoke-xpboost-test", "smoke-upgrade-test", "smoke-respec-test", "smoke-recipes158-test", "smoke-achv159-test", "smoke-content4-test", "smoke-rage-test", "smoke-titles164-test"
 ];
 const SLOW = ["smoke-guild-persist", "smoke-market-persist"]; // 2-phase / 30s waits
 

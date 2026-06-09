@@ -30,7 +30,12 @@ export const TITLES: TitleDef[] = [
   { id: "raidlord", label: "Diệt Ma Vương", desc: "Mở thành tựu hạ Boss Guild.", earned: (p) => (p.achievements ?? []).includes("raid-slayer") },
   { id: "petlord", label: "Bá Chủ Linh Thú", desc: "Nuôi linh thú đạt cấp 5.", earned: (p) => (p.achievements ?? []).includes("beast-master") },
   { id: "merchant-prince", label: "Thương Vương", desc: "Bán được hàng ở Chợ.", earned: (p) => (p.achievements ?? []).includes("merchant") },
-  { id: "founder", label: "Khai Quốc", desc: "Sáng lập một guild.", earned: (p) => (p.achievements ?? []).includes("guild-founder") }
+  { id: "founder", label: "Khai Quốc", desc: "Sáng lập một guild.", earned: (p) => (p.achievements ?? []).includes("guild-founder") },
+  // ── Sprint 164: new milestone & gear-loop titles ──
+  { id: "wealthlord", label: "Thủ Phú", desc: "Sở hữu 200.000 vàng.", earned: (p) => p.stats.gold >= 200_000 },
+  { id: "ascended", label: "Thăng Thiên", desc: "Đạt cấp 60.", earned: (p) => p.stats.level >= 60 },
+  { id: "forgemaster", label: "Thần Cường Hóa", desc: "Mở thành tựu Thợ Cường Hóa.", earned: (p) => (p.achievements ?? []).includes("enhancer") },
+  { id: "apexlord", label: "Thần Thợ Rèn", desc: "Mở thành tựu Thợ Rèn Thượng Thừa.", earned: (p) => (p.achievements ?? []).includes("apex-smith") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
