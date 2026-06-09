@@ -1342,6 +1342,7 @@ export class GameScene extends Phaser.Scene {
     }
     for (const [id, sprite] of this.groundItems) {
       if (!seenGroundItems.has(id)) {
+        this.playPickupBurst(sprite.x, sprite.y, sprite.texture.key === "chest");
         sprite.destroy();
         this.groundItems.delete(id);
         this.groundSparkleAt.delete(id);
@@ -1872,6 +1873,22 @@ export class GameScene extends Phaser.Scene {
       const sx = iso.x + (Math.random() - 0.5) * 22;
       const star = this.add.circle(sx, iso.y, 2, 0xffffff, 0.95).setDepth(99999);
       this.tweens.add({ targets: star, y: iso.y - 30 - Math.random() * 26, alpha: 0, duration: 600 + Math.random() * 200, ease: "Quad.Out", onComplete: () => star.destroy() });
+    }
+  }
+
+  // Sprint 114: satisfying pop when an item/chest is picked up — gold ring +
+  // sparkle fan. Chests get a bigger golden burst than ordinary drops.
+  private playPickupBurst(x: number, y: number, isTreasure: boolean): void {
+    if (!this.cameras.main.worldView.contains(x, y)) return;
+    const color = isTreasure ? 0xffd166 : 0xfff4cf;
+    const ring = this.add.ellipse(x, y, 14, 8).setStrokeStyle(2, color, 0.95).setDepth(99997);
+    this.tweens.add({ targets: ring, scaleX: isTreasure ? 3.4 : 2.2, scaleY: isTreasure ? 3.4 : 2.2, alpha: 0, duration: isTreasure ? 520 : 380, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    const n = isTreasure ? 10 : 6;
+    for (let i = 0; i < n; i += 1) {
+      const ang = (Math.PI * 2 * i) / n + Math.random() * 0.3;
+      const dist = (isTreasure ? 30 : 20) + Math.random() * 10;
+      const star = this.add.circle(x, y, isTreasure ? 2.6 : 2, color, 0.95).setDepth(99998);
+      this.tweens.add({ targets: star, x: x + Math.cos(ang) * dist, y: y + Math.sin(ang) * dist - 8, alpha: 0, scale: 0.3, duration: isTreasure ? 560 : 420, ease: "Quad.Out", onComplete: () => star.destroy() });
     }
   }
 
