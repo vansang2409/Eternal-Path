@@ -1359,9 +1359,15 @@ export class GameScene extends Phaser.Scene {
       if (self) this.playCelebration(self.x, self.y);
     });
 
-    this.socket.on("skillCast", ({ skillId, position, targetPosition }) => {
+    this.socket.on("skillCast", ({ casterId, skillId, position, targetPosition }) => {
       this.playCastBurst(position);
       this.playSkillVFX(skillId, position, targetPosition);
+      // Sprint 136: feel your own power — a light camera kick when YOU land an
+      // area skill, so big abilities have weight beyond the particles.
+      if (casterId === this.selfId) {
+        const info = SKILL_CATALOG[skillId];
+        if (info?.effect === "damageAoe") this.cameras.main.shake(130, 0.004);
+      }
     });
 
     this.socket.on("monsterProjectile", ({ sourcePosition, targetPosition, color }) => {
