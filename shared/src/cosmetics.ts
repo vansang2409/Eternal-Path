@@ -142,6 +142,24 @@ export const COSMETICS: Cosmetic[] = [
     color: 0xffd54a,
     gemPrice: 140,
     featured: true
+  },
+  // ── Season 4 content drop (Sprint 161) ──
+  {
+    id: "skin-aurora",
+    name: "Cực Quang Thần Bào",
+    description: "Phủ sắc cực quang lục lam dao động — huyền ảo như trời bắc.",
+    type: "skinTint",
+    color: 0x7af0d0,
+    gemPrice: 200,
+    featured: true
+  },
+  {
+    id: "skill-fx-storm",
+    name: "Hiệu Ứng Phép Lôi Quang",
+    description: "Hiệu ứng kỹ năng nhuốm ánh lôi quang xanh chói.",
+    type: "skillEffectColor",
+    color: 0x6ea8ff,
+    gemPrice: 150
   }
 ];
 

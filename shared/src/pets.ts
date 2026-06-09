@@ -41,7 +41,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "cat", name: "Mèo May Mắn", desc: "+5 công, +20 HP", rarity: "rare", goldPrice: 12000, gemPrice: 0, buff: { attack: 5, maxHp: 20 }, color: 0xf5b942 },
   // ── Season 3 pets (Sprint 145) ──
   { id: "griffin", name: "Sư Thứu", desc: "+9 công, +6 thủ, +70 HP", rarity: "epic", goldPrice: 0, gemPrice: 280, buff: { attack: 9, defense: 6, maxHp: 70 }, color: 0xd8c08a },
-  { id: "bear", name: "Hùng Vương", desc: "+4 công, +10 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 220, buff: { attack: 4, defense: 10, maxHp: 110 }, color: 0x9a6b4a }
+  { id: "bear", name: "Hùng Vương", desc: "+4 công, +10 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 220, buff: { attack: 4, defense: 10, maxHp: 110 }, color: 0x9a6b4a },
+  // ── Season 4 pets (Sprint 161) ──
+  { id: "tiger", name: "Bạch Hổ", desc: "+11 công, +5 thủ, +60 HP", rarity: "epic", goldPrice: 0, gemPrice: 270, buff: { attack: 11, defense: 5, maxHp: 60 }, color: 0xf0a830 },
+  { id: "serpent", name: "Thanh Long", desc: "+7 công, +7 thủ, +95 HP", rarity: "epic", goldPrice: 0, gemPrice: 250, buff: { attack: 7, defense: 7, maxHp: 95 }, color: 0x4ad0a0 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
