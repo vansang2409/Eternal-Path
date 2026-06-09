@@ -87,7 +87,8 @@ export class Hud {
     private readonly onEquipMount: (mountId: string | null) => void = () => {},
     private readonly onClaimAchMilestone: (count: number) => void = () => {},
     private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {},
-    private readonly onClaimStarterPack: () => void = () => {}
+    private readonly onClaimStarterPack: () => void = () => {},
+    private readonly onFuseGear: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -115,6 +116,15 @@ export class Hud {
         const v = (e.target as HTMLSelectElement).value as "off" | "common" | "rare";
         this.onSetAutoSalvage(v);
       });
+    }
+    // Sprint 181: fuse 3 commons → 1 rare button.
+    if (sellJunkButton && !document.querySelector("#fuse-gear-button")) {
+      const fuseBtn = document.createElement("button");
+      fuseBtn.id = "fuse-gear-button";
+      fuseBtn.type = "button";
+      fuseBtn.textContent = "🔮 Hợp nhất (3 Thường→1 Hiếm)";
+      fuseBtn.addEventListener("click", () => this.onFuseGear());
+      (document.querySelector("#salvage-junk-button") ?? sellJunkButton).insertAdjacentElement("afterend", fuseBtn);
     }
     document.querySelector("#bag-expand-button")?.addEventListener("click", () => this.onBuyBagSlots());
     document.querySelector("#sell-materials-button")?.addEventListener("click", () => this.onSellAllMaterials());

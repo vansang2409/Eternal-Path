@@ -528,6 +528,7 @@ export interface ClientToServerEvents {
   equipMount: (payload: { mountId: string | null }) => void;
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
   claimStarterPack: () => void;
+  fuseGear: () => void;
   arenaLeaderboardRequest: () => void;
   selectClass: (payload: { playerClass: "warrior" | "mage" | "ranger" }) => void;
   upgradeSkill: (payload: { skillId: SkillId }) => void;

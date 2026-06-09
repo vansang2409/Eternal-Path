@@ -2786,6 +2786,17 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 181: fuse 3 common gear into 1 rare-or-better piece at the forge.
+    socket.on("fuseGear", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Cần về thị trấn để hợp nhất trang bị.");
+        return;
+      }
+      this.fuseGear(player);
+    });
+
     // Sprint 155: gold enhancement (+N) at the forge.
     socket.on("upgradeItem", ({ itemId }) => {
       const player = this.players.get(socket.id);
@@ -3724,6 +3735,46 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${targets.length} trang bị → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", `Phân giải x${targets.length}`);
+    this.markDirty(player);
+  }
+
+  // Sprint 181: fuse 3 unequipped, unlocked COMMON equipment items into one
+  // rare-or-better piece — a gear sink with an upgrade-gamble payoff.
+  private fuseGear(player: PlayerState): void {
+    const commons = player.inventory.items.filter(
+      (it) => it.kind === "equipment" && it.rarity === "common" && !it.locked &&
+        player.inventory.equipped[(it as EquipmentItem).slot]?.id !== it.id
+    );
+    if (commons.length < 3) {
+      this.sockets.get(player.id)?.emit("system", `Cần 3 trang bị Thường (chưa khóa, chưa mặc) để hợp nhất — đang có ${commons.length}.`);
+      return;
+    }
+    if (isBagFull(player)) {
+      this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
+      return;
+    }
+    // Consume the 3 cheapest commons (descending index for safe splice).
+    const victims = commons.slice(0, 3);
+    const indices = victims.map((v) => player.inventory.items.findIndex((x) => x.id === v.id)).sort((a, b) => b - a);
+    for (const idx of indices) if (idx >= 0) player.inventory.items.splice(idx, 1);
+    // Roll a rare-or-better item; force rare if RNG keeps rolling common.
+    let fused: Item | undefined;
+    for (let i = 0; i < 12 && !fused; i += 1) {
+      const cand = createLoot(player.stats.level, "emberSprite", false, true);
+      if (cand && cand.kind === "equipment" && (cand.rarity === "rare" || cand.rarity === "epic")) fused = cand;
+    }
+    if (!fused) {
+      const cand = createLoot(player.stats.level, "emberSprite", false, true);
+      if (cand && cand.kind === "equipment") { cand.rarity = "rare"; fused = cand; }
+    }
+    if (!fused || fused.kind !== "equipment") {
+      this.sockets.get(player.id)?.emit("system", "Hợp nhất thất bại — thử lại.");
+      return;
+    }
+    player.inventory.items.push(fused);
+    this.sockets.get(player.id)?.emit("player", player);
+    this.sockets.get(player.id)?.emit("system", `🔮 Hợp nhất thành công: ${fused.name} (${fused.rarity === "epic" ? "Sử Thi" : "Hiếm"})!`);
+    this.emitFloating(player.id, player.position, 0, "loot", fused.name);
     this.markDirty(player);
   }
 
