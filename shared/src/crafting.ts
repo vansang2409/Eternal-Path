@@ -262,6 +262,25 @@ export const RECIPES: Recipe[] = [
     level: 13,
     themeFrom: "eternalWarden",
     cost: { wardenHeart: 3, voidAsh: 3, crystalShard: 3 }
+  },
+  // Sprint 192: complete the apex set with helmet + boots.
+  {
+    id: "abyssal-crown",
+    name: "Vương Miện Vực Thẳm",
+    slot: "helmet",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "voidKnight",
+    cost: { wardenHeart: 2, voidAsh: 4, cursedBark: 3 }
+  },
+  {
+    id: "dragonstride-boots",
+    name: "Giày Long Bộ",
+    slot: "boots",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "ancientDrake",
+    cost: { wardenHeart: 2, frostShard: 4, emberHeart: 3 }
   }
 ];
 

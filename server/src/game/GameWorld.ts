@@ -4009,7 +4009,7 @@ export class GameWorld {
     player.itemsCrafted = (player.itemsCrafted ?? 0) + 1;
     if (player.itemsCrafted >= 5) this.unlockAchievement(player, "craft-master");
     // Sprint 159: apex recipes unlock the master smith achievement.
-    if (recipe.id === "abyssal-greatsword" || recipe.id === "dragonscale-plate" || recipe.id === "eternal-signet") {
+    if (["abyssal-greatsword", "dragonscale-plate", "eternal-signet", "abyssal-crown", "dragonstride-boots"].includes(recipe.id)) {
       this.unlockAchievement(player, "apex-smith");
     }
   }
