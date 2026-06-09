@@ -2221,7 +2221,9 @@ export class Hud {
     const got = earned.size;
     const header = document.createElement("div");
     header.style.cssText = "padding:10px 12px;margin-bottom:12px;background:rgba(28,28,28,0.55);border:1px solid rgba(200,169,72,0.4);border-radius:4px;font-size:13px;color:#f3e7bf";
-    header.innerHTML = `<strong>Tiến trình:</strong> ${got} / ${total} thành tựu mở khóa.`;
+    const pct = Math.round((got / Math.max(1, total)) * 100);
+    // Sprint 199: visual progress bar + percentage.
+    header.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span><strong>Tiến trình:</strong> ${got} / ${total} thành tựu</span><strong style="color:#ffd166">${pct}%</strong></div><div style="height:8px;background:#101820;border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,#c8a948,#ffd166);transition:width .4s"></div></div>`;
     root.appendChild(header);
 
     // Build per-achievement progress data using player counters.
