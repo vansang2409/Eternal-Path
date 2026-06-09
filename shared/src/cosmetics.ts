@@ -196,6 +196,24 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x3fe0a0,
     gemPrice: 150
+  },
+  // ── Season 7 content drop (Sprint 195) ──
+  {
+    id: "skin-solar-radiant",
+    name: "Nhật Diệm Thánh Quang",
+    description: "Toả ánh mặt trời rực rỡ vàng cam — uy nghi bậc thần.",
+    type: "skinTint",
+    color: 0xffb347,
+    gemPrice: 260,
+    featured: true
+  },
+  {
+    id: "skill-fx-shadow",
+    name: "Hiệu Ứng Phép Ám Diệm",
+    description: "Hiệu ứng kỹ năng nhuốm bóng tối tím than.",
+    type: "skillEffectColor",
+    color: 0x6a3a8a,
+    gemPrice: 170
   }
 ];
 
