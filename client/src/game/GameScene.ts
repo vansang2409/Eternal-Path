@@ -65,6 +65,7 @@ export class GameScene extends Phaser.Scene {
   private nextShootingStarAt = 4000;
   private godRays: Array<{ go: Phaser.GameObjects.Rectangle; baseX: number; drift: number; a: number }> = [];
   private fxHigh = !(typeof localStorage !== "undefined" && localStorage.getItem("fxHigh") === "0");
+  private selfWasDead = false;
   private lastAfterimageAt = 0;
   private lastSpeedLineAt = 0;
   private statusFxAt = new Map<string, number>();
@@ -1345,6 +1346,11 @@ export class GameScene extends Phaser.Scene {
 
     this.socket.on("player", (player) => {
       if (player.id === this.selfId) {
+        // Sprint 141: self death / revival feedback.
+        const dead = player.stats.maxHp > 0 && player.stats.hp <= 0;
+        if (dead && !this.selfWasDead) this.playSelfDeath();
+        else if (!dead && this.selfWasDead) this.playSelfRevive(player.position);
+        this.selfWasDead = dead;
         this.selfPlayer = player;
         this.reconcileLocalPlayer(player.position);
         this.updateTargetPanel();
@@ -2665,6 +2671,31 @@ export class GameScene extends Phaser.Scene {
       const spark = this.add.circle(sx, iso.y + 4, 2.5, 0xfff1a8, 0.95).setDepth(58);
       this.tweens.add({ targets: spark, y: iso.y - 46 - Math.random() * 20, alpha: 0, duration: 520 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
     }
+  }
+
+  // Sprint 141: self death — a heavy dark-red screen wash + fallen banner so
+  // dying lands with weight, and a bright revive flash when you come back.
+  private playSelfDeath(): void {
+    soundManager.play("hit");
+    this.cameras.main.shake(360, 0.01);
+    this.cameras.main.flash(420, 120, 0, 0, false);
+    const wash = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x4a0000, 0)
+      .setScrollFactor(0).setDepth(99975);
+    this.tweens.add({ targets: wash, fillAlpha: 0.5, duration: 320, yoyo: true, hold: 700, ease: "Sine.InOut", onComplete: () => wash.destroy() });
+    if (this.loggedIn) this.showTopBanner("☠ Bạn đã gục ngã...", "achievement", 2600);
+  }
+
+  private playSelfRevive(position: Vec2): void {
+    this.cameras.main.flash(420, 255, 244, 200);
+    const iso = worldToIso(position.x, position.y);
+    const ring = this.add.circle(iso.x, iso.y, 8).setStrokeStyle(3, 0xfff1a8, 0.95).setDepth(99997);
+    this.tweens.add({ targets: ring, scale: 6, alpha: 0, duration: 620, ease: "Cubic.Out", onComplete: () => ring.destroy() });
+    for (let i = 0; i < 12; i += 1) {
+      const ang = (Math.PI * 2 * i) / 12;
+      const dot = this.add.circle(iso.x, iso.y, 2.5, 0xfff7d6, 0.95).setDepth(99998);
+      this.tweens.add({ targets: dot, x: iso.x + Math.cos(ang) * 34, y: iso.y + Math.sin(ang) * 34 - 10, alpha: 0, duration: 560, ease: "Quad.Out", onComplete: () => dot.destroy() });
+    }
+    if (this.loggedIn) this.showTopBanner("✦ Hồi sinh!", "level", 1600);
   }
 
   // Sprint 130: screen-space golden radiance on the local player's level-up —
