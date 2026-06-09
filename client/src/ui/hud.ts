@@ -238,6 +238,27 @@ export class Hud {
     if (badgeRow) {
       badgeRow.innerHTML = `<span style="color:#ffd166">${player.stats.gold} 🪙</span><span style="color:#cdb6ff">${player.gems ?? 0} 💎</span>`;
     }
+    // Sprint 157: active-buff strip — surface timed boosts so players know
+    // what's running and how long is left.
+    let buffRow = document.querySelector<HTMLDivElement>("#buff-row");
+    if (!buffRow) {
+      const playerPanel = document.querySelector(".player-panel");
+      if (playerPanel) {
+        buffRow = document.createElement("div");
+        buffRow.id = "buff-row";
+        buffRow.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;font-size:11px";
+        playerPanel.appendChild(buffRow);
+      }
+    }
+    if (buffRow) {
+      const mins = (until?: number) => Math.max(0, Math.ceil(((until ?? 0) - Date.now()) / 60000));
+      const chips: string[] = [];
+      if (isVipActive(player.vipUntil)) chips.push(`<span style="background:#3a2f00;color:#ffd166;padding:2px 7px;border-radius:9px">🌟 VIP · ${vipRemainingDays(player.vipUntil)} ngày</span>`);
+      if (isGoldBoostActive(player.goldBoostUntil)) chips.push(`<span style="background:#3a3000;color:#ffd166;padding:2px 7px;border-radius:9px">🪙 +50% vàng · ${mins(player.goldBoostUntil)}'</span>`);
+      if (isXpBoostActive(player.xpBoostUntil)) chips.push(`<span style="background:#0d2440;color:#7db8ff;padding:2px 7px;border-radius:9px">📘 +50% XP · ${mins(player.xpBoostUntil)}'</span>`);
+      buffRow.innerHTML = chips.join("");
+      buffRow.style.display = chips.length ? "flex" : "none";
+    }
     const canAllocate = player.unspentPoints > 0;
     document.querySelector("#stats")!.innerHTML = `
       ${canAllocate ? `<div class="stat-points-left">${t("statPointsLeft", { points: player.unspentPoints })}</div>` : ""}
