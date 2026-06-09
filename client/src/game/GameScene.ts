@@ -661,7 +661,10 @@ export class GameScene extends Phaser.Scene {
     else if (payload.phase === "dawn") { color = 0xff9a3c; alpha = 0.18; }
     else if (payload.phase === "dusk") { color = 0xff5a3c; alpha = 0.22; }
     else { color = 0xffeec0; alpha = 0.05; }
-    this.dayOverlay.setFillStyle(color, alpha);
+    // Smoothly fade between day phases instead of snapping (cinematic).
+    this.dayOverlay.fillColor = color;
+    this.tweens.killTweensOf(this.dayOverlay);
+    this.tweens.add({ targets: this.dayOverlay, fillAlpha: alpha, duration: 1800, ease: "Sine.InOut" });
 
     // Update HUD clock.
     const phaseLabel: Record<string, string> = { dawn: "🌅 Bình minh", day: "☀️ Ban ngày", dusk: "🌇 Hoàng hôn", night: "🌙 Đêm" };
