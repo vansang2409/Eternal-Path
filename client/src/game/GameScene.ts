@@ -702,7 +702,11 @@ export class GameScene extends Phaser.Scene {
   private updateBossHud(snapshot: WorldSnapshot): void {
     const hud = document.querySelector<HTMLDivElement>("#boss-hud");
     if (!hud) return;
-    const boss = snapshot.monsters.find((m) => m.boss && m.type === "eternalWarden" && !m.respawnsAt && m.hp > 0);
+    // Sprint 137: show the top boss bar for whichever boss the player is actually
+    // engaging (their target, or one aggro'd on them), not just the world boss.
+    const selfTargetId = snapshot.players.find((p) => p.id === this.selfId)?.targetId;
+    const boss = snapshot.monsters.find((m) => m.boss && !m.respawnsAt && m.hp > 0 && (m.id === selfTargetId || m.targetPlayerId === this.selfId))
+      ?? snapshot.monsters.find((m) => m.boss && m.type === "eternalWarden" && !m.respawnsAt && m.hp > 0);
     if (!boss) {
       hud.classList.add("hidden");
       return;
