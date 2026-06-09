@@ -1668,6 +1668,12 @@ export class GameScene extends Phaser.Scene {
     if (effects.some((e) => e.kind === "burn")) tint = 0xff6a3c;
     else if (effects.some((e) => e.kind === "freeze")) tint = 0x9bd2ff;
     else if (effects.some((e) => e.kind === "bleed")) tint = 0xd94b88;
+    // Sprint 113: enrage telegraph — bosses/elites below 30% HP throb toward an
+    // angry red so the final phase reads at a glance.
+    else if ((monster.boss || monster.elite) && !monster.respawnsAt && monster.maxHp > 0 && monster.hp / monster.maxHp < 0.3) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 110);
+      tint = lerpColorHex(tint, 0xff2a22, 0.35 + 0.5 * pulse);
+    }
     sprite.setTint(tint);
     // Lingering status particles (throttled per monster ~180ms).
     if (effects.length && !monster.respawnsAt) {
@@ -2293,6 +2299,17 @@ function rarityColor(rarity: "common" | "rare" | "epic"): number {
   if (rarity === "epic") return 0xd98cff;
   if (rarity === "rare") return 0x69a7ff;
   return 0xd6dddf;
+}
+
+// Blend two packed 0xRRGGBB colors; t=0 -> a, t=1 -> b.
+function lerpColorHex(a: number, b: number, t: number): number {
+  const k = Math.max(0, Math.min(1, t));
+  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+  const r = Math.round(ar + (br - ar) * k);
+  const g = Math.round(ag + (bg - ag) * k);
+  const bl = Math.round(ab + (bb - ab) * k);
+  return (r << 16) | (g << 8) | bl;
 }
 
 // Minimap palette per biome (RGB triplets).
