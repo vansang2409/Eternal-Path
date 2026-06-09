@@ -41,7 +41,10 @@ export const TITLES: TitleDef[] = [
   { id: "alchemy-master", label: "Đan Vương", desc: "Mở thành tựu Luyện Đan Sư.", earned: (p) => (p.achievements ?? []).includes("alchemist") },
   { id: "arena-legend", label: "Huyền Thoại Đấu Trường", desc: "Mở thành tựu Chuỗi Bất Bại.", earned: (p) => (p.achievements ?? []).includes("streak-master") },
   // ── Sprint 187: jeweler title ──
-  { id: "gem-lord", label: "Ngọc Vương", desc: "Mở thành tựu Thợ Kim Hoàn.", earned: (p) => (p.achievements ?? []).includes("jeweler") }
+  { id: "gem-lord", label: "Ngọc Vương", desc: "Mở thành tựu Thợ Kim Hoàn.", earned: (p) => (p.achievements ?? []).includes("jeweler") },
+  // ── Sprint 194: high-level + gear-power titles ──
+  { id: "demigod", label: "Bán Thần", desc: "Đạt cấp 80.", earned: (p) => p.stats.level >= 80 },
+  { id: "perfectionist", label: "Hoàn Mỹ", desc: "Tổng cường hóa (+N) trang bị ≥ 20.", earned: (p) => Object.values(p.inventory?.equipped ?? {}).reduce((s, it) => s + (it && it.kind === "equipment" ? (it.plusLevel ?? 0) : 0), 0) >= 20 }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
