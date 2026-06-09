@@ -35,7 +35,11 @@ export const TITLES: TitleDef[] = [
   { id: "wealthlord", label: "Thủ Phú", desc: "Sở hữu 200.000 vàng.", earned: (p) => p.stats.gold >= 200_000 },
   { id: "ascended", label: "Thăng Thiên", desc: "Đạt cấp 60.", earned: (p) => p.stats.level >= 60 },
   { id: "forgemaster", label: "Thần Cường Hóa", desc: "Mở thành tựu Thợ Cường Hóa.", earned: (p) => (p.achievements ?? []).includes("enhancer") },
-  { id: "apexlord", label: "Thần Thợ Rèn", desc: "Mở thành tựu Thợ Rèn Thượng Thừa.", earned: (p) => (p.achievements ?? []).includes("apex-smith") }
+  { id: "apexlord", label: "Thần Thợ Rèn", desc: "Mở thành tựu Thợ Rèn Thượng Thừa.", earned: (p) => (p.achievements ?? []).includes("apex-smith") },
+  // ── Sprint 182: titles for mounts / alchemy / arena mastery ──
+  { id: "knight-errant", label: "Hiệp Sĩ Lưu Lạc", desc: "Mở thành tựu Kỵ Sĩ Đường Trường.", earned: (p) => (p.achievements ?? []).includes("rider") },
+  { id: "alchemy-master", label: "Đan Vương", desc: "Mở thành tựu Luyện Đan Sư.", earned: (p) => (p.achievements ?? []).includes("alchemist") },
+  { id: "arena-legend", label: "Huyền Thoại Đấu Trường", desc: "Mở thành tựu Chuỗi Bất Bại.", earned: (p) => (p.achievements ?? []).includes("streak-master") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
