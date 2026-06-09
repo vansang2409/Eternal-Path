@@ -103,6 +103,10 @@ export const SKILL_LOADOUT_SIZE = 4;
 export const DEFAULT_LEARNED_SKILLS: SkillId[] = ["powerStrike", "cleave", "swiftStrike"];
 // Talent respec (Sprint 156): gold cost per refunded talent point.
 export const RESPEC_COST_PER_POINT = 600;
+// Arena kill rewards (Sprint 169): each PvP arena kill pays out a flat gold +
+// gem bounty, rewarding active arena play.
+export const ARENA_KILL_GOLD = 400;
+export const ARENA_KILL_GEMS = 2;
 // "Happy Hour" world event (Sprint 167): server-wide x2 gold-drop window that
 // auto-starts on a fixed cadence and lasts a fixed duration. Encourages
 // players to log in during the window.

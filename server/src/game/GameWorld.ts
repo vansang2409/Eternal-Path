@@ -33,6 +33,8 @@ import {
   HAPPY_HOUR_DURATION_MS,
   HAPPY_HOUR_INTERVAL_MS,
   isHappyHourActive,
+  ARENA_KILL_GOLD,
+  ARENA_KILL_GEMS,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -573,6 +575,16 @@ export class GameWorld {
     this.happyHourUntil = Date.now() + HAPPY_HOUR_DURATION_MS;
     this.io.emit("worldEvent", { kind: "happyHour", until: this.happyHourUntil, multiplier: HAPPY_HOUR_MULTIPLIER });
     this.io.emit("system", `🌟 GIỜ VÀNG bắt đầu! x${HAPPY_HOUR_MULTIPLIER} vàng rơi ra trong ${Math.round(HAPPY_HOUR_DURATION_MS / 60000)} phút!`);
+  }
+
+  // Sprint 169: credit an arena kill to the attacker — bumps their kill count,
+  // pays the gold/gem bounty, and unlocks the PvP achievements.
+  private creditArenaKill(attacker: PlayerState): void {
+    attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
+    attacker.stats.gold += ARENA_KILL_GOLD;
+    attacker.gems = (attacker.gems ?? 0) + ARENA_KILL_GEMS;
+    this.unlockAchievement(attacker, "pvp-victor");
+    if ((attacker.pvpKills ?? 0) >= 10) this.unlockAchievement(attacker, "pvp-champion");
   }
 
   private broadcastWorldTime(): void {
@@ -1304,6 +1316,12 @@ export class GameWorld {
       });
       (socket as Socket).on("devHappyHour", () => {
         this.startHappyHour();
+      });
+      (socket as Socket).on("devArenaKill", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        this.creditArenaKill(player);
+        socket.emit("player", player);
       });
       (socket as Socket).on("devClearQuests", () => {
         const player = this.players.get(socket.id);
@@ -3828,12 +3846,10 @@ export class GameWorld {
       target.targetId = undefined;
       target.stats.hp = target.stats.maxHp; // full heal on arena death
       attacker.targetId = undefined;
-      attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
       target.pvpDeaths = (target.pvpDeaths ?? 0) + 1;
-      this.unlockAchievement(attacker, "pvp-victor");
-      if ((attacker.pvpKills ?? 0) >= 10) this.unlockAchievement(attacker, "pvp-champion");
+      this.creditArenaKill(attacker);
       this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ tại Đấu Trường.`);
-      this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! (Kills: ${attacker.pvpKills})`);
+      this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! +${ARENA_KILL_GOLD} vàng, +${ARENA_KILL_GEMS} 💎 (Kills: ${attacker.pvpKills})`);
       this.io.emit("arenaKill", { killerName: attacker.accountName, victimName: target.accountName });
       this.markDirty(target);
       this.markDirty(attacker);
