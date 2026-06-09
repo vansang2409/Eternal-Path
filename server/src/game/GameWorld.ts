@@ -3514,6 +3514,11 @@ export class GameWorld {
     if (!achievement) return false;
     player.achievements.push(achievement.id);
     this.sockets.get(player.id)?.emit("achievementUnlocked", achievement);
+    // Sprint 198: broadcast prestige achievements server-wide for hype.
+    const PRESTIGE = new Set(["slay-boss", "apex-smith", "streak-master", "pet-collector", "cosmetic-collector", "raid-slayer", "beast-master", "pvp-champion"]);
+    if (PRESTIGE.has(achievement.id)) {
+      this.io.emit("system", `🎉 ${player.accountName} vừa mở thành tựu «${achievement.title}»!`);
+    }
     // Grant the one-time reward (Sprint 67), if any.
     const reward = achievement.reward;
     if (reward && (reward.gold || reward.gems)) {
