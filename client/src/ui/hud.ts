@@ -1900,6 +1900,7 @@ export class Hud {
     button.innerHTML = `<i class="material-symbols-outlined">${muted ? "volume_off" : "volume_up"}</i><span>${label}</span>`;
   }
 
+  private skillWasCooling = new Set<string>();
   private renderSkillCooldowns(): void {
     if (!this.player) return;
     const now = Date.now();
@@ -1911,6 +1912,19 @@ export class Hud {
       const label = document.querySelector(`[data-cooldown="${skillId}"]`) as HTMLElement | null;
       if (!button || !label) continue;
       const cooling = remaining > 0;
+      // "Ready" flash when a skill comes off cooldown (Sprint 105).
+      if (this.skillWasCooling.has(skillId) && !cooling) {
+        button.animate(
+          [
+            { boxShadow: "0 0 0 0 rgba(255,209,102,0)", transform: "scale(1)" },
+            { boxShadow: "0 0 12px 4px rgba(255,209,102,0.95)", transform: "scale(1.14)", offset: 0.4 },
+            { boxShadow: "0 0 0 0 rgba(255,209,102,0)", transform: "scale(1)" }
+          ],
+          { duration: 460, easing: "ease-out" }
+        );
+      }
+      if (cooling) this.skillWasCooling.add(skillId);
+      else this.skillWasCooling.delete(skillId);
       button.classList.toggle("cooling", cooling);
       // Radial sweep via CSS conic-gradient on a custom property.
       if (cooling && cdMs > 0) {
