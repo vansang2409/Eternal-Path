@@ -39,7 +39,9 @@ export const TITLES: TitleDef[] = [
   // ── Sprint 182: titles for mounts / alchemy / arena mastery ──
   { id: "knight-errant", label: "Hiệp Sĩ Lưu Lạc", desc: "Mở thành tựu Kỵ Sĩ Đường Trường.", earned: (p) => (p.achievements ?? []).includes("rider") },
   { id: "alchemy-master", label: "Đan Vương", desc: "Mở thành tựu Luyện Đan Sư.", earned: (p) => (p.achievements ?? []).includes("alchemist") },
-  { id: "arena-legend", label: "Huyền Thoại Đấu Trường", desc: "Mở thành tựu Chuỗi Bất Bại.", earned: (p) => (p.achievements ?? []).includes("streak-master") }
+  { id: "arena-legend", label: "Huyền Thoại Đấu Trường", desc: "Mở thành tựu Chuỗi Bất Bại.", earned: (p) => (p.achievements ?? []).includes("streak-master") },
+  // ── Sprint 187: jeweler title ──
+  { id: "gem-lord", label: "Ngọc Vương", desc: "Mở thành tựu Thợ Kim Hoàn.", earned: (p) => (p.achievements ?? []).includes("jeweler") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

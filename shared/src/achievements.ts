@@ -45,7 +45,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 179 — achievements for mounts / alchemy / arena streak.
   { id: "rider",           title: "Kỵ Sĩ Đường Trường",   description: "Tậu 1 thú cưỡi.",                        reward: { gems: 10 } },
   { id: "alchemist",       title: "Luyện Đan Sư",         description: "Luyện 1 bình thuốc.",                    reward: { gems: 10 } },
-  { id: "streak-master",   title: "Chuỗi Bất Bại",        description: "Đạt chuỗi 5 hạ gục tại Đấu Trường.",    reward: { gems: 25 } }
+  { id: "streak-master",   title: "Chuỗi Bất Bại",        description: "Đạt chuỗi 5 hạ gục tại Đấu Trường.",    reward: { gems: 25 } },
+  // Sprint 187 — achievements for gem socketing & fusion.
+  { id: "jeweler",         title: "Thợ Kim Hoàn",         description: "Khảm 1 viên đá quý vào trang bị.",       reward: { gems: 10 } },
+  { id: "fusionist",       title: "Bậc Thầy Hợp Nhất",    description: "Hợp nhất 3 trang bị Thường thành 1 Hiếm.", reward: { gems: 10 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

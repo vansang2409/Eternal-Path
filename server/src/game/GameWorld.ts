@@ -2276,6 +2276,7 @@ export class GameWorld {
       if (gem.stats.maxHp) s.maxHp = (s.maxHp ?? 0) + gem.stats.maxHp;
       item.socketGem = { gemId: gem.id, name: gem.name, stats: { ...gem.stats } };
       if (isEquipped) addItemStats(player, item);
+      this.unlockAchievement(player, "jeweler");
       socket.emit("player", player);
       socket.emit("system", `💠 Đã khảm ${gem.name} vào ${item.name}.`);
       this.markDirty(player);
@@ -3860,6 +3861,7 @@ export class GameWorld {
       return;
     }
     player.inventory.items.push(fused);
+    this.unlockAchievement(player, "fusionist");
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `🔮 Hợp nhất thành công: ${fused.name} (${fused.rarity === "epic" ? "Sử Thi" : "Hiếm"})!`);
     this.emitFloating(player.id, player.position, 0, "loot", fused.name);
