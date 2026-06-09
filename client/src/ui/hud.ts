@@ -85,7 +85,8 @@ export class Hud {
     private readonly onBrew: (recipeId: string) => void = () => {},
     private readonly onBuyMount: (mountId: string) => void = () => {},
     private readonly onEquipMount: (mountId: string | null) => void = () => {},
-    private readonly onClaimAchMilestone: (count: number) => void = () => {}
+    private readonly onClaimAchMilestone: (count: number) => void = () => {},
+    private readonly onSetAutoSalvage: (rarity: "off" | "common" | "rare") => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -102,6 +103,17 @@ export class Hud {
       salvageJunkButton.textContent = "🔨 Phân giải rác";
       salvageJunkButton.addEventListener("click", () => this.onSalvageJunk());
       sellJunkButton.insertAdjacentElement("afterend", salvageJunkButton);
+    }
+    // Sprint 176: auto-salvage loot-filter selector.
+    if (sellJunkButton && !document.querySelector("#auto-salvage-select")) {
+      const wrap = document.createElement("label");
+      wrap.style.cssText = "display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#9aa0a6;margin-left:6px";
+      wrap.innerHTML = `🔧 Tự phân giải: <select id="auto-salvage-select" style="background:#15171d;color:#e8ecf5;border:1px solid #2a2f3a;border-radius:4px;font-size:11px;padding:2px"><option value="off">Tắt</option><option value="common">Đồ Thường</option><option value="rare">Thường+Hiếm</option></select>`;
+      (document.querySelector("#salvage-junk-button") ?? sellJunkButton).insertAdjacentElement("afterend", wrap);
+      wrap.querySelector<HTMLSelectElement>("#auto-salvage-select")?.addEventListener("change", (e) => {
+        const v = (e.target as HTMLSelectElement).value as "off" | "common" | "rare";
+        this.onSetAutoSalvage(v);
+      });
     }
     document.querySelector("#bag-expand-button")?.addEventListener("click", () => this.onBuyBagSlots());
     document.querySelector("#sell-materials-button")?.addEventListener("click", () => this.onSellAllMaterials());
@@ -1940,6 +1952,8 @@ export class Hud {
   private renderInventory(): void {
     if (!this.player) return;
     document.querySelector("#inventory-count")!.textContent = `${this.player.inventory.items.length} / ${bagCapacity(this.player.bagBonus)}`;
+    const autoSel = document.querySelector<HTMLSelectElement>("#auto-salvage-select");
+    if (autoSel) autoSel.value = this.player.autoSalvageRarity ?? "off";
     const bagBtn = document.querySelector<HTMLButtonElement>("#bag-expand-button");
     if (bagBtn) {
       const bonus = this.player.bagBonus ?? 0;

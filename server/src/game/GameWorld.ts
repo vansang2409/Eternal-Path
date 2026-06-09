@@ -736,6 +736,7 @@ export class GameWorld {
         ownedPets: saved.ownedPets ?? [],
         ownedMounts: saved.ownedMounts ?? [],
         activeMount: saved.activeMount,
+        autoSalvageRarity: saved.autoSalvageRarity ?? "off",
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
@@ -1333,6 +1334,18 @@ export class GameWorld {
       });
       (socket as Socket).on("devHappyHour", () => {
         this.startHappyHour();
+      });
+      (socket as Socket).on("devLootItem", (payload: { rarity?: Rarity; slot?: EquipmentSlot }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const item: EquipmentItem = {
+          id: `loot-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          name: "Loot Test", rarity: (payload?.rarity ?? "common") as Rarity,
+          kind: "equipment", slot: (payload?.slot ?? "weapon") as EquipmentSlot,
+          value: 100, stats: { attack: 5 }
+        };
+        if (!this.tryAutoSalvage(player, item)) player.inventory.items.push(item);
+        socket.emit("player", player);
       });
       (socket as Socket).on("devGrantAchievement", (payload: { id?: string }) => {
         const player = this.players.get(socket.id);
@@ -2733,6 +2746,18 @@ export class GameWorld {
       this.salvageAll(player, String(rarity ?? "junk"));
     });
 
+    // Sprint 176: set the auto-salvage loot filter threshold.
+    socket.on("setAutoSalvage", ({ rarity }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const valid = rarity === "off" || rarity === "common" || rarity === "rare";
+      player.autoSalvageRarity = valid ? rarity : "off";
+      socket.emit("player", player);
+      const label = player.autoSalvageRarity === "off" ? "TẮT" : player.autoSalvageRarity === "common" ? "đồ Thường" : "đồ Thường + Hiếm";
+      socket.emit("system", `🔧 Tự phân giải: ${label}.`);
+      this.markDirty(player);
+    });
+
     // Sprint 155: gold enhancement (+N) at the forge.
     socket.on("upgradeItem", ({ itemId }) => {
       const player = this.players.get(socket.id);
@@ -3380,7 +3405,9 @@ export class GameWorld {
     const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
     let collectedItem: Item | undefined;
     if (lootItem) {
-      if (isBagFull(player)) {
+      if (this.tryAutoSalvage(player, lootItem)) {
+        // Sprint 176: auto-salvaged on pickup; nothing added to the bag.
+      } else if (isBagFull(player)) {
         this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);
       } else {
         collectedItem = lootItem;
@@ -3607,6 +3634,27 @@ export class GameWorld {
       this.emitFloating(player.id, player.position, 0, "loot", `THẤT BẠI`);
     }
     this.markDirty(player);
+  }
+
+  // Sprint 176: loot filter — auto-dismantle freshly-dropped gear at or below
+  // the player's threshold into materials, returning true if it was consumed.
+  private tryAutoSalvage(player: PlayerState, item: Item): boolean {
+    if (item.kind !== "equipment") return false;
+    const setting = player.autoSalvageRarity ?? "off";
+    if (setting === "off") return false;
+    const qualifies = item.rarity === "common" || (setting === "rare" && item.rarity === "rare");
+    if (!qualifies) return false;
+    for (const [matId, qty] of Object.entries(salvageYield(item.rarity)) as [MaterialId, number][]) {
+      const info = MATERIAL_CATALOG[matId];
+      for (let n = 0; n < qty; n += 1) {
+        player.inventory.items.push({
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${n}`,
+          kind: "material", materialId: matId, name: info.name, rarity: info.rarity, value: info.value
+        });
+      }
+    }
+    this.emitFloating(player.id, player.position, 0, "loot", "Tự phân giải");
+    return true;
   }
 
   // Sprint 152: salvage every unequipped, UNLOCKED equipment item matching a
