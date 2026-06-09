@@ -75,6 +75,8 @@ export interface BaseItem {
   rarity: Rarity;
   kind: ItemKind;
   value: number;
+  /** When true, the item is protected from sell / salvage / drop (Sprint 151). */
+  locked?: boolean;
 }
 
 export interface EquipmentItem extends BaseItem {
@@ -507,6 +509,7 @@ export interface ClientToServerEvents {
   rerollDailyQuests: () => void;
   enchantItem: (payload: { itemId: string }) => void;
   salvageItem: (payload: { itemId: string }) => void;
+  toggleItemLock: (payload: { itemId: string }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

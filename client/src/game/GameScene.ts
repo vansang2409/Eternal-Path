@@ -165,7 +165,8 @@ export class GameScene extends Phaser.Scene {
       (gems) => this.socket.emit("exchangeGemsForGold", { gems }),
       () => this.socket.emit("buyGoldBoost"),
       () => this.socket.emit("sellAllMaterials"),
-      (itemId) => this.socket.emit("salvageItem", { itemId })
+      (itemId) => this.socket.emit("salvageItem", { itemId }),
+      (itemId) => this.socket.emit("toggleItemLock", { itemId })
     );
     this.socket = createSocket();
     this.registerSocketEvents();

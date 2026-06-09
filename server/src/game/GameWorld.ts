@@ -2291,6 +2291,10 @@ export class GameWorld {
       }
       const itemIndex = player.inventory.items.findIndex((item) => item.id === itemId);
       if (itemIndex < 0) return;
+      if (player.inventory.items[itemIndex].locked) {
+        socket.emit("system", "🔒 Vật phẩm đang khóa — mở khóa trước khi bán.");
+        return;
+      }
       const [item] = player.inventory.items.splice(itemIndex, 1);
       const gold = sellValue(item.value);
       player.stats.gold += gold;
@@ -2423,6 +2427,22 @@ export class GameWorld {
       this.salvageItem(player, itemId);
     });
 
+    // Sprint 151: toggle a protective lock on an inventory item so it can't be
+    // accidentally sold, salvaged, or dropped.
+    socket.on("toggleItemLock", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const item = player.inventory.items.find((it) => it.id === itemId);
+      if (!item) {
+        socket.emit("system", "Không tìm thấy vật phẩm trong túi.");
+        return;
+      }
+      item.locked = !item.locked;
+      socket.emit("player", player);
+      socket.emit("system", item.locked ? `🔒 Đã khóa ${item.name}.` : `🔓 Đã mở khóa ${item.name}.`);
+      this.markDirty(player);
+    });
+
     socket.on("selectClass", ({ playerClass }) => {
       const player = this.players.get(socket.id);
       if (!player) {
@@ -2518,6 +2538,10 @@ export class GameWorld {
       if (!player) return;
       const itemIndex = player.inventory.items.findIndex((item) => item.id === itemId);
       if (itemIndex < 0) return;
+      if (player.inventory.items[itemIndex].locked) {
+        socket.emit("system", "🔒 Vật phẩm đang khóa — mở khóa trước khi thả.");
+        return;
+      }
       const [item] = player.inventory.items.splice(itemIndex, 1);
       const groundItem: GroundItem = {
         id: `ground-${Date.now()}-${Math.random()}`,
@@ -3200,6 +3224,10 @@ export class GameWorld {
     }
     if (player.inventory.equipped[item.slot]?.id === item.id) {
       this.sockets.get(player.id)?.emit("system", "Hãy tháo trang bị trước khi phân giải.");
+      return;
+    }
+    if (item.locked) {
+      this.sockets.get(player.id)?.emit("system", "🔒 Vật phẩm đang khóa — mở khóa trước khi phân giải.");
       return;
     }
     // Remove the gear, then grant salvage materials by rarity.
