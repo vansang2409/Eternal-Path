@@ -76,7 +76,8 @@ export class Hud {
     private readonly onSalvage: (itemId: string) => void = () => {},
     private readonly onToggleLock: (itemId: string) => void = () => {},
     private readonly onSalvageJunk: () => void = () => {},
-    private readonly onBuyXpBoost: () => void = () => {}
+    private readonly onBuyXpBoost: () => void = () => {},
+    private readonly onUpgradeItem: (itemId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1885,11 +1886,16 @@ export class Hud {
       : "";
     // Sprint 151: lock toggle protects an item from sell / salvage / drop.
     const lockBtn = `<button type="button" data-action="lock">${item.locked ? "🔓 Mở khóa" : "🔒 Khóa"}</button>`;
+    // Sprint 155: gold enhancement (+N) for equipment.
+    const upgradeBtn = item.kind === "equipment"
+      ? `<button type="button" data-action="upgrade">⚒️ Cường hóa${item.plusLevel ? ` (+${item.plusLevel})` : ""}</button>`
+      : "";
     actions.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <button type="button" data-action="${primaryAction}">${primaryLabel}</button>
       <button type="button" data-action="sell">${t("sell")}</button>
       ${salvageBtn}
+      ${upgradeBtn}
       ${lockBtn}
       <button type="button" data-action="drop">${t("drop")}</button>
     `;
@@ -1898,6 +1904,7 @@ export class Hud {
     actions.querySelector('[data-action="sell"]')?.addEventListener("click", () => this.onSell(item.id));
     actions.querySelector('[data-action="salvage"]')?.addEventListener("click", () => this.onSalvage(item.id));
     actions.querySelector('[data-action="lock"]')?.addEventListener("click", () => this.onToggleLock(item.id));
+    actions.querySelector('[data-action="upgrade"]')?.addEventListener("click", () => this.onUpgradeItem(item.id));
     actions.querySelector('[data-action="drop"]')?.addEventListener("click", () => this.onDrop(item.id));
   }
 

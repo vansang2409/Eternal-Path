@@ -21,6 +21,8 @@ import {
   XP_BOOST_DURATION_MS,
   XP_BOOST_MULTIPLIER,
   isXpBoostActive,
+  upgradeCost,
+  upgradeSuccessChance,
   SKILL_MAX_RANK,
   SPRINT_DRAIN_PER_SECOND,
   SPRINT_MIN_STAMINA_TO_START,
@@ -2475,6 +2477,17 @@ export class GameWorld {
       this.salvageAll(player, String(rarity ?? "junk"));
     });
 
+    // Sprint 155: gold enhancement (+N) at the forge.
+    socket.on("upgradeItem", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "Cần về thị trấn để cường hóa.");
+        return;
+      }
+      this.upgradeItem(player, itemId);
+    });
+
     socket.on("selectClass", ({ playerClass }) => {
       const player = this.players.get(socket.id);
       if (!player) {
@@ -3286,6 +3299,51 @@ export class GameWorld {
     this.sockets.get(player.id)?.emit("player", player);
     this.sockets.get(player.id)?.emit("system", `Đã phân giải ${item.name} → ${granted.join(", ")}.`);
     this.emitFloating(player.id, player.position, 0, "loot", "Phân giải");
+    this.markDirty(player);
+  }
+
+  // Sprint 155: spend gold to enhance an equipment item to "+N". Each success
+  // raises every stat ~10% (min +1). Early levels are guaranteed; high levels
+  // can fail (gold lost, item kept) so it stays a long-term gold sink.
+  private upgradeItem(player: PlayerState, itemId: string): void {
+    const idx = player.inventory.items.findIndex((it) => it.id === itemId);
+    if (idx < 0) {
+      this.sockets.get(player.id)?.emit("system", "Không tìm thấy vật phẩm trong túi.");
+      return;
+    }
+    const item = player.inventory.items[idx];
+    if (item.kind !== "equipment") {
+      this.sockets.get(player.id)?.emit("system", "Chỉ cường hóa được trang bị.");
+      return;
+    }
+    const plus = item.plusLevel ?? 0;
+    const cost = upgradeCost(plus);
+    if (player.stats.gold < cost) {
+      this.sockets.get(player.id)?.emit("system", `Cần ${cost.toLocaleString("vi-VN")} vàng để cường hóa +${plus + 1}.`);
+      return;
+    }
+    player.stats.gold -= cost;
+    const equipped = player.inventory.equipped[item.slot];
+    const isEquipped = equipped?.id === item.id;
+    if (isEquipped && equipped) removeItemStats(player, equipped);
+    const success = Math.random() < upgradeSuccessChance(plus);
+    if (success) {
+      const s = item.stats;
+      if (s.attack) s.attack = Math.max(s.attack + 1, Math.round(s.attack * 1.1));
+      if (s.defense) s.defense = Math.max(s.defense + 1, Math.round(s.defense * 1.1));
+      if (s.maxHp) s.maxHp = Math.max(s.maxHp + 1, Math.round(s.maxHp * 1.1));
+      if (s.speed) s.speed = Math.max(s.speed + 1, Math.round(s.speed * 1.1));
+      item.plusLevel = plus + 1;
+    }
+    if (isEquipped) addItemStats(player, item);
+    this.sockets.get(player.id)?.emit("player", player);
+    if (success) {
+      this.sockets.get(player.id)?.emit("system", `✨ Cường hóa thành công! ${item.name} giờ là +${item.plusLevel}.`);
+      this.emitFloating(player.id, player.position, 0, "loot", `+${item.plusLevel} THÀNH CÔNG`);
+    } else {
+      this.sockets.get(player.id)?.emit("system", `💢 Cường hóa thất bại — mất ${cost.toLocaleString("vi-VN")} vàng, trang bị giữ nguyên +${plus}.`);
+      this.emitFloating(player.id, player.position, 0, "loot", `THẤT BẠI`);
+    }
     this.markDirty(player);
   }
 

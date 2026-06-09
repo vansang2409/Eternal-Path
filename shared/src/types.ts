@@ -85,6 +85,8 @@ export interface EquipmentItem extends BaseItem {
   stats: ItemStats;
   /** How many times this item has been enchanted (re-rolled). */
   enchantCount?: number;
+  /** Upgrade level (+N) from the gold enhancement system (Sprint 155). */
+  plusLevel?: number;
   /** Theme/set the item belongs to — when 2+ items of the same theme are
    *  equipped, the player gets a set bonus. */
   themeId?: string;
@@ -514,6 +516,7 @@ export interface ClientToServerEvents {
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;
+  upgradeItem: (payload: { itemId: string }) => void;
   saveLoadout: (payload: { slot: number }) => void;
   loadLoadout: (payload: { slot: number }) => void;
   buyCosmetic: (payload: { cosmeticId: string }) => void;

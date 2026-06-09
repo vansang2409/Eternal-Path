@@ -76,6 +76,15 @@ export const XP_BOOST_MULTIPLIER = 1.5;
 export function isXpBoostActive(until: number | undefined, now: number = Date.now()): boolean {
   return typeof until === "number" && until > now;
 }
+// Gold item enhancement (Sprint 155): "+N" upgrade. Cost scales with the next
+// level; early levels are guaranteed (sink with certainty) and high levels get
+// risky so gold keeps draining at the top end.
+export function upgradeCost(plusLevel: number): number {
+  return 800 * (Math.max(0, plusLevel) + 1);
+}
+export function upgradeSuccessChance(plusLevel: number): number {
+  return Math.max(0.5, 1 - Math.max(0, plusLevel) * 0.07);
+}
 export const POWER_STRIKE_COOLDOWN_MS = 4000;
 export const POWER_STRIKE_DAMAGE_MULTIPLIER = 2.2;
 export const CLEAVE_COOLDOWN_MS = 8000;
