@@ -172,6 +172,9 @@ import {
   killStreakGoldBonus,
   KILL_STREAK_WINDOW_MS,
   LOOT_PITY_KILLS,
+  mountSpeedBonusAt,
+  mountUpgradeCost,
+  MOUNT_MAX_LEVEL,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -775,6 +778,7 @@ export class GameWorld {
         scratchTickets: saved.scratchTickets ?? 0,
         piggyGold: saved.piggyGold ?? 0,
         lootPity: saved.lootPity ?? 0,
+        mountLevels: saved.mountLevels ?? {},
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3081,6 +3085,32 @@ export class GameWorld {
       this.doScratch(player, Math.random());
     });
 
+    // Sprint 238: upgrade an owned mount for gold (+5% speed per level).
+    socket.on("upgradeMount", ({ mountId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!(player.ownedMounts ?? []).includes(mountId)) {
+        socket.emit("system", "🐴 Bạn chưa sở hữu thú cưỡi này.");
+        return;
+      }
+      const levels = (player.mountLevels ??= {});
+      const current = levels[mountId] ?? 0;
+      const cost = mountUpgradeCost(current);
+      if (cost === undefined) {
+        socket.emit("system", `🐴 Thú cưỡi đã đạt cấp tối đa (${MOUNT_MAX_LEVEL}).`);
+        return;
+      }
+      if (player.stats.gold < cost) {
+        socket.emit("system", `🐴 Cần ${cost.toLocaleString("vi-VN")} vàng để nâng cấp.`);
+        return;
+      }
+      player.stats.gold -= cost;
+      levels[mountId] = current + 1;
+      socket.emit("system", `🐴⬆️ ${getMount(mountId)?.name ?? mountId} lên cấp ${levels[mountId]} — thêm +5% tốc chạy!`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
     // Sprint 231: break the piggy bank — gems in, accrued gold out.
     socket.on("breakPiggy", () => {
       const player = this.players.get(socket.id);
@@ -3501,7 +3531,8 @@ export class GameWorld {
       // and apply sprint multiplier if requested + sufficient stamina.
       const maxStam = player.stats.maxStamina ?? BASE_MAX_STAMINA;
       const curStam = player.stats.stamina ?? maxStam;
-      const speedBonusPct = equipmentSpeedBonusPct(player) + mountSpeedBonus(player.activeMount);
+      // Sprint 238: mount speed scales with its upgrade level.
+      const speedBonusPct = equipmentSpeedBonusPct(player) + mountSpeedBonusAt(player.activeMount, player.mountLevels?.[player.activeMount ?? ""] ?? 0);
       const baseSpeed = PLAYER_SPEED * (1 + speedBonusPct / 100);
       const wantSprint = !!input.sprinting && curStam >= SPRINT_MIN_STAMINA_TO_START;
       const sprinting = wantSprint && curStam > 0;

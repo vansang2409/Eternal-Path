@@ -195,6 +195,8 @@ export interface PlayerState {
   piggyGold?: number;
   /** Sprint 237: kills since the last rare+ drop (loot pity, persisted). */
   lootPity?: number;
+  /** Sprint 238: per-mount upgrade levels (0-3), persisted. */
+  mountLevels?: Record<string, number>;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -609,6 +611,8 @@ export interface ClientToServerEvents {
   exchangeMaterials: (payload: { materialId: MaterialId }) => void;
   /** Sprint 231: break the piggy bank (costs gems, pays its gold). */
   breakPiggy: () => void;
+  /** Sprint 238: upgrade an owned mount (+5% speed per level, gold sink). */
+  upgradeMount: (payload: { mountId: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

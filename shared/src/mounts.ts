@@ -27,3 +27,22 @@ export function mountSpeedBonus(activeMount: string | undefined): number {
 export function mountLabel(id: string | undefined): string | undefined {
   return getMount(id)?.name;
 }
+
+// ── Sprint 238: mount upgrade tiers (gold sink) ──
+export const MOUNT_MAX_LEVEL = 3;
+/** Gold cost to upgrade FROM level (0-indexed): 0→1, 1→2, 2→3. */
+export const MOUNT_UPGRADE_COSTS = [2_000, 5_000, 10_000];
+/** Extra speed percent per upgrade level. */
+export const MOUNT_SPEED_PER_LEVEL = 5;
+
+export function mountUpgradeCost(currentLevel: number): number | undefined {
+  if (currentLevel < 0 || currentLevel >= MOUNT_MAX_LEVEL) return undefined;
+  return MOUNT_UPGRADE_COSTS[currentLevel];
+}
+
+/** Total speed bonus for a mount at an upgrade level. */
+export function mountSpeedBonusAt(activeMount: string | undefined, level: number): number {
+  const base = mountSpeedBonus(activeMount);
+  if (base === 0) return 0;
+  return base + Math.max(0, Math.min(MOUNT_MAX_LEVEL, level)) * MOUNT_SPEED_PER_LEVEL;
+}
