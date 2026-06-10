@@ -402,6 +402,46 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     dropRate: 0.7,
     preferredSlots: ["weapon", "ring"],
     lootTheme: "Reaper"
+  },
+  // ── Sprint 269: monster wave II ──
+  frostWraith: {
+    type: "frostWraith",
+    name: "Frost Wraith",
+    level: 5,
+    tint: 0x9fd8ff,
+    scale: 2.8,
+    hpMultiplier: 1.1,
+    attackMultiplier: 1.25,
+    defenseMultiplier: 0.95,
+    dropRate: 0.45,
+    preferredSlots: ["ring", "boots"],
+    lootTheme: "Wraith"
+  },
+  sandColossus: {
+    type: "sandColossus",
+    name: "Sand Colossus",
+    level: 9,
+    tint: 0xd9b06a,
+    scale: 3.4,
+    hpMultiplier: 2.1,
+    attackMultiplier: 1.4,
+    defenseMultiplier: 1.8,
+    dropRate: 0.55,
+    preferredSlots: ["armor", "boots"],
+    lootTheme: "Colossus"
+  },
+  bloodFiend: {
+    type: "bloodFiend",
+    name: "Blood Fiend",
+    level: 13,
+    tint: 0xd83a5a,
+    scale: 3.0,
+    hpMultiplier: 1.8,
+    attackMultiplier: 2.4,
+    defenseMultiplier: 1.3,
+    dropRate: 0.75,
+    preferredSlots: ["weapon", "armor"],
+    lootTheme: "Fiend"
   }
 };
 

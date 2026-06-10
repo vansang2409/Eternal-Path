@@ -5561,7 +5561,11 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
     // Sprint 211 additions
     thornBeast: 6,
     magmaGolem: 4,
-    voidReaper: 3
+    voidReaper: 3,
+    // Sprint 269 wave II
+    frostWraith: 5,
+    sandColossus: 4,
+    bloodFiend: 3
   };
   const species: string[] = [];
   for (const [type, n] of Object.entries(counts)) {
