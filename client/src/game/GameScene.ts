@@ -1588,7 +1588,10 @@ export class GameScene extends Phaser.Scene {
       const stackIndex = recents.length;
       this.recentFloating.push({ id: event.entityId, at: now });
       if (this.recentFloating.length > 60) this.recentFloating.shift();
-      const text = this.add.text(ftIso.x, ftIso.y - 28 - stackIndex * 14, event.text ?? `${event.amount}`, {
+      // Sprint 258: abbreviate big bare numbers (1234 → 1.2k) so heavy
+      // endgame hits stay readable.
+      const abbrev = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}k` : `${n}`);
+      const text = this.add.text(ftIso.x, ftIso.y - 28 - stackIndex * 14, event.text ?? abbrev(event.amount), {
         fontFamily: "monospace",
         fontSize: `${fontSize}px`,
         color,
@@ -1658,7 +1661,7 @@ export class GameScene extends Phaser.Scene {
             }, 80);
           }
           for (const [dx, tint] of [[-3, "#22e0ff"], [3, "#ff2bd6"]] as const) {
-            const ghost = this.add.text(text.x + dx, text.y, event.text ?? `${event.amount}`, {
+            const ghost = this.add.text(text.x + dx, text.y, event.text ?? abbrev(event.amount), {
               fontFamily: "monospace", fontSize: `${fontSize}px`, color: tint, fontStyle: "bold"
             }).setDepth(99989).setOrigin(0.5).setAlpha(0.6);
             ghost.setScale(text.scale);
