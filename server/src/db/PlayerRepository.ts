@@ -41,6 +41,8 @@ interface SavedPlayer {
   stash?: Item[];
   stashBonus?: number;
   craftXp?: number;
+  arenaSeasonIndex?: number;
+  arenaSeasonKills?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -312,6 +314,8 @@ export class PlayerRepository {
       stash: player.stash ? player.stash.map((item) => ({ ...item })) : undefined,
       stashBonus: player.stashBonus,
       craftXp: player.craftXp,
+      arenaSeasonIndex: player.arenaSeasonIndex,
+      arenaSeasonKills: player.arenaSeasonKills,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

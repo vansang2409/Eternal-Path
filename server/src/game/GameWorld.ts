@@ -199,6 +199,8 @@ import {
   GUILD_RAID_T2_TOP_GEM,
   GUILD_RAID_T2_COST_MULT,
   GUILD_RAID_T2_BOSS_NAME,
+  arenaSeasonIndexFor,
+  arenaSeasonRewardGems,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -695,8 +697,35 @@ export class GameWorld {
 
   // Sprint 169: credit an arena kill to the attacker — bumps their kill count,
   // pays the gold/gem bounty, and unlocks the PvP achievements.
+  // Sprint 271: settle a finished arena season (pays gems for last season's
+  // kill tier) and roll the player onto the current season counter.
+  private settleArenaSeason(player: PlayerState): void {
+    const current = arenaSeasonIndexFor();
+    const last = player.arenaSeasonIndex;
+    if (last === undefined) {
+      player.arenaSeasonIndex = current;
+      player.arenaSeasonKills = 0;
+      return;
+    }
+    if (last === current) return;
+    const kills = player.arenaSeasonKills ?? 0;
+    const gems = arenaSeasonRewardGems(kills);
+    if (gems > 0) {
+      player.gems = (player.gems ?? 0) + gems;
+      this.sockets.get(player.id)?.emit("system", `🏟️ Kết quả Mùa Đấu #${last}: ${kills} hạ gục — thưởng ${gems} 💎!`);
+    } else if (kills > 0) {
+      this.sockets.get(player.id)?.emit("system", `🏟️ Mùa Đấu #${last} khép lại (${kills} hạ gục). Mùa mới bắt đầu!`);
+    }
+    player.arenaSeasonIndex = current;
+    player.arenaSeasonKills = 0;
+    this.markDirty(player);
+  }
+
   private creditArenaKill(attacker: PlayerState): void {
     attacker.pvpKills = (attacker.pvpKills ?? 0) + 1;
+    // Sprint 271: season bookkeeping happens before the kill is counted.
+    this.settleArenaSeason(attacker);
+    attacker.arenaSeasonKills = (attacker.arenaSeasonKills ?? 0) + 1;
     attacker.stats.gold += ARENA_KILL_GOLD;
     attacker.gems = (attacker.gems ?? 0) + ARENA_KILL_GEMS;
     // Sprint 170: consecutive-kill streak pays escalating gem milestones.
@@ -843,6 +872,8 @@ export class GameWorld {
         stash: saved.stash ?? [],
         stashBonus: saved.stashBonus ?? 0,
         craftXp: saved.craftXp ?? 0,
+        arenaSeasonIndex: saved.arenaSeasonIndex,
+        arenaSeasonKills: saved.arenaSeasonKills ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -908,6 +939,8 @@ export class GameWorld {
         // Sprint 233: welcome-back gift after 3+ days away.
         this.grantReturningReward(player, Date.now() - saved.lastSeenAt);
       }
+      // Sprint 271: settle any finished arena season on login.
+      this.settleArenaSeason(player);
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
@@ -1638,6 +1671,14 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.arenaStreak = 0;
+        socket.emit("player", player);
+      });
+      // Sprint 271: pretend the season just rolled over for this player.
+      (socket as Socket).on("devArenaSeasonRollover", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.arenaSeasonIndex = (player.arenaSeasonIndex ?? arenaSeasonIndexFor()) - 1;
+        this.settleArenaSeason(player);
         socket.emit("player", player);
       });
       (socket as Socket).on("devClearQuests", () => {

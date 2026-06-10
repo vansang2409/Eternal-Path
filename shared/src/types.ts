@@ -209,6 +209,10 @@ export interface PlayerState {
   stashBonus?: number;
   /** Sprint 261: smithing profession XP (10 per craft). */
   craftXp?: number;
+  /** Sprint 271: arena season the kill counter belongs to. */
+  arenaSeasonIndex?: number;
+  /** Sprint 271: arena kills inside the current season. */
+  arenaSeasonKills?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
