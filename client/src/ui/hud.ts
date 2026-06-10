@@ -97,7 +97,8 @@ export class Hud {
     private readonly onSendMail: (to: string, gold: number, message: string, itemId?: string) => void = () => {},
     private readonly onRequestMail: () => void = () => {},
     private readonly onClaimMail: (mailId: string) => void = () => {},
-    private readonly onBuyDailyDeal: () => void = () => {}
+    private readonly onBuyDailyDeal: () => void = () => {},
+    private readonly onClaimAllMail: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1761,13 +1762,14 @@ export class Hud {
     const list = document.querySelector("#mailbox-list");
     if (!list) return;
     if (this.mail.length === 0) { list.innerHTML = `<div style="color:#8e9192;font-size:12px;text-align:center;padding:8px">Hòm thư trống.</div>`; return; }
-    list.innerHTML = this.mail.map((m) =>
+    list.innerHTML = `<button id="mail-claim-all" type="button" style="width:100%;margin-bottom:8px;padding:6px;border:none;border-radius:6px;font-weight:700;color:#08240f;background:linear-gradient(to bottom,#7bd88f,#3fa85f);cursor:pointer">📨 Nhận tất cả</button>` + this.mail.map((m) =>
       `<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-radius:6px">
         <div style="flex:1;min-width:0"><div style="font-weight:700;color:#ffd166">${m.gold.toLocaleString("vi-VN")} 🪙 <small style="color:#9aa0a6;font-weight:400">từ ${escapeHtml(m.from)}</small></div>${m.message ? `<div style="font-size:11px;color:#cdd3da">${escapeHtml(m.message)}</div>` : ""}</div>
         <button type="button" data-claim="${m.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#08240f;background:linear-gradient(to bottom,#7bd88f,#3fa85f);cursor:pointer">Nhận</button>
       </div>`
     ).join("");
     list.querySelectorAll<HTMLButtonElement>("[data-claim]").forEach((btn) => btn.addEventListener("click", () => this.onClaimMail(btn.dataset.claim!)));
+    list.querySelector<HTMLButtonElement>("#mail-claim-all")?.addEventListener("click", () => this.onClaimAllMail());
   }
 
   private handleSlashCommand(raw: string): void {

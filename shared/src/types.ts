@@ -551,6 +551,7 @@ export interface ClientToServerEvents {
   sendMail: (payload: { to: string; gold: number; message: string; itemId?: string }) => void;
   requestMail: () => void;
   claimMail: (payload: { mailId: string }) => void;
+  claimAllMail: () => void;
   buyDailyDeal: () => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;

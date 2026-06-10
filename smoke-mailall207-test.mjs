@@ -1,0 +1,35 @@
+// Sprint 207: claim all mail. DEV_CHEATS=1.
+import { io } from "socket.io-client";
+const PORT = process.env.PORT || "3251"; const URL = `http://localhost:${PORT}`;
+const results = []; const ok = (n, p, e = "") => { results.push([n, p]); console.log(`${p ? "PASS" : "FAIL"} ${n}${e ? " — " + e : ""}`); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const connect = () => new Promise((res, rej) => { const s = io(URL, { transports: ["websocket"] }); s.on("connect", () => res(s)); s.on("connect_error", rej); setTimeout(() => rej(new Error("timeout")), 5000); });
+const once = (s, ev, t = 5000) => new Promise((res, rej) => { const h = setTimeout(() => rej(new Error("timeout " + ev)), t); s.once(ev, (p) => { clearTimeout(h); res(p); }); });
+const waitPlayer = (s, pred, t = 4000) => new Promise((res, rej) => { const h = setTimeout(() => rej(new Error("timeout")), t); const fn = (p) => { if (pred(p)) { clearTimeout(h); s.off("player", fn); res(p); } }; s.on("player", fn); });
+const run = async () => {
+  const sfx = Date.now() % 100000; const bName = `MallB${sfx}`;
+  const a = await connect();
+  a.emit("login", { email: `ma${sfx}a@t.vn`, accountName: `MallA${sfx}`, password: "test1234" });
+  await once(a, "player");
+  a.emit("devGrant", { gold: 10000 });
+  await waitPlayer(a, (p) => p.stats.gold >= 10000);
+  a.emit("sendMail", { to: bName, gold: 300, message: "1" });
+  a.emit("sendMail", { to: bName, gold: 700, message: "2" });
+  await sleep(500);
+  const b = await connect();
+  let bMail = null; b.on("mailList", (l) => { bMail = l; });
+  b.emit("login", { email: `ma${sfx}b@t.vn`, accountName: bName, password: "test1234" });
+  const bp = await once(b, "player");
+  await sleep(300);
+  ok("B has 2 mails", bMail && bMail.length === 2, `len=${bMail?.length}`);
+  const g0 = bp.stats.gold;
+  b.emit("claimAllMail");
+  const bAfter = await waitPlayer(b, (p) => p.stats.gold === g0 + 1000, 4000);
+  ok("claimed all gold (1000)", bAfter.stats.gold === g0 + 1000);
+  await sleep(300);
+  ok("mailbox empty after claim all", bMail && bMail.length === 0);
+  a.disconnect(); b.disconnect();
+  const failed = results.filter(([, p]) => !p).length;
+  console.log(failed === 0 ? `ALL PASS (${results.length} checks)` : `${failed} FAILED`); process.exit(failed === 0 ? 0 : 1);
+};
+run().catch((e) => { console.error("ERROR", e.message); process.exit(2); });

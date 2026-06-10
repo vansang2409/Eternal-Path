@@ -2776,6 +2776,27 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 207: claim every mail at once (skips item-mail if bag is full).
+    socket.on("claimAllMail", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      let gold = 0, items = 0, skipped = 0;
+      for (const m of mailStore.getFor(player.accountName)) {
+        if (m.item && isBagFull(player)) { skipped += 1; continue; }
+        const claimed = mailStore.claim(player.accountName, m.id);
+        if (!claimed) continue;
+        player.stats.gold += claimed.gold; gold += claimed.gold;
+        if (claimed.item) { player.inventory.items.push(claimed.item); items += 1; }
+      }
+      socket.emit("player", player);
+      socket.emit("mailList", mailStore.getFor(player.accountName));
+      if (gold > 0 || items > 0) {
+        socket.emit("system", `📨 Đã nhận toàn bộ thư: ${gold.toLocaleString("vi-VN")} vàng${items ? ` + ${items} vật phẩm` : ""}.${skipped ? ` (${skipped} thư có đồ bị bỏ qua — túi đầy)` : ""}`);
+        if (gold > 0) this.emitFloating(player.id, player.position, gold, "loot", `+${gold} thư`);
+      } else socket.emit("system", skipped ? "Túi đầy — dọn túi rồi nhận thư có đồ." : "Hòm thư trống.");
+      this.markDirty(player);
+    });
+
     socket.on("sellAllMaterials", () => {
       const player = this.players.get(socket.id);
       if (!player) return;
