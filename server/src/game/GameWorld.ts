@@ -4793,13 +4793,15 @@ export class GameWorld {
     if (["abyssal-greatsword", "dragonscale-plate", "eternal-signet", "abyssal-crown", "dragonstride-boots"].includes(recipe.id)) {
       this.unlockAchievement(player, "apex-smith");
     }
-    // Sprint 261: smithing XP — announce level-ups.
+    // Sprint 261: smithing XP — announce level-ups. Re-emit the player so
+    // the client (and tests) see the fresh craftXp immediately.
     const levelBefore = craftLevelForXp(player.craftXp ?? 0);
     player.craftXp = (player.craftXp ?? 0) + CRAFT_XP_PER_CRAFT;
     const levelAfter = craftLevelForXp(player.craftXp);
     if (levelAfter > levelBefore) {
       this.sockets.get(player.id)?.emit("system", `⚒️✨ Nghề rèn lên cấp ${levelAfter}!${levelAfter >= 3 ? " Đã mở khoá công thức bậc thầy." : ""}`);
     }
+    this.sockets.get(player.id)?.emit("player", player);
   }
 
   private updateRespawns(now: number): void {
