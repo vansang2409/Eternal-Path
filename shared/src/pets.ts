@@ -55,7 +55,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "sphinx", name: "Nhân Sư", desc: "+10 công, +10 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 330, buff: { attack: 10, defense: 10, maxHp: 100 }, color: 0xe0c068 },
   { id: "wyvern", name: "Phi Long", desc: "+16 công, +5 thủ, +60 HP", rarity: "epic", goldPrice: 0, gemPrice: 360, buff: { attack: 16, defense: 5, maxHp: 60 }, color: 0xc0504a },
   // ── Sprint 200 capstone: apex companion ──
-  { id: "celestial-dragon", name: "Thiên Long Vương", desc: "+18 công, +10 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 500, buff: { attack: 18, defense: 10, maxHp: 120 }, color: 0xfff0c0 }
+  { id: "celestial-dragon", name: "Thiên Long Vương", desc: "+18 công, +10 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 500, buff: { attack: 18, defense: 10, maxHp: 120 }, color: 0xfff0c0 },
+  // ── Season 8 pets (Sprint 205) ──
+  { id: "cerberus", name: "Ngao Tam Đầu", desc: "+14 công, +8 thủ, +90 HP", rarity: "epic", goldPrice: 0, gemPrice: 330, buff: { attack: 14, defense: 8, maxHp: 90 }, color: 0x8a3a3a },
+  { id: "valkyrie", name: "Nữ Thần Chiến", desc: "+12 công, +6 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 350, buff: { attack: 12, defense: 6, maxHp: 110 }, color: 0xe0d8a0 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));

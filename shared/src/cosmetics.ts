@@ -224,6 +224,24 @@ export const COSMETICS: Cosmetic[] = [
     color: 0xfff0c0,
     gemPrice: 500,
     featured: true
+  },
+  // ── Season 8 content drop (Sprint 205) ──
+  {
+    id: "skin-abyss-lord",
+    name: "Vực Sâu Quân Chủ",
+    description: "Sắc tím đen của vực thẳm vô tận — uy áp lạnh người.",
+    type: "skinTint",
+    color: 0x4a2a6a,
+    gemPrice: 240,
+    featured: true
+  },
+  {
+    id: "skill-fx-rainbow",
+    name: "Hiệu Ứng Phép Thất Sắc",
+    description: "Hiệu ứng kỹ năng ánh lên bảy sắc cầu vồng.",
+    type: "skillEffectColor",
+    color: 0xff5ad0,
+    gemPrice: 200
   }
 ];
 
