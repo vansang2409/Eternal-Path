@@ -62,3 +62,35 @@ Mục tiêu: game kiếm tiền, nên hai loại tiền tệ phải cân bằng 
 1. Raid: cân nhắc chi phí summon scale theo cấp guild (cao cấp → reward cao → cost cao) để khóa faucet.
 2. Thêm gold sink cuối game (vd: nâng cấp trang bị tốn nhiều vàng) khi người chơi cấp cao dư vàng.
 3. Theo dõi tổng gem free/ngày (8 + streak trung bình ~ +10 + thành tựu một lần) so với giá gói VIP để tinh chỉnh động lực mua.
+
+---
+
+# Phụ lục Sprint 288 — Audit các hệ thống S217–287
+
+## Faucet vàng mới
+- **Bestiary (S217):** mốc Đồng +300 vàng / loại quái — một lần mỗi mốc, bị chặn bởi số loại quái hữu hạn. ✅
+- **Câu cá (S221):** EV mỗi cú ≈ 0.45×25 + 0.25×80 + 0.10×150 + 0.02×800 ≈ 62 vàng / 5s cooldown → ~745/phút nếu spam liên tục; chấp nhận được (đứng câu = không farm quái), pity chỉ nâng nhẹ. Theo dõi nếu có macro.
+- **Đào kho báu (S241):** 400–900 vàng / bản đồ; nguồn bản đồ 2%/kill → gắn với farm, không tự nhân bản. ✅
+- **First-kill x2 EXP (S220), Rested XP (S219):** faucet EXP, không phải vàng. ✅
+- **Kill-streak (S235):** tối đa +50% vàng kill — nhân với tốc độ farm thực, không tạo vòng lặp. ✅
+- **Tháp Thí Luyện (S281):** 200+60×tầng vàng/tầng nhưng MỖI TẦNG CHỈ THẮNG MỘT LẦN (leo lên mãi) + 3 vé/ngày → faucet có trần ngày. ✅
+- **Mùa Đấu (S271):** gem theo mốc kills mỗi 7 ngày (10–120💎) — trần tuần rõ ràng. ✅
+- **Quà quay lại (S233):** 1.5k–4k vàng + 20–50💎, kích hoạt bởi VẮNG ≥3 ngày → không farm được trong phiên. ✅
+
+## Sink vàng mới
+- **Vé Cào (S225):** house edge 10% (EV 180/200) → sink ròng ~20 vàng/vé. Sink giải trí chủ lực.
+- **Đổi nguyên liệu 5→1 (S227):** đốt 5 vật phẩm lấy 1 — sink vật phẩm/nguyên liệu.
+- **Nâng cấp mount (S238):** 2k/5k/10k mỗi con — sink cuối game đúng khuyến nghị #2 của audit cũ.
+- **Tiệm danh hiệu (S239):** 5k/20k/50k thuần vanity — sink lớn không ảnh hưởng cân bằng.
+- **Pet vàng (S276):** 80k/150k — sink một lần rất lớn.
+- **Mount cao cấp (S277):** 250k/500k — sink lớn nhất game hiện tại.
+
+## Sink Gem mới (động lực mua premium)
+- Đập Heo Đất (S231): 25💎 mở khoá vàng tự tích (cap 5k) — vòng lặp gem→vàng có trần.
+- Mở rộng Két (S253): 50💎/+5 ô (tối đa +20).
+- Tiến hoá pet (S273): 100💎/pet — sink gem lớn, vĩnh viễn.
+
+## Vòng lặp kiểm tra thêm
+- Heo Đất: 2500 kills để đầy heo (5000 vàng) đổi 25💎 → tỉ giá ~200 vàng/💎, NGANG sàn đổi S78 (100 vàng/💎) → không lời chéo. ✅
+- Tháp + Cảnh Giới: thưởng cố định một lần / có cap 50 điểm → không lạm phát. ✅
+- Bão Nguyên Tố (S266): x2 nguyên liệu trong 10' mỗi 4h — tăng cung nguyên liệu; đã có sink mới S227 đối trọng. ✅
