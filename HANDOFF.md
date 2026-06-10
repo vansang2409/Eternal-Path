@@ -20,6 +20,30 @@ Bạn đang tiếp quản một MMORPG trình duyệt đang phát triển dở. 
 
 ---
 
+Resume point after **Sprint 300** ✅ (MỤC TIÊU S300 HOÀN THÀNH 2026-06-10). Regression: **130+ smoke suite** PASS (`node run-smoke.mjs`, dùng `--half 1|2`).
+
+### ★ Sprint 217–300 — tóm tắt theo nhóm (mỗi sprint có build PASS; server sprints kèm smoke test)
+
+**Endgame/progression:** S281-284 Tháp Thí Luyện (tower.ts: lực chiến = atk×3+def×2+HP/10, 3 vé/ngày, 💎 mỗi 5 tầng, modal 🗼 + tab leaderboard, devTowerReset), S285-287 Cảnh Giới (paragon.ts: 100 kills = +1 atk/+5 HP vĩnh viễn cap 50, UI ở Thống Kê, titles), S261-263 nghề rèn (craftXp 5 cấp, 2 master recipe cấp 3, sparks VFX), S243-244 chuỗi cốt truyện 8 chương (story.ts, anti-refarm, finale 50💎), S217-218 Bestiary (kill tiers + modal 📖), S219-220 Rested XP + first-kill x2.
+
+**Kinh tế:** S221-224 câu cá (fishing.ts: bảng roll + pity 8 + nút 🎣 + achv/titles, devFish), S225-226 Vé Cào (EV 180/200, devScratch), S227-228 đổi nguyên liệu 5→1 (exchange.ts), S231-232 Heo Đất (2🪙/kill cap 5k, đập 25💎), S233 quà quay lại 3/7 ngày (devReturning), S237 loot pity 30, S238 nâng mount (+5%/cấp 2k/5k/10k), S239 tiệm danh hiệu vàng, S241-242 bản đồ kho báu (2% drop, đào 400-900🪙 + VFX), S251-253 Két Riêng (town-only stash + 💎 expansion), S276-277 pets vàng (80k/150k) + mounts xịn (griffon/nightmare 250k/500k), S292 Gói Cao Thủ lv20, S288 phụ lục ECONOMY.md.
+
+**PvP/guild:** S271-272 Mùa Đấu 7 ngày (arenaseason.ts: mốc 3/10/25/50 kills → 10-120💎 khi rollover, devArenaSeasonRollover, box trong arena modal), S264 guild levels 11-15, S265 raid Bậc II (Hắc Diệt Cổ Thần: HP×2.5, pool×2, top 40💎, cần guild lv5, summonGuildRaid {tier:2}).
+
+**Pet/mount:** S273-274 tiến hoá pet (L5 + 100💎 → buff ×1.5, petEffectiveBuff, devPetXp, nút trong modal P + VFX), S275 vệt sprint theo màu mount.
+
+**Social/QoL:** S245-248 /roll + 5 emotes (bubbles) + kênh chat Thương Mại (toggle 🌐/💰, tag [MuaBán]), S229 modal Thống Kê 📊, S234/284 leaderboard tabs 🎣/🗼, S249 daily quests câu cá/vé cào, S254 DPS meter (dpsTick), S255 hit-stop MEGA crit, S256 tắt rung màn hình (settings), S257 auto-FX khi <30fps, S258 viết tắt 1.2k, S278 /inspect mở rộng, S291 help mới, S293 đếm ngược world event, S294 /fish /tower /stats.
+
+**World:** S266-267 Bão Nguyên Tố (x2 nguyên liệu 10', mỗi 4h, devElementStorm + VFX), S268 elite affix II (frenzied/ancient → 6 affix), S269 quái wave II (frostWraith/sandColossus/bloodFiend).
+
+**Content:** Mùa 9-16 (S230/240/250/260/270/280/290/295): mỗi mùa +3 cosmetics +2 pets; capstone S295 có skin 300💎 + Thái Cổ Thần Long 999💎. Cosmetics 50+, pets 40+. Achievements **61** (S296: era-300 tặng khi login, completionist-40 meta + title Vĩnh Hằng Chi Chủ).
+
+**Dev cheats mới:** devSimKill (chạy killMonster THẬT — test mọi nhánh kill), devFish/devScratch {roll}, devBestiaryKill, devReturning {days}, devGrantMap, devElementStorm, devTowerReset, devPetXp, devArenaSeasonRollover, devGrant thêm restedXp/lootPity/paragonPoints/paragonProgress.
+
+**Lưu ý phiên sau:** (1) MỌI field PlayerState mới phải thêm 4 chỗ: types.ts + SavedPlayer + save() + hydrate `?? default`. (2) Assert đếm catalog LUÔN dùng `>=`. (3) Reward gems của achievement cộng vào assert chi phí (vd evolve -100+20). (4) Sandbox: sau khi Edit file qua file-tools phải chạy `/tmp/fresh.sh <file>` (rename round-trip) trước khi build, vì mount đọc stale. (5) File chưa từng Read trong phiên thì PHẢI Read trước khi Edit, không thì edit bị từ chối mà dễ bỏ sót.
+
+---
+
 Resume point after **Sprint 200** ✅ (mục tiêu S200 ĐÃ HOÀN THÀNH), `origin/master` = `ae7fbb3`. Total: **305 commits**, all pushed. Regression: **68 smoke suite** PASS (`node run-smoke.mjs`).
 
 ### ★ Sprint 151–200 — tóm tắt theo nhóm (mỗi sprint có smoke test, build PASS, đã push)
