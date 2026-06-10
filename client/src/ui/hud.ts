@@ -388,6 +388,7 @@ export class Hud {
     this.renderStreakModal();
     this.renderTitlesModal();
     this.renderBestiaryModal();
+    this.renderStatsModal();
     this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
@@ -1270,6 +1271,32 @@ export class Hud {
     body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Hạ quái để nâng hạng Sổ Tay: ${BESTIARY_TIERS.map((b) => `${b.name} (${b.kills})`).join(" → ")}. Mỗi hạng thưởng vàng/💎. Đạt Vàng: ${goldTiers} loại.</p>
       ${rows || `<p style="color:#8e9192;font-size:12px">Chưa ghi nhận quái nào — ra ngoài săn thôi!</p>`}
       ${undiscovered > 0 ? `<p style="color:#8e9192;font-size:11px;margin-top:8px">🔍 Chưa khám phá: ${undiscovered} loại quái.</p>` : ""}`;
+  }
+
+  // Sprint 229: lifetime stats panel — every counter the server tracks.
+  private renderStatsModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#stats-body");
+    const p = this.player;
+    if (!body || !p) return;
+    const fmt = (n: number | undefined) => (n ?? 0).toLocaleString("vi-VN");
+    const rows: Array<[string, string]> = [
+      ["⚔️ Quái đã hạ", fmt(p.totalKills)],
+      ["🗡️ Hạ gục Đấu Trường", fmt(p.pvpKills)],
+      ["🎣 Cá câu được", fmt(p.fishCaught)],
+      ["🎫 Vé cào đã mua", fmt(p.scratchTickets)],
+      ["📦 Rương đã mở", fmt(p.chestsOpened)],
+      ["⚒️ Trang bị đã chế", fmt(p.itemsCrafted)],
+      ["📖 Loại quái đã ghi nhận", fmt(Object.keys(p.bestiary ?? {}).length)],
+      ["🏅 Thành tựu", `${(p.achievements ?? []).length}/${ACHIEVEMENTS.length}`],
+      ["🎖️ Danh hiệu mở khoá", fmt(this.earnedTitleIds.length)],
+      ["🐾 Linh thú sở hữu", fmt(p.ownedPets?.length)],
+      ["🎨 Trang phục sở hữu", fmt(p.cosmetics?.length)],
+      ["😴 EXP Nghỉ Ngơi còn", fmt(p.restedXp)],
+      ["🪙 Vàng hiện có", fmt(p.stats.gold)],
+      ["💎 Gem hiện có", fmt(p.gems)]
+    ];
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 10px">Hành trình của <strong style="color:#ffd166">${escapeHtml(p.accountName)}</strong> — cấp ${p.stats.level}.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${rows.map(([k, v]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-radius:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;font-size:12px"><span style="color:#9aa">${k}</span><strong style="color:#f1f1f1">${v}</strong></div>`).join("")}</div>`;
   }
 
   /** Top-guild ranking block, shown in both guild states. */
