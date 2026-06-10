@@ -398,6 +398,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xe8d08a,
     gemPrice: 170
+  },
+  // ── Season 15 (Sprint 290): frost-and-flame duality theme ──
+  {
+    id: "skin-frostflame",
+    name: "Băng Hỏa Song Sinh",
+    description: "Nửa thân băng giá, nửa thân rực lửa.",
+    type: "skinTint",
+    color: 0xc06a9f,
+    gemPrice: 215,
+    featured: true
+  },
+  {
+    id: "skin-glacier-lord",
+    name: "Chúa Tể Sông Băng",
+    description: "Giáp băng vĩnh cửu tỏa hơi lạnh thấu xương.",
+    type: "skinTint",
+    color: 0x9fd0e8,
+    gemPrice: 190
+  },
+  {
+    id: "skill-fx-frostfire",
+    name: "Hiệu Ứng Phép Băng Hỏa",
+    description: "Kỹ năng xoắn quyện hai luồng băng và lửa.",
+    type: "skillEffectColor",
+    color: 0xff7ab8,
+    gemPrice: 185
   }
 ];
 
