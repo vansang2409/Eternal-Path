@@ -13,9 +13,17 @@ ok("voidReaper in catalog (lvl 11)", getMonsterDefinition("voidReaper").level ==
 const run = async () => {
   const sfx = Date.now() % 100000; const s = await connect();
   s.emit("login", { email: `mn${sfx}@t.vn`, accountName: `MN${sfx}`, password: "test1234" });
-  const init = await once(s, "init");
-  const types = new Set((init.snapshot?.monsters ?? []).map((m) => m.type));
-  ok("new monsters spawned in world", types.has("thornBeast") && types.has("magmaGolem") && types.has("voidReaper"), `count=${(init.snapshot?.monsters ?? []).length}`);
+  await once(s, "init");
+  // Sprint 301 (AOI): snapshots only contain NEARBY monsters now — sweep a
+  // few spots across the map and union the species we see.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const types = new Set();
+  s.on("snapshot", (snap) => { for (const m of snap.monsters ?? []) types.add(m.type); });
+  for (const [x, y] of [[500, 500], [3200, 1200], [5800, 2400], [1600, 3600], [4800, 4300], [3200, 2400]]) {
+    s.emit("devTeleport", { x, y });
+    await sleep(350);
+  }
+  ok("new monsters spawned in world", types.has("thornBeast") && types.has("magmaGolem") && types.has("voidReaper"), `species=${types.size}`);
   s.disconnect();
   const failed = results.filter(([, p]) => !p).length;
   console.log(failed === 0 ? `ALL PASS (${results.length} checks)` : `${failed} FAILED`); process.exit(failed === 0 ? 0 : 1);

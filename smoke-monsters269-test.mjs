@@ -14,11 +14,14 @@ const run = async () => {
   const sfx = Date.now() % 100000; const s = await connect();
   s.emit("login", { email: `mw269${sfx}@t.vn`, accountName: `MW269${sfx}`, password: "test1234" });
   await once(s, "player");
-  const init = await new Promise((res, rej) => {
-    const h = setTimeout(() => rej(new Error("timeout snapshot")), 6000);
-    s.on("snapshot", (snap) => { clearTimeout(h); res(snap); });
-  });
-  const types = new Set((init.monsters ?? []).map((m) => m.type));
+  // Sprint 301 (AOI): sweep several map regions and union the species seen.
+  const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+  const types = new Set();
+  s.on("snapshot", (snap) => { for (const m of snap.monsters ?? []) types.add(m.type); });
+  for (const [x, y] of [[500, 500], [3200, 1200], [5800, 2400], [1600, 3600], [4800, 4300], [3200, 2400]]) {
+    s.emit("devTeleport", { x, y });
+    await sleepMs(350);
+  }
   ok("wave-II monsters spawned in world", ["frostWraith", "sandColossus", "bloodFiend"].every((t) => types.has(t)), [...types].filter((t) => ["frostWraith", "sandColossus", "bloodFiend"].includes(t)).join(","));
 
   s.disconnect();

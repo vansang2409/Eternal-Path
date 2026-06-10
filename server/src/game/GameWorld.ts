@@ -214,6 +214,8 @@ import {
   PARAGON_ATTACK_PER_POINT,
   PARAGON_HP_PER_POINT,
   PARAGON_MAX_POINTS,
+  AOI_RADIUS,
+  AOI_CELL,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -968,7 +970,7 @@ export class GameWorld {
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
-      socket.emit("init", { selfId: socket.id, snapshot: this.snapshot(), worldMap: this.worldMapPayload });
+      socket.emit("init", { selfId: socket.id, snapshot: this.snapshotFor(player), worldMap: this.worldMapPayload });
       socket.emit("player", player);
       if (offlineRewards) socket.emit("offlineRewards", offlineRewards);
       this.emitQuestList(player);
@@ -1697,6 +1699,17 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.arenaStreak = 0;
+        socket.emit("player", player);
+      });
+      // Sprint 301: teleport (AOI tests).
+      (socket as Socket).on("devTeleport", (payload: { x?: number; y?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.position = {
+          x: Math.max(16, Math.min(WORLD_WIDTH * TILE_SIZE - 16, Number(payload?.x) || 0)),
+          y: Math.max(16, Math.min(WORLD_HEIGHT * TILE_SIZE - 16, Number(payload?.y) || 0))
+        };
+        player.velocity = { x: 0, y: 0 };
         socket.emit("player", player);
       });
       // Sprint 281: refill tower tickets (tests).
@@ -5677,17 +5690,60 @@ export class GameWorld {
     return true;
   }
 
-  private snapshot(): WorldSnapshot {
+  // Sprint 301: AOI snapshot for one viewer (used at login/init).
+  private snapshotFor(viewer: PlayerState): WorldSnapshot {
+    const cx = viewer.position.x;
+    const cy = viewer.position.y;
+    const r2 = AOI_RADIUS * AOI_RADIUS;
+    const near = <T extends { position: { x: number; y: number } }>(items: Iterable<T>): T[] => {
+      const out: T[] = [];
+      for (const it of items) {
+        const dx = it.position.x - cx;
+        const dy = it.position.y - cy;
+        if (dx * dx + dy * dy <= r2) out.push(it);
+      }
+      return out;
+    };
     return {
       serverTime: Date.now(),
-      players: [...this.players.values()],
-      monsters: this.monsters,
-      groundItems: [...this.groundItems.values()]
+      players: this.withPartyMembers(viewer, near(this.players.values())),
+      monsters: near(this.monsters),
+      groundItems: near(this.groundItems.values())
     };
   }
 
+  /** Party members stay visible beyond the AOI (S132 off-screen arrows). */
+  private withPartyMembers(viewer: PlayerState, players: PlayerState[]): PlayerState[] {
+    const party = this.getParty(viewer.id);
+    if (!party) return players;
+    const seen = new Set(players.map((p) => p.id));
+    for (const memberId of party.memberIds) {
+      if (seen.has(memberId)) continue;
+      const member = this.players.get(memberId);
+      if (member) players.push(member);
+    }
+    return players;
+  }
+
+  // Sprint 301: per-client AOI broadcast over a spatial hash — the cost per
+  // viewer is proportional to what's NEAR them, not to the whole world.
   private broadcastSnapshot(): void {
-    this.io.emit("snapshot", this.snapshot());
+    if (this.sockets.size === 0) return;
+    const now = Date.now();
+    const monsterGrid = buildAoiGrid(this.monsters);
+    const playerGrid = buildAoiGrid(this.players.values());
+    const itemGrid = buildAoiGrid(this.groundItems.values());
+    for (const [id, socket] of this.sockets) {
+      const me = this.players.get(id);
+      if (!me) continue;
+      const players = this.withPartyMembers(me, queryAoiGrid(playerGrid, me.position.x, me.position.y));
+      socket.emit("snapshot", {
+        serverTime: now,
+        players,
+        monsters: queryAoiGrid(monsterGrid, me.position.x, me.position.y),
+        groundItems: queryAoiGrid(itemGrid, me.position.x, me.position.y)
+      });
+    }
   }
 
   private emitFloating(entityId: string, position: { x: number; y: number }, amount: number, kind: FloatingTextEvent["kind"], text?: string): void {
@@ -5729,6 +5785,43 @@ function collectTilesByBiome(map: WorldMap): Map<TileId, { x: number; y: number 
       const arr = out.get(t);
       if (!arr) out.set(t, [{ x, y }]);
       else arr.push({ x, y });
+    }
+  }
+  return out;
+}
+
+// ── Sprint 301: spatial hash for AOI queries ──
+function aoiCellKey(x: number, y: number): number {
+  return (Math.floor(x / AOI_CELL) + 2048) * 8192 + (Math.floor(y / AOI_CELL) + 2048);
+}
+
+function buildAoiGrid<T extends { position: { x: number; y: number } }>(items: Iterable<T>): Map<number, T[]> {
+  const grid = new Map<number, T[]>();
+  for (const item of items) {
+    const key = aoiCellKey(item.position.x, item.position.y);
+    const bucket = grid.get(key);
+    if (bucket) bucket.push(item);
+    else grid.set(key, [item]);
+  }
+  return grid;
+}
+
+function queryAoiGrid<T extends { position: { x: number; y: number } }>(grid: Map<number, T[]>, cx: number, cy: number, radius: number = AOI_RADIUS): T[] {
+  const out: T[] = [];
+  const r2 = radius * radius;
+  const minGx = Math.floor((cx - radius) / AOI_CELL);
+  const maxGx = Math.floor((cx + radius) / AOI_CELL);
+  const minGy = Math.floor((cy - radius) / AOI_CELL);
+  const maxGy = Math.floor((cy + radius) / AOI_CELL);
+  for (let gx = minGx; gx <= maxGx; gx += 1) {
+    for (let gy = minGy; gy <= maxGy; gy += 1) {
+      const bucket = grid.get((gx + 2048) * 8192 + (gy + 2048));
+      if (!bucket) continue;
+      for (const item of bucket) {
+        const dx = item.position.x - cx;
+        const dy = item.position.y - cy;
+        if (dx * dx + dy * dy <= r2) out.push(item);
+      }
     }
   }
   return out;

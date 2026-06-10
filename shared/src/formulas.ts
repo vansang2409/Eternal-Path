@@ -36,6 +36,12 @@ export function dayPhaseAt(time01: number): "dawn" | "day" | "dusk" | "night" {
 export const WORLD_WIDTH = 200;
 export const WORLD_HEIGHT = 150;
 export const WORLD_SEED = 1337;
+// Sprint 301: Area-of-Interest — each client only receives entities within
+// this radius (world px). ~1.5 screens at default zoom; party members are
+// always included regardless of distance (off-screen arrows need them).
+export const AOI_RADIUS = 1200;
+/** Spatial-hash cell size used by the server AOI index. */
+export const AOI_CELL = 256;
 export const PLAYER_SPEED = 165;
 export const MONSTER_SPEED = 70;
 export const PLAYER_ATTACK_RANGE = 64;
