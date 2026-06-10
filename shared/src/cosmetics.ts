@@ -294,6 +294,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x9fd8ff,
     gemPrice: 170
+  },
+  // ── Season 11 (Sprint 250): sacred-forest theme ──
+  {
+    id: "skin-sylvan-guardian",
+    name: "Hộ Vệ Rừng Thiêng",
+    description: "Bộ giáp xanh rêu thấm đẫm linh khí cổ thụ.",
+    type: "skinTint",
+    color: 0x4f9e5a,
+    gemPrice: 175
+  },
+  {
+    id: "skin-fae-queen",
+    name: "Nữ Hoàng Tiên Tộc",
+    description: "Sắc ngọc lục bảo lộng lẫy của tiên giới.",
+    type: "skinTint",
+    color: 0x6fe0a8,
+    gemPrice: 200,
+    featured: true
+  },
+  {
+    id: "skill-fx-bloom",
+    name: "Hiệu Ứng Phép Mãn Khai",
+    description: "Kỹ năng nở rộ cánh hoa xanh ngát.",
+    type: "skillEffectColor",
+    color: 0x7dff9e,
+    gemPrice: 165
   }
 ];
 

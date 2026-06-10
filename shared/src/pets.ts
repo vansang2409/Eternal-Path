@@ -64,7 +64,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "moon-turtle", name: "Nguyệt Quy", desc: "+6 công, +14 thủ, +150 HP", rarity: "epic", goldPrice: 0, gemPrice: 380, buff: { attack: 6, defense: 14, maxHp: 150 }, color: 0x9fe0c8 },
   // ── Season 10 (Sprint 240): cosmos companions ──
   { id: "star-phoenix", name: "Tinh Vẫn Phượng Hoàng", desc: "+19 công, +6 thủ, +85 HP", rarity: "epic", goldPrice: 0, gemPrice: 450, buff: { attack: 19, defense: 6, maxHp: 85 }, color: 0xffc46a },
-  { id: "void-cat", name: "Hư Không Miêu", desc: "+11 công, +11 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 400, buff: { attack: 11, defense: 11, maxHp: 110 }, color: 0x6a4dc0 }
+  { id: "void-cat", name: "Hư Không Miêu", desc: "+11 công, +11 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 400, buff: { attack: 11, defense: 11, maxHp: 110 }, color: 0x6a4dc0 },
+  // ── Season 11 (Sprint 250): sacred-forest companions ──
+  { id: "elder-treant", name: "Thụ Nhân Cổ Đại", desc: "+8 công, +16 thủ, +140 HP", rarity: "epic", goldPrice: 0, gemPrice: 430, buff: { attack: 8, defense: 16, maxHp: 140 }, color: 0x5a7a3a },
+  { id: "spirit-stag", name: "Linh Lộc", desc: "+15 công, +9 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 410, buff: { attack: 15, defense: 9, maxHp: 100 }, color: 0xbfe8d0 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
