@@ -742,6 +742,8 @@ export class GameWorld {
     }
     this.unlockAchievement(attacker, "pvp-victor");
     if ((attacker.pvpKills ?? 0) >= 10) this.unlockAchievement(attacker, "pvp-champion");
+    // Sprint 279: 10 kills inside one season.
+    if ((attacker.arenaSeasonKills ?? 0) >= 10) this.unlockAchievement(attacker, "season-warrior");
   }
 
   private broadcastWorldTime(): void {
@@ -4218,6 +4220,8 @@ export class GameWorld {
   private checkCollectionAchievements(player: PlayerState): void {
     if ((player.ownedPets?.length ?? 0) >= 6) this.unlockAchievement(player, "pet-collector");
     if ((player.cosmetics?.length ?? 0) >= 6) this.unlockAchievement(player, "cosmetic-collector");
+    // Sprint 279: ten-pet menagerie.
+    if ((player.ownedPets?.length ?? 0) >= 10) this.unlockAchievement(player, "pet-zoo");
   }
 
   private unlockAchievement(player: PlayerState, achievementId: string): boolean {

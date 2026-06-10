@@ -57,6 +57,9 @@ export const TITLES: TitleDef[] = [
   // ── Sprint 224: fishing titles ──
   { id: "angler-title", label: "Ngư Ông", desc: "Câu được 100 con cá.", earned: (p) => (p.fishCaught ?? 0) >= 100 },
   { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") },
+  // ── Sprint 279: arena-season & evolution titles ──
+  { id: "season-champ", label: "Vương Mùa Giải", desc: "Mở thành tựu Chiến Binh Mùa Giải.", earned: (p) => (p.achievements ?? []).includes("season-warrior") },
+  { id: "evolved-master", label: "Thần Thú Sư", desc: "Mở thành tựu Bậc Thầy Tiến Hoá.", earned: (p) => (p.achievements ?? []).includes("evolver") },
   // ── Sprint 239: gold-shop vanity titles ──
   { id: "phu-ho", label: "Phú Hộ", desc: "Mua tại Tiệm Danh Hiệu (5.000 vàng).", earned: (p) => (p.boughtTitles ?? []).includes("phu-ho") },
   { id: "dai-thuong-gia", label: "Đại Thương Gia", desc: "Mua tại Tiệm Danh Hiệu (20.000 vàng).", earned: (p) => (p.boughtTitles ?? []).includes("dai-thuong-gia") },
