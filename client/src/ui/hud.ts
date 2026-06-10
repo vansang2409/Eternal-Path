@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -378,6 +378,7 @@ export class Hud {
     this.renderMarketModal();
     this.renderStreakModal();
     this.renderTitlesModal();
+    this.renderBestiaryModal();
     this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
@@ -1227,6 +1228,39 @@ export class Hud {
         this.onSetTitle?.(id ? id : null);
       });
     });
+  }
+
+  // Sprint 218: bestiary modal — per-monster kill progress with tier badges.
+  private renderBestiaryModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#bestiary-body");
+    if (!body) return;
+    const bestiary = this.player?.bestiary ?? {};
+    const tierColor = (t: number) => (t === 3 ? "#ffd166" : t === 2 ? "#cfd8dc" : t === 1 ? "#d09a5e" : "#555");
+    const tierName = (t: number) => BESTIARY_TIERS.find((b) => b.tier === t)?.name ?? "";
+    const entries = Object.entries(MONSTER_DEFINITIONS)
+      .map(([type, def]) => ({ type, def, kills: bestiary[type] ?? 0 }))
+      .filter((e) => e.kills > 0)
+      .sort((a, b) => b.kills - a.kills);
+    const undiscovered = Object.keys(MONSTER_DEFINITIONS).length - entries.length;
+    const goldTiers = entries.filter((e) => bestiaryTierForKills(e.kills) === 3).length;
+    const rows = entries.map((e) => {
+      const tier = bestiaryTierForKills(e.kills);
+      const next = nextBestiaryTier(e.kills);
+      const pct = next ? Math.min(100, Math.round((e.kills / next.kills) * 100)) : 100;
+      const reward = next ? (next.reward.gold ? `${next.reward.gold} vàng` : `${next.reward.gems} 💎`) : "";
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:5px;border-radius:6px;background:rgba(28,28,28,0.5);border:1px solid ${tier > 0 ? tierColor(tier) : "#2a2a2a"}">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;color:#f1f1f1">${escapeHtml(translateMonsterName(e.def.name))}
+            ${tier > 0 ? `<span style="font-size:10px;font-weight:700;color:#1d1500;background:${tierColor(tier)};border-radius:3px;padding:1px 6px;margin-left:6px">${tierName(tier)}</span>` : ""}
+          </div>
+          <div style="height:5px;border-radius:3px;background:#222;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${tierColor(Math.min(3, tier + 1))}"></div></div>
+          <div style="font-size:10px;color:#9aa;margin-top:3px">${e.kills} đã hạ${next ? ` — còn ${next.kills - e.kills} tới hạng ${next.name} (${reward})` : " — MAX"}</div>
+        </div>
+      </div>`;
+    }).join("");
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Hạ quái để nâng hạng Sổ Tay: ${BESTIARY_TIERS.map((b) => `${b.name} (${b.kills})`).join(" → ")}. Mỗi hạng thưởng vàng/💎. Đạt Vàng: ${goldTiers} loại.</p>
+      ${rows || `<p style="color:#8e9192;font-size:12px">Chưa ghi nhận quái nào — ra ngoài săn thôi!</p>`}
+      ${undiscovered > 0 ? `<p style="color:#8e9192;font-size:11px;margin-top:8px">🔍 Chưa khám phá: ${undiscovered} loại quái.</p>` : ""}`;
   }
 
   /** Top-guild ranking block, shown in both guild states. */
