@@ -203,6 +203,10 @@ export interface PlayerState {
   boughtTitles?: string[];
   /** Sprint 243: completed story-chain quest count (index of next chapter). */
   storyQuestIndex?: number;
+  /** Sprint 251: personal stash items (town-only access). */
+  stash?: Item[];
+  /** Sprint 253: extra stash slots bought with gems. */
+  stashBonus?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -633,6 +637,12 @@ export interface ClientToServerEvents {
   rollDice: () => void;
   /** Sprint 245: play a whitelisted emote. */
   emote: (payload: { emote: string }) => void;
+  /** Sprint 251: move a bag item into the stash (town only). */
+  stashDeposit: (payload: { itemId: string }) => void;
+  /** Sprint 251: move a stash item back to the bag (town only). */
+  stashWithdraw: (payload: { itemId: string }) => void;
+  /** Sprint 253: buy +5 stash slots with gems. */
+  buyStashSlots: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

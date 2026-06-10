@@ -38,6 +38,8 @@ interface SavedPlayer {
   mountLevels?: Record<string, number>;
   boughtTitles?: string[];
   storyQuestIndex?: number;
+  stash?: Item[];
+  stashBonus?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -306,6 +308,8 @@ export class PlayerRepository {
       mountLevels: player.mountLevels ? { ...player.mountLevels } : undefined,
       boughtTitles: player.boughtTitles ? [...player.boughtTitles] : undefined,
       storyQuestIndex: player.storyQuestIndex,
+      stash: player.stash ? player.stash.map((item) => ({ ...item })) : undefined,
+      stashBonus: player.stashBonus,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

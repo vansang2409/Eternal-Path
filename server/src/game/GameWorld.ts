@@ -184,6 +184,10 @@ import {
   getEmote,
   ROLL_COOLDOWN_MS,
   EMOTE_COOLDOWN_MS,
+  stashCapacity,
+  STASH_MAX_BONUS,
+  STASH_SLOTS_PER_PURCHASE,
+  STASH_SLOT_GEM_COST,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -811,6 +815,8 @@ export class GameWorld {
         mountLevels: saved.mountLevels ?? {},
         boughtTitles: saved.boughtTitles ?? [],
         storyQuestIndex: saved.storyQuestIndex ?? 0,
+        stash: saved.stash ?? [],
+        stashBonus: saved.stashBonus ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3172,6 +3178,74 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       this.doScratch(player, Math.random());
+    });
+
+    // Sprint 251: personal stash — town-only deposit/withdraw.
+    socket.on("stashDeposit", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "🏦 Cần ở thị trấn để dùng Két Riêng.");
+        return;
+      }
+      const stash = (player.stash ??= []);
+      if (stash.length >= stashCapacity(player.stashBonus)) {
+        socket.emit("system", `🏦 Két đã đầy (${stashCapacity(player.stashBonus)} ô).`);
+        return;
+      }
+      const idx = player.inventory.items.findIndex((it) => it.id === itemId);
+      if (idx < 0) {
+        socket.emit("system", "Không tìm thấy vật phẩm trong túi.");
+        return;
+      }
+      const [item] = player.inventory.items.splice(idx, 1);
+      stash.push(item);
+      socket.emit("system", `🏦 Đã gửi ${item.name} vào Két Riêng (${stash.length}/${stashCapacity(player.stashBonus)}).`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    socket.on("stashWithdraw", ({ itemId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (!isInTown(player.position)) {
+        socket.emit("system", "🏦 Cần ở thị trấn để dùng Két Riêng.");
+        return;
+      }
+      const stash = (player.stash ??= []);
+      const idx = stash.findIndex((it) => it.id === itemId);
+      if (idx < 0) {
+        socket.emit("system", "Không tìm thấy vật phẩm trong két.");
+        return;
+      }
+      if (isBagFull(player)) {
+        socket.emit("system", BAG_FULL_MESSAGE);
+        return;
+      }
+      const [item] = stash.splice(idx, 1);
+      player.inventory.items.push(item);
+      socket.emit("system", `🏦 Đã rút ${item.name} về túi.`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    // Sprint 253: buy +5 stash slots with gems.
+    socket.on("buyStashSlots", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if ((player.stashBonus ?? 0) >= STASH_MAX_BONUS) {
+        socket.emit("system", "🏦 Két đã mở rộng tối đa.");
+        return;
+      }
+      if ((player.gems ?? 0) < STASH_SLOT_GEM_COST) {
+        socket.emit("system", `🏦 Cần ${STASH_SLOT_GEM_COST} 💎 để mở rộng két.`);
+        return;
+      }
+      player.gems = (player.gems ?? 0) - STASH_SLOT_GEM_COST;
+      player.stashBonus = (player.stashBonus ?? 0) + STASH_SLOTS_PER_PURCHASE;
+      socket.emit("system", `🏦⬆️ Két Riêng mở rộng: ${stashCapacity(player.stashBonus)} ô.`);
+      socket.emit("player", player);
+      this.markDirty(player);
     });
 
     // Sprint 245: public dice roll (server-rolled so nobody can fake it).

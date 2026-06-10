@@ -29,3 +29,4 @@ export * from "./killstreak.js";
 export * from "./treasure.js";
 export * from "./story.js";
 export * from "./emotes.js";
+export * from "./stash.js";
