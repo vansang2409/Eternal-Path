@@ -163,6 +163,8 @@ import {
   isFineCatch,
   rollScratch,
   SCRATCH_TICKET_COST,
+  nextMaterialTier,
+  MATERIAL_UPGRADE_RATIO,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -3057,6 +3059,36 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       this.doScratch(player, Math.random());
+    });
+
+    // Sprint 227: trade 5 identical materials for 1 of the next tier.
+    socket.on("exchangeMaterials", ({ materialId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const target = nextMaterialTier(materialId);
+      if (!target) {
+        socket.emit("system", "🔁 Nguyên liệu này đã ở bậc cao nhất.");
+        return;
+      }
+      const stack = player.inventory.items.filter((it) => it.kind === "material" && it.materialId === materialId);
+      if (stack.length < MATERIAL_UPGRADE_RATIO) {
+        socket.emit("system", `🔁 Cần ${MATERIAL_UPGRADE_RATIO} ${MATERIAL_CATALOG[materialId].name} để đổi (đang có ${stack.length}).`);
+        return;
+      }
+      const consumed = new Set(stack.slice(0, MATERIAL_UPGRADE_RATIO).map((it) => it.id));
+      player.inventory.items = player.inventory.items.filter((it) => !consumed.has(it.id));
+      const info = MATERIAL_CATALOG[target];
+      player.inventory.items.push({
+        id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        kind: "material",
+        materialId: target,
+        name: info.name,
+        rarity: info.rarity,
+        value: info.value
+      });
+      socket.emit("system", `🔁 Đổi ${MATERIAL_UPGRADE_RATIO} ${MATERIAL_CATALOG[materialId].name} → 1 ${info.name}.`);
+      socket.emit("player", player);
+      this.markDirty(player);
     });
 
     // Sprint 151: toggle a protective lock on an inventory item so it can't be

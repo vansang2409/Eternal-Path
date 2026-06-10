@@ -591,6 +591,8 @@ export interface ClientToServerEvents {
   fish: () => void;
   /** Sprint 225: buy + scratch one lucky ticket (gold sink). */
   buyScratchTicket: () => void;
+  /** Sprint 227: trade 5 of a material for 1 of the next tier. */
+  exchangeMaterials: (payload: { materialId: MaterialId }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;
