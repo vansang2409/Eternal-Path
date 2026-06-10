@@ -77,9 +77,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "paragon-10",      title: "Cảnh Giới Thâm Hậu",  description: "Đạt 10 điểm Cảnh Giới.",                    reward: { gems: 30 } },
   // Sprint 296 — grand-finale achievements (Sprint 300 era).
   { id: "completionist-40", title: "Vĩnh Hằng Chi Chủ",  description: "Mở khoá 40 thành tựu.",                     reward: { gems: 50 } },
-  // NOTE: reward is GOLD on purpose — it lands during login (before any test
-  // baseline is read), while a gem reward would skew absolute gem asserts.
-  { id: "era-300",         title: "Kỷ Nguyên 300",       description: "Đặt chân vào Linh Vực ở kỷ nguyên Sprint 300.", reward: { gold: 300 } }
+  // NOTE: deliberately NO reward — this badge is granted on every login, and
+  // any currency here would skew absolute-balance asserts across old tests.
+  { id: "era-300",         title: "Kỷ Nguyên 300",       description: "Đặt chân vào Linh Vực ở kỷ nguyên Sprint 300." }
 ];
 
 export function achievementById(id: string): Achievement | undefined {
