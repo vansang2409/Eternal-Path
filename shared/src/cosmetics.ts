@@ -346,6 +346,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xff4a5a,
     gemPrice: 175
+  },
+  // ── Season 13 (Sprint 270): thunder theme ──
+  {
+    id: "skin-storm-caller",
+    name: "Người Gọi Bão",
+    description: "Giáp xanh điện giật tanh tách quanh thân.",
+    type: "skinTint",
+    color: 0x4a8ad0,
+    gemPrice: 190
+  },
+  {
+    id: "skin-thunder-god",
+    name: "Lôi Đình Chi Thần",
+    description: "Thân thể rực sáng ánh sét vàng chói.",
+    type: "skinTint",
+    color: 0xffe34a,
+    gemPrice: 220,
+    featured: true
+  },
+  {
+    id: "skill-fx-storm",
+    name: "Hiệu Ứng Phép Lôi Vũ",
+    description: "Kỹ năng xé trời bằng tia chớp trắng xanh.",
+    type: "skillEffectColor",
+    color: 0xbfe8ff,
+    gemPrice: 180
   }
 ];
 

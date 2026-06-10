@@ -70,7 +70,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "spirit-stag", name: "Linh Lộc", desc: "+15 công, +9 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 410, buff: { attack: 15, defense: 9, maxHp: 100 }, color: 0xbfe8d0 },
   // ── Season 12 (Sprint 260): blood-moon companions ──
   { id: "blood-bat", name: "Huyết Bức Vương", desc: "+20 công, +5 thủ, +80 HP", rarity: "epic", goldPrice: 0, gemPrice: 460, buff: { attack: 20, defense: 5, maxHp: 80 }, color: 0xa03a4a },
-  { id: "moon-wolf", name: "Nguyệt Lang", desc: "+13 công, +10 thủ, +115 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 13, defense: 10, maxHp: 115 }, color: 0x8a8ab8 }
+  { id: "moon-wolf", name: "Nguyệt Lang", desc: "+13 công, +10 thủ, +115 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 13, defense: 10, maxHp: 115 }, color: 0x8a8ab8 },
+  // ── Season 13 (Sprint 270): thunder companions ──
+  { id: "thunder-roc", name: "Lôi Bằng", desc: "+18 công, +8 thủ, +90 HP", rarity: "epic", goldPrice: 0, gemPrice: 440, buff: { attack: 18, defense: 8, maxHp: 90 }, color: 0x6ab8ff },
+  { id: "static-sprite", name: "Tinh Linh Tĩnh Điện", desc: "+10 công, +12 thủ, +125 HP", rarity: "epic", goldPrice: 0, gemPrice: 405, buff: { attack: 10, defense: 12, maxHp: 125 }, color: 0xd0e8ff }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
