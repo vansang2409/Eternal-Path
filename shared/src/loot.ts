@@ -22,6 +22,9 @@ export function rollRarity(): Rarity {
   return "common";
 }
 
+/** Sprint 237: a rare-or-better drop is guaranteed after this many dry kills. */
+export const LOOT_PITY_KILLS = 30;
+
 export function createLoot(monsterLevel: number, monsterType = "forestSlime", elite = false, guaranteed = false): Item | undefined {
   const monster = getMonsterDefinition(monsterType);
   const dropRate = elite ? Math.min(0.95, monster.dropRate + 0.35) : monster.dropRate;

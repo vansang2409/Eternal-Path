@@ -171,6 +171,7 @@ import {
   returningRewardFor,
   killStreakGoldBonus,
   KILL_STREAK_WINDOW_MS,
+  LOOT_PITY_KILLS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -773,6 +774,7 @@ export class GameWorld {
         fishPity: saved.fishPity ?? 0,
         scratchTickets: saved.scratchTickets ?? 0,
         piggyGold: saved.piggyGold ?? 0,
+        lootPity: saved.lootPity ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1413,7 +1415,7 @@ export class GameWorld {
     // Dev-only cheat for automated smoke tests. Never enabled in production
     // (requires explicit DEV_CHEATS=1 env; not set in Dockerfile/compose).
     if (process.env.DEV_CHEATS === "1") {
-      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number; restedXp?: number }) => {
+      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number; restedXp?: number; lootPity?: number }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.stats.gold += Math.max(0, Number(payload?.gold) || 0);
@@ -1421,6 +1423,7 @@ export class GameWorld {
         if (payload?.talentPoints) player.talentPoints = (player.talentPoints ?? 0) + Math.max(0, Number(payload.talentPoints) || 0);
         if (payload?.exp) this.grantExpAndStatPoints(player, Math.max(0, Number(payload.exp) || 0));
         if (payload?.restedXp) player.restedXp = (player.restedXp ?? 0) + Math.max(0, Number(payload.restedXp) || 0);
+        if (payload?.lootPity !== undefined) player.lootPity = Math.max(0, Number(payload.lootPity) || 0);
         socket.emit("player", player);
       });
       (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number; slot?: EquipmentSlot; themeId?: string; stats?: ItemStats }) => {
@@ -4050,7 +4053,24 @@ export class GameWorld {
     if (monster.boss && monster.type !== "eternalWarden") this.unlockAchievement(player, "slay-dungeon-boss");
     this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
 
-    const lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
+    let lootItem = createLoot(monster.level, monster.type, monster.elite || monster.boss, monster.boss);
+    // Sprint 237: loot pity — guarantee a rare+ drop after 30 dry kills.
+    const dryKills = (player.lootPity ?? 0) + 1;
+    if (lootItem && lootItem.rarity !== "common") {
+      player.lootPity = 0;
+    } else if (dryKills >= LOOT_PITY_KILLS) {
+      for (let i = 0; i < 30 && (!lootItem || lootItem.rarity === "common"); i++) {
+        lootItem = createLoot(monster.level, monster.type, true, true);
+      }
+      if (lootItem && lootItem.rarity !== "common") {
+        player.lootPity = 0;
+        this.sockets.get(player.id)?.emit("system", "✨ Vận may tích tụ — quái đánh rơi trang bị hiếm!");
+      } else {
+        player.lootPity = dryKills;
+      }
+    } else {
+      player.lootPity = dryKills;
+    }
     let collectedItem: Item | undefined;
     if (lootItem) {
       if (this.tryAutoSalvage(player, lootItem)) {

@@ -193,6 +193,8 @@ export interface PlayerState {
   scratchTickets?: number;
   /** Sprint 231: piggy-bank gold accrued from kills (break with gems). */
   piggyGold?: number;
+  /** Sprint 237: kills since the last rare+ drop (loot pity, persisted). */
+  lootPity?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
