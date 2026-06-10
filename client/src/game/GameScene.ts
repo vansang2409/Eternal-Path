@@ -240,6 +240,10 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("guildRaidUpdate", (view) => this.hud.setGuildRaid(view));
     this.hud.setMysteryBannerProxy((text) => this.showTopBanner(text, "achievement", 3500));
     this.socket.on("mysteryBoxResult", (r) => this.hud.showMysteryBoxResult(r.label));
+    // Sprint 228: material exchange from the inventory action row.
+    window.addEventListener("exchange-material", (e) => {
+      this.socket.emit("exchangeMaterials", { materialId: (e as CustomEvent).detail });
+    });
     // Sprint 226: scratch ticket buy + result reveal (jackpot screen flash).
     window.addEventListener("buy-scratch", () => this.socket.emit("buyScratchTicket"));
     this.socket.on("scratchResult", (r) => {

@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -2254,12 +2254,22 @@ export class Hud {
     const upgradeBtn = item.kind === "equipment"
       ? `<button type="button" data-action="upgrade">⚒️ Cường hóa${item.plusLevel ? ` (+${item.plusLevel})` : ""}</button>`
       : "";
+    // Sprint 228: material 5→1 exchange button with live stack count.
+    let exchangeBtn = "";
+    if (item.kind === "material") {
+      const nextTier = nextMaterialTier(item.materialId);
+      if (nextTier) {
+        const matCount = this.player?.inventory.items.filter((i) => i.kind === "material" && i.materialId === item.materialId).length ?? 0;
+        exchangeBtn = `<button type="button" data-action="exchange" ${matCount < MATERIAL_UPGRADE_RATIO ? "disabled" : ""}>🔁 Đổi 5→1 ${escapeHtml(MATERIAL_CATALOG[nextTier].name)} (${matCount}/${MATERIAL_UPGRADE_RATIO})</button>`;
+      }
+    }
     actions.innerHTML = `
       <strong>${escapeHtml(item.name)}</strong>
       <button type="button" data-action="${primaryAction}">${primaryLabel}</button>
       <button type="button" data-action="sell">${t("sell")}</button>
       ${salvageBtn}
       ${upgradeBtn}
+      ${exchangeBtn}
       ${lockBtn}
       <button type="button" data-action="drop">${t("drop")}</button>
     `;
@@ -2267,6 +2277,9 @@ export class Hud {
     actions.querySelector('[data-action="use"]')?.addEventListener("click", () => this.onUse(item.id));
     actions.querySelector('[data-action="sell"]')?.addEventListener("click", () => this.onSell(item.id));
     actions.querySelector('[data-action="salvage"]')?.addEventListener("click", () => this.onSalvage(item.id));
+    actions.querySelector('[data-action="exchange"]')?.addEventListener("click", () => {
+      if (item.kind === "material") window.dispatchEvent(new CustomEvent("exchange-material", { detail: item.materialId }));
+    });
     actions.querySelector('[data-action="lock"]')?.addEventListener("click", () => this.onToggleLock(item.id));
     actions.querySelector('[data-action="upgrade"]')?.addEventListener("click", () => this.onUpgradeItem(item.id));
     actions.querySelector('[data-action="drop"]')?.addEventListener("click", () => this.onDrop(item.id));
