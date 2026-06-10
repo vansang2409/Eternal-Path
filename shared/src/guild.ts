@@ -53,7 +53,13 @@ export const GUILD_LEVELS: GuildLevelTier[] = [
   { level: 7, expRequired: 240_000, expBonus: 0.12, goldBonus: 0.12, maxMembers: 26 },
   { level: 8, expRequired: 370_000, expBonus: 0.14, goldBonus: 0.14, maxMembers: 27 },
   { level: 9, expRequired: 550_000, expBonus: 0.16, goldBonus: 0.16, maxMembers: 28 },
-  { level: 10, expRequired: 800_000, expBonus: 0.18, goldBonus: 0.18, maxMembers: 30 }
+  { level: 10, expRequired: 800_000, expBonus: 0.18, goldBonus: 0.18, maxMembers: 30 },
+  // ── Sprint 264: perk tier II — the long late-game guild climb ──
+  { level: 11, expRequired: 1_100_000, expBonus: 0.2, goldBonus: 0.2, maxMembers: 31 },
+  { level: 12, expRequired: 1_500_000, expBonus: 0.22, goldBonus: 0.22, maxMembers: 32 },
+  { level: 13, expRequired: 2_000_000, expBonus: 0.24, goldBonus: 0.24, maxMembers: 33 },
+  { level: 14, expRequired: 2_600_000, expBonus: 0.26, goldBonus: 0.26, maxMembers: 34 },
+  { level: 15, expRequired: 3_300_000, expBonus: 0.28, goldBonus: 0.28, maxMembers: 35 }
 ];
 
 /** Highest tier whose expRequired is satisfied by `exp`. */
