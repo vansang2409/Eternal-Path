@@ -1966,6 +1966,24 @@ export class Hud {
       row.addEventListener("click", () => this.onBuy(item.shopId));
       root.append(row);
     }
+    // Sprint 226: scratch ticket — fun 200-gold sink pinned under the stock.
+    const scratch = document.createElement("button");
+    scratch.className = "shop-item rarity-rare";
+    scratch.title = "Cào ngay, trúng liền: tới 5.000 vàng ĐỘC ĐẮC!";
+    scratch.innerHTML = `<i class="material-symbols-outlined">confirmation_number</i><strong>🎫 Vé Cào May Mắn</strong><span>Giá: 200 vàng</span><em>Trúng tới 5.000 vàng!</em>`;
+    scratch.addEventListener("click", () => window.dispatchEvent(new CustomEvent("buy-scratch")));
+    root.append(scratch);
+  }
+
+  // Sprint 226: animated reveal for a scratch result.
+  showScratchResult(label: string, payout: number): void {
+    const pop = document.createElement("div");
+    pop.style.cssText = "position:fixed;left:50%;top:38%;transform:translate(-50%,-50%) scale(0.6);z-index:10000;padding:18px 30px;border-radius:12px;background:rgba(18,16,10,0.95);border:2px solid " + (payout >= 1000 ? "#ffd166" : payout > 0 ? "#9be29b" : "#555") + ";color:#fff;font-size:20px;font-weight:800;text-align:center;transition:transform 0.18s ease, opacity 0.4s ease;pointer-events:none";
+    pop.innerHTML = `${escapeHtml(label)}${payout > 0 ? `<div style="margin-top:6px;color:#ffd166">+${payout.toLocaleString("vi-VN")} 🪙</div>` : ""}`;
+    document.body.append(pop);
+    requestAnimationFrame(() => { pop.style.transform = "translate(-50%,-50%) scale(1)"; });
+    setTimeout(() => { pop.style.opacity = "0"; }, 1500);
+    setTimeout(() => pop.remove(), 2000);
   }
 
   // Cache the latest quest payload so tab switches can re-render without
