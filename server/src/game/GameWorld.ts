@@ -201,6 +201,9 @@ import {
   GUILD_RAID_T2_BOSS_NAME,
   arenaSeasonIndexFor,
   arenaSeasonRewardGems,
+  petEffectiveBuff,
+  PET_EVOLVE_GEM_COST,
+  PET_MAX_LEVEL,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -874,6 +877,7 @@ export class GameWorld {
         craftXp: saved.craftXp ?? 0,
         arenaSeasonIndex: saved.arenaSeasonIndex,
         arenaSeasonKills: saved.arenaSeasonKills ?? 0,
+        petEvolved: saved.petEvolved ?? {},
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1671,6 +1675,14 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.arenaStreak = 0;
+        socket.emit("player", player);
+      });
+      // Sprint 273: grant pet XP directly (evolution tests).
+      (socket as Socket).on("devPetXp", (payload: { petId?: string; xp?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player || !payload?.petId) return;
+        (player.petXp ??= {})[payload.petId] = Math.max(0, Number(payload.xp) || 0);
+        this.recomputePetBonus(player);
         socket.emit("player", player);
       });
       // Sprint 271: pretend the season just rolled over for this player.
@@ -3307,6 +3319,38 @@ export class GameWorld {
       const [item] = stash.splice(idx, 1);
       player.inventory.items.push(item);
       socket.emit("system", `🏦 Đã rút ${item.name} về túi.`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    // Sprint 273: evolve a max-level pet (+50% buff, permanent).
+    socket.on("evolvePet", ({ petId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const pet = getPet(petId);
+      if (!pet || !(player.ownedPets ?? []).includes(petId)) {
+        socket.emit("system", "🐾 Bạn chưa sở hữu linh thú này.");
+        return;
+      }
+      if (player.petEvolved?.[petId]) {
+        socket.emit("system", "🐾 Linh thú này đã tiến hoá rồi.");
+        return;
+      }
+      const level = petLevelForXp((player.petXp ?? {})[petId] ?? 0);
+      if (level < PET_MAX_LEVEL) {
+        socket.emit("system", `🐾 Cần đạt cấp ${PET_MAX_LEVEL} để tiến hoá (đang cấp ${level}).`);
+        return;
+      }
+      if ((player.gems ?? 0) < PET_EVOLVE_GEM_COST) {
+        socket.emit("system", `🐾 Cần ${PET_EVOLVE_GEM_COST} 💎 để tiến hoá.`);
+        return;
+      }
+      player.gems = (player.gems ?? 0) - PET_EVOLVE_GEM_COST;
+      (player.petEvolved ??= {})[petId] = true;
+      this.recomputePetBonus(player);
+      this.unlockAchievement(player, "evolver");
+      socket.emit("system", `🐾✨ ${pet.name} đã TIẾN HOÁ — sức mạnh +50%!`);
+      this.io.emit("system", `🐾 ${player.accountName} vừa tiến hoá ${pet.name}!`);
       socket.emit("player", player);
       this.markDirty(player);
     });
@@ -5473,8 +5517,10 @@ export class GameWorld {
     player.stats.maxHp = Math.max(1, player.stats.maxHp - (player.petBonusMaxHp ?? 0));
 
     const pet = getPet(player.activePet);
-    // Scale the buff by the active pet's current level (Sprint 65).
-    const scaled = pet ? petBuffAtLevel(pet.buff, petLevelForXp((player.petXp ?? {})[pet.id] ?? 0)) : undefined;
+    // Scale the buff by level (Sprint 65) and evolution (Sprint 273).
+    const scaled = pet
+      ? petEffectiveBuff(pet.buff, petLevelForXp((player.petXp ?? {})[pet.id] ?? 0), Boolean(player.petEvolved?.[pet.id]))
+      : undefined;
     const atk = scaled?.attack ?? 0;
     const def = scaled?.defense ?? 0;
     const hp = scaled?.maxHp ?? 0;

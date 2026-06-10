@@ -63,7 +63,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 259 — achievements for the S225-243 loops.
   { id: "scratch-addict",  title: "Vua Vé Số",           description: "Cào 10 Vé Cào May Mắn.",                    reward: { gems: 10 } },
   { id: "story-hero",      title: "Anh Hùng Linh Vực",   description: "Hoàn thành toàn bộ chuỗi cốt truyện.",      reward: { gems: 20 } },
-  { id: "piggy-breaker",   title: "Đập Heo Phát Tài",    description: "Đập Heo Đất lần đầu tiên.",                 reward: { gems: 5 } }
+  { id: "piggy-breaker",   title: "Đập Heo Phát Tài",    description: "Đập Heo Đất lần đầu tiên.",                 reward: { gems: 5 } },
+  // Sprint 273 — pet evolution achievement.
+  { id: "evolver",         title: "Bậc Thầy Tiến Hoá",   description: "Tiến hoá 1 linh thú đạt cấp tối đa.",       reward: { gems: 20 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

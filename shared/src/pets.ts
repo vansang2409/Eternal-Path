@@ -131,3 +131,18 @@ export function petBuffAtLevel(buff: PetBuff, level: number): Required<PetBuff> 
     maxHp: Math.round((buff.maxHp ?? 0) * m)
   };
 }
+
+// ── Sprint 273: pet evolution — max-level pets ascend for gems ──
+export const PET_EVOLVE_GEM_COST = 100;
+export const PET_EVOLVE_MULT = 1.5;
+
+/** Buff including the evolution multiplier (applied after level scaling). */
+export function petEffectiveBuff(buff: PetBuff, level: number, evolved: boolean): Required<PetBuff> {
+  const base = petBuffAtLevel(buff, level);
+  if (!evolved) return base;
+  return {
+    attack: Math.round(base.attack * PET_EVOLVE_MULT),
+    defense: Math.round(base.defense * PET_EVOLVE_MULT),
+    maxHp: Math.round(base.maxHp * PET_EVOLVE_MULT)
+  };
+}

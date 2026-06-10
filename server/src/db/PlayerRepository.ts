@@ -43,6 +43,7 @@ interface SavedPlayer {
   craftXp?: number;
   arenaSeasonIndex?: number;
   arenaSeasonKills?: number;
+  petEvolved?: Record<string, boolean>;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -316,6 +317,7 @@ export class PlayerRepository {
       craftXp: player.craftXp,
       arenaSeasonIndex: player.arenaSeasonIndex,
       arenaSeasonKills: player.arenaSeasonKills,
+      petEvolved: player.petEvolved ? { ...player.petEvolved } : undefined,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

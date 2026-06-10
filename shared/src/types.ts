@@ -213,6 +213,8 @@ export interface PlayerState {
   arenaSeasonIndex?: number;
   /** Sprint 271: arena kills inside the current season. */
   arenaSeasonKills?: number;
+  /** Sprint 273: pets that have been evolved (id → true). */
+  petEvolved?: Record<string, boolean>;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -651,6 +653,8 @@ export interface ClientToServerEvents {
   stashWithdraw: (payload: { itemId: string }) => void;
   /** Sprint 253: buy +5 stash slots with gems. */
   buyStashSlots: () => void;
+  /** Sprint 273: evolve a max-level pet (gem sink, +50% buff). */
+  evolvePet: (payload: { petId: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;
