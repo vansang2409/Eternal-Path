@@ -1687,7 +1687,27 @@ export class Hud {
   // Sprint 201: mailbox state + modal (send gold + claim received mail).
   setMail(mail: MailMessage[]): void {
     this.mail = mail ?? [];
+    this.renderMailButton();
     if (document.getElementById("mailbox-modal")) this.renderMailbox();
+  }
+  // Sprint 203: floating mailbox button with an unread-count badge.
+  private renderMailButton(): void {
+    let btn = document.getElementById("mailbox-fab") as HTMLButtonElement | null;
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.id = "mailbox-fab";
+      btn.type = "button";
+      btn.title = "Hòm Thư (/mail)";
+      btn.style.cssText = "position:fixed;right:14px;bottom:14px;z-index:9000;width:44px;height:44px;border-radius:50%;border:1px solid #3a4256;background:rgba(20,23,30,0.92);color:#e8ecf5;font-size:20px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.5)";
+      btn.innerHTML = `📬<span id="mailbox-badge" style="position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;line-height:16px;border-radius:8px;background:#e0463a;color:#fff;font-size:10px;font-weight:700;padding:0 4px;display:none"></span>`;
+      btn.addEventListener("click", () => { this.onRequestMail(); this.openMailbox(); });
+      document.body.appendChild(btn);
+    }
+    const badge = document.getElementById("mailbox-badge");
+    if (badge) {
+      if (this.mail.length > 0) { badge.textContent = String(this.mail.length); badge.style.display = "block"; }
+      else badge.style.display = "none";
+    }
   }
   private openMailbox(): void {
     if (document.getElementById("mailbox-modal")) { document.getElementById("mailbox-modal")?.remove(); return; }

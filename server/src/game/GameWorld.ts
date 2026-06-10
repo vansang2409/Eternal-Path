@@ -813,6 +813,7 @@ export class GameWorld {
       // Sprint 201: notify any waiting mail on login.
       const mailCount = mailStore.countFor(player.accountName);
       if (mailCount > 0) socket.emit("system", `📬 Bạn có ${mailCount} thư trong Hòm Thư.`);
+      socket.emit("mailList", mailStore.getFor(player.accountName));
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
       // Notify online friends that this player just came online (Sprint 80).
       for (const other of this.players.values()) {
