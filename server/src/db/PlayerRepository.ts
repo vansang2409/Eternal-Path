@@ -52,6 +52,7 @@ interface SavedPlayer {
   autoSalvageRarity?: "off" | "common" | "rare";
   starterPackClaimed?: boolean;
   lastWeeklyClaimAt?: number;
+  lastDealDay?: number;
   petBonusAttack?: number;
   petBonusDefense?: number;
   petBonusMaxHp?: number;
@@ -305,6 +306,7 @@ export class PlayerRepository {
       autoSalvageRarity: player.autoSalvageRarity,
       starterPackClaimed: player.starterPackClaimed,
       lastWeeklyClaimAt: player.lastWeeklyClaimAt,
+      lastDealDay: player.lastDealDay,
       petBonusAttack: player.petBonusAttack,
       petBonusDefense: player.petBonusDefense,
       petBonusMaxHp: player.petBonusMaxHp,

@@ -190,7 +190,8 @@ export class GameScene extends Phaser.Scene {
       () => this.socket.emit("claimWeeklyReward"),
       (to, gold, message, itemId) => this.socket.emit("sendMail", { to, gold, message, itemId }),
       () => this.socket.emit("requestMail"),
-      (mailId) => this.socket.emit("claimMail", { mailId })
+      (mailId) => this.socket.emit("claimMail", { mailId }),
+      () => this.socket.emit("buyDailyDeal")
     );
     this.socket = createSocket();
     this.registerSocketEvents();

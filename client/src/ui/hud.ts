@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
+import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
@@ -96,7 +96,8 @@ export class Hud {
     private readonly onClaimWeekly: () => void = () => {},
     private readonly onSendMail: (to: string, gold: number, message: string, itemId?: string) => void = () => {},
     private readonly onRequestMail: () => void = () => {},
-    private readonly onClaimMail: (mailId: string) => void = () => {}
+    private readonly onClaimMail: (mailId: string) => void = () => {},
+    private readonly onBuyDailyDeal: () => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -958,6 +959,20 @@ export class Hud {
       <div class="gem-shop-action"><button id="rage-btn" class="gem-shop-buy-btn" type="button" ${rageActive ? "disabled" : ""}>${rageActive ? "Đang hiệu lực" : `💎 ${RAGE_GEM_COST}`}</button></div>`;
     root.appendChild(rb);
     rb.querySelector<HTMLButtonElement>("#rage-btn")?.addEventListener("click", () => this.onBuyRagePotion());
+    // Sprint 206: daily featured deal card.
+    const deal = dailyDealCosmetic();
+    const dealPrice = dailyDealPrice();
+    const dealOwned = (this.player.cosmetics ?? []).includes(deal.id);
+    const swatch = "#" + deal.color.toString(16).padStart(6, "0");
+    const db = document.createElement("div");
+    db.className = "gem-shop-card";
+    db.style.cssText = "align-items:center;border:1px solid #c8a948";
+    db.innerHTML = `
+      <div class="gem-shop-swatch" style="background:${swatch};display:flex;align-items:center;justify-content:center;font-size:16px">🏷️</div>
+      <div class="gem-shop-info"><strong>KM hôm nay: ${escapeHtml(deal.name)}</strong><p>Giảm 35% — <s style="color:#8e9192">${deal.gemPrice}</s> còn <strong style="color:#ffd166">${dealPrice} 💎</strong>.</p></div>
+      <div class="gem-shop-action"><button id="deal-btn" class="gem-shop-buy-btn" type="button" ${dealOwned ? "disabled" : ""}>${dealOwned ? "Đã có" : `💎 ${dealPrice}`}</button></div>`;
+    root.appendChild(db);
+    db.querySelector<HTMLButtonElement>("#deal-btn")?.addEventListener("click", () => this.onBuyDailyDeal());
     const owned = new Set(this.player.cosmetics ?? []);
     const active = this.player.activeCosmeticSkin;
     // Sprint 197: cosmetics collection progress header.

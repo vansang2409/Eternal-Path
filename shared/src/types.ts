@@ -247,6 +247,8 @@ export interface PlayerState {
   starterPackClaimed?: boolean;
   /** Timestamp (ms) of the last weekly reward claim (Sprint 190). */
   lastWeeklyClaimAt?: number;
+  /** UTC day index of the last daily-deal purchase (Sprint 206). */
+  lastDealDay?: number;
 }
 
 // In-tile coordinates of the PvP arena rectangle inside town (x0,y0,x1,y1
@@ -549,6 +551,7 @@ export interface ClientToServerEvents {
   sendMail: (payload: { to: string; gold: number; message: string; itemId?: string }) => void;
   requestMail: () => void;
   claimMail: (payload: { mailId: string }) => void;
+  buyDailyDeal: () => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;
   socketGem: (payload: { itemId: string; gemId: string }) => void;

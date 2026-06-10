@@ -249,6 +249,20 @@ export function getCosmetic(id: string): Cosmetic | undefined {
   return COSMETICS.find((c) => c.id === id);
 }
 
+// Daily featured deal (Sprint 206): one Gem cosmetic, rotated deterministically
+// by UTC day, sold at a discount. Pure so client + server + tests agree.
+export const DAILY_DEAL_DISCOUNT = 0.35;
+export function dailyDealDayIndex(now: number = Date.now()): number {
+  return Math.floor(now / 86_400_000);
+}
+export function dailyDealCosmetic(now: number = Date.now()): Cosmetic {
+  const pool = COSMETICS.filter((c) => c.gemPrice > 0);
+  return pool[dailyDealDayIndex(now) % pool.length];
+}
+export function dailyDealPrice(now: number = Date.now()): number {
+  return Math.max(1, Math.floor(dailyDealCosmetic(now).gemPrice * (1 - DAILY_DEAL_DISCOUNT)));
+}
+
 // Daily login: gems for X consecutive days. For day N, granted gemAmount.
 export const DAILY_GEM_REWARD = 8;
 // Minimum interval between daily claims (in ms) — 20 hours (allows a one-day

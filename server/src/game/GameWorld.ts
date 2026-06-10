@@ -116,6 +116,9 @@ import {
   RECIPES,
   classCanLearnSkill,
   getCosmetic,
+  dailyDealCosmetic,
+  dailyDealPrice,
+  dailyDealDayIndex,
   getRecipe,
   getBrewRecipe,
   MOUNT_CATALOG,
@@ -763,6 +766,7 @@ export class GameWorld {
         autoSalvageRarity: saved.autoSalvageRarity ?? "off",
         starterPackClaimed: saved.starterPackClaimed ?? false,
         lastWeeklyClaimAt: saved.lastWeeklyClaimAt ?? 0,
+        lastDealDay: saved.lastDealDay ?? 0,
         activePet: saved.activePet,
         petBonusAttack: saved.petBonusAttack ?? 0,
         petBonusDefense: saved.petBonusDefense ?? 0,
@@ -2988,6 +2992,36 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", `📦 Thưởng tuần: +${WEEKLY_REWARD_GOLD.toLocaleString("vi-VN")} vàng, +${WEEKLY_REWARD_GEMS} 💎!`);
       this.emitFloating(player.id, player.position, WEEKLY_REWARD_GOLD, "loot", "Thưởng tuần");
+      this.markDirty(player);
+    });
+
+    // Sprint 206: buy the rotating daily-deal cosmetic at a discount (1/day).
+    socket.on("buyDailyDeal", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const today = dailyDealDayIndex();
+      if ((player.lastDealDay ?? 0) === today) {
+        socket.emit("system", "Bạn đã mua khuyến mãi hôm nay rồi — quay lại ngày mai.");
+        return;
+      }
+      const cosmetic = dailyDealCosmetic();
+      const owned = player.cosmetics ?? [];
+      if (owned.includes(cosmetic.id)) {
+        socket.emit("system", `Bạn đã sở hữu ${cosmetic.name}.`);
+        return;
+      }
+      const price = dailyDealPrice();
+      const gems = player.gems ?? 0;
+      if (gems < price) {
+        socket.emit("system", `Cần ${price} 💎 để mua ${cosmetic.name} (KM).`);
+        return;
+      }
+      player.gems = gems - price;
+      player.cosmetics = [...owned, cosmetic.id];
+      player.lastDealDay = today;
+      this.checkCollectionAchievements(player);
+      socket.emit("player", player);
+      socket.emit("system", `🏷️ Mua KM ${cosmetic.name} chỉ ${price} 💎 (giảm ${Math.round(35)}%)!`);
       this.markDirty(player);
     });
 
