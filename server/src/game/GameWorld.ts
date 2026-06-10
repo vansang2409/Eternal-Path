@@ -165,6 +165,9 @@ import {
   SCRATCH_TICKET_COST,
   nextMaterialTier,
   MATERIAL_UPGRADE_RATIO,
+  piggyAfterKill,
+  PIGGY_BREAK_GEM_COST,
+  PIGGY_GOLD_CAP,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -766,6 +769,7 @@ export class GameWorld {
         fishCaught: saved.fishCaught ?? 0,
         fishPity: saved.fishPity ?? 0,
         scratchTickets: saved.scratchTickets ?? 0,
+        piggyGold: saved.piggyGold ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3061,6 +3065,28 @@ export class GameWorld {
       this.doScratch(player, Math.random());
     });
 
+    // Sprint 231: break the piggy bank — gems in, accrued gold out.
+    socket.on("breakPiggy", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const piggy = player.piggyGold ?? 0;
+      if (piggy <= 0) {
+        socket.emit("system", "🐷 Heo Đất đang rỗng — hạ quái để tích vàng.");
+        return;
+      }
+      if ((player.gems ?? 0) < PIGGY_BREAK_GEM_COST) {
+        socket.emit("system", `🐷 Cần ${PIGGY_BREAK_GEM_COST} 💎 để đập Heo Đất.`);
+        return;
+      }
+      player.gems = (player.gems ?? 0) - PIGGY_BREAK_GEM_COST;
+      player.piggyGold = 0;
+      player.stats.gold += piggy;
+      this.emitFloating(player.id, player.position, piggy, "loot", `+${piggy} gold`);
+      socket.emit("system", `🐷💥 Đập Heo Đất: +${piggy} vàng!`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
     // Sprint 227: trade 5 identical materials for 1 of the next tier.
     socket.on("exchangeMaterials", ({ materialId }) => {
       const player = this.players.get(socket.id);
@@ -3972,6 +3998,12 @@ export class GameWorld {
     }
     this.updateQuestProgressForKill(player, monster);
     player.totalKills = (player.totalKills ?? 0) + 1;
+    // Sprint 231: drip gold into the piggy bank (notify once when it fills).
+    const piggyBefore = player.piggyGold ?? 0;
+    player.piggyGold = piggyAfterKill(piggyBefore);
+    if (player.piggyGold >= PIGGY_GOLD_CAP && piggyBefore < PIGGY_GOLD_CAP) {
+      this.sockets.get(player.id)?.emit("system", `🐷 Heo Đất đã ĐẦY (${PIGGY_GOLD_CAP} vàng)! Đập heo trong Cửa Hàng Gem.`);
+    }
     // Sprint 217: bestiary — track per-type kills and pay tier rewards.
     this.creditBestiaryKill(player, monster.type);
     // Battle Pass exp from kills — silently accrue, leveling auto.

@@ -191,6 +191,8 @@ export interface PlayerState {
   fishPity?: number;
   /** Sprint 225: lifetime scratch tickets bought. */
   scratchTickets?: number;
+  /** Sprint 231: piggy-bank gold accrued from kills (break with gems). */
+  piggyGold?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).
@@ -593,6 +595,8 @@ export interface ClientToServerEvents {
   buyScratchTicket: () => void;
   /** Sprint 227: trade 5 of a material for 1 of the next tier. */
   exchangeMaterials: (payload: { materialId: MaterialId }) => void;
+  /** Sprint 231: break the piggy bank (costs gems, pays its gold). */
+  breakPiggy: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;
