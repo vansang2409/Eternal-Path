@@ -15,6 +15,7 @@ import {
   getMount,
   mountLabel,
   affixLabel,
+  getAffix,
   isWalkableTile,
   isVipActive,
   isGoldBoostActive,
@@ -2220,7 +2221,9 @@ export class GameScene extends Phaser.Scene {
     // Status effect tints override the base definition tint:
     // burn -> orange/red, bleed -> magenta, freeze -> cyan.
     const effects = monster.activeEffects ?? [];
-    let tint = monster.boss ? 0xfff1a8 : monster.elite ? 0xffd36b : definition.tint;
+    // Sprint 213: elites are tinted by their affix so the modifier reads at a glance.
+    const affixTint = monster.elite && monster.affix ? getAffix(monster.affix)?.tint : undefined;
+    let tint = monster.boss ? 0xfff1a8 : affixTint ?? (monster.elite ? 0xffd36b : definition.tint);
     if (effects.some((e) => e.kind === "burn")) tint = 0xff6a3c;
     else if (effects.some((e) => e.kind === "freeze")) tint = 0x9bd2ff;
     else if (effects.some((e) => e.kind === "bleed")) tint = 0xd94b88;
