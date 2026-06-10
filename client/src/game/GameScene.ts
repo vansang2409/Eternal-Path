@@ -80,6 +80,9 @@ export class GameScene extends Phaser.Scene {
   private prevParagonPoints?: number;
   // Sprint 289: tower floor for the clear fanfare.
   private prevTowerFloor?: number;
+  // Sprint 293: live world events for the countdown widget.
+  private activeWorldEvents = new Map<string, { until: number; label: string; color: string }>();
+  private eventTimerText?: Phaser.GameObjects.Text;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -339,6 +342,24 @@ export class GameScene extends Phaser.Scene {
       this.dpsHits.push({ at: now, amount });
       this.lastDpsHitAt = now;
     });
+    // Sprint 293: world-event countdown widget (top-right, under combo).
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => {
+      const now = Date.now();
+      const lines: string[] = [];
+      for (const [kind, ev] of this.activeWorldEvents) {
+        if (ev.until <= now) { this.activeWorldEvents.delete(kind); continue; }
+        const left = Math.ceil((ev.until - now) / 1000);
+        const mm = Math.floor(left / 60).toString().padStart(2, "0");
+        const ss = (left % 60).toString().padStart(2, "0");
+        lines.push(`${ev.label} ${mm}:${ss}`);
+      }
+      if (!this.eventTimerText) {
+        this.eventTimerText = this.add.text(this.scale.width - 18, 192, "", {
+          fontFamily: "monospace", fontSize: "12px", color: "#ffd166", stroke: "#000000", strokeThickness: 3, align: "right"
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(10000);
+      }
+      this.eventTimerText.setText(lines.join("\n"));
+    } });
     // Sprint 257: auto-FX governor — sustained low FPS flips ambient FX to
     // Low once per session (player can flip it back with G).
     this.time.addEvent({ delay: 1000, loop: true, callback: () => {
@@ -1895,6 +1916,8 @@ export class GameScene extends Phaser.Scene {
     });
     // Sprint 167/168: Happy Hour world event banner + persistent golden glow.
     this.socket.on("worldEvent", ({ kind, multiplier, until }) => {
+      // Sprint 293: register the event for the corner countdown widget.
+      this.activeWorldEvents.set(kind, { until, label: kind === "happyHour" ? `🌟 x${multiplier} vàng` : `🌩️ x${multiplier} nguyên liệu`, color: kind === "happyHour" ? "#ffd166" : "#9ad0ff" });
       if (kind === "happyHour") {
         this.showTopBanner(`🌟 GIỜ VÀNG! x${multiplier} vàng rơi ra!`, "level", 3500);
         this.setHappyHourGlow(Math.max(0, until - Date.now()));
