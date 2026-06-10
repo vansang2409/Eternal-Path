@@ -179,6 +179,8 @@ import {
   makeTreasureMapItem,
   rollTreasureGold,
   TREASURE_MAP_DROP_RATE,
+  STORY_QUEST_CHAIN,
+  STORY_CHAIN_BONUS_GEMS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -477,13 +479,7 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
 
 const TUTORIAL_QUEST_IDS = QUEST_TEMPLATES.filter((q) => q.category === "tutorial").map((q) => q.id);
 const DAILY_QUEST_POOL = QUEST_TEMPLATES.filter((q) => q.category === "daily").map((q) => q.id);
-// Sprint 243: the story quests form an ordered chain — one active at a time,
-// the next unlocks when the previous is claimed. Finishing it all pays gems.
-const STORY_QUEST_CHAIN = [
-  "story-cull-5", "story-reach-5", "story-midlands", "story-reach-10",
-  "story-deeplands", "story-craft", "story-equip-epic", "story-treasure-hunter"
-];
-const STORY_CHAIN_BONUS_GEMS = 50;
+// Sprint 243/244: the story chain lives in shared (client renders progress).
 const DAILY_QUESTS_PER_DAY = 3;
 const DAILY_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
 

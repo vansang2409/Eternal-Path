@@ -27,3 +27,4 @@ export * from "./piggy.js";
 export * from "./returning.js";
 export * from "./killstreak.js";
 export * from "./treasure.js";
+export * from "./story.js";

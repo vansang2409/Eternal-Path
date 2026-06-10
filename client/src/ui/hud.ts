@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -2082,6 +2082,18 @@ export class Hud {
       bar.appendChild(btn);
     }
     root.appendChild(bar);
+
+    // Sprint 244: story-chain progress tracker on the story tab.
+    if (this.questTab === "story") {
+      const done = Math.min(this.player?.storyQuestIndex ?? 0, STORY_QUEST_CHAIN.length);
+      const pct = Math.round((done / STORY_QUEST_CHAIN.length) * 100);
+      root.insertAdjacentHTML("beforeend", `
+        <div style="padding:8px 10px;margin:8px 0;border-radius:6px;background:rgba(40,34,18,0.55);border:1px solid #6b5a2a">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><strong style="color:#ffd166">📜 Cốt truyện Linh Vực</strong><span style="color:#d6dddf">Chương ${done}/${STORY_QUEST_CHAIN.length}</span></div>
+          <div style="height:6px;border-radius:3px;background:#222;overflow:hidden;margin-top:6px"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,#c8a948,#ffd166)"></div></div>
+          <div style="font-size:10px;color:#9aa;margin-top:4px">${done >= STORY_QUEST_CHAIN.length ? "✨ Đã hoàn thành toàn bộ — nhận " + STORY_CHAIN_BONUS_GEMS + " 💎" : "Hoàn thành cả chuỗi để nhận " + STORY_CHAIN_BONUS_GEMS + " 💎."}</div>
+        </div>`);
+    }
 
     if (!payload) {
       root.insertAdjacentHTML("beforeend", `<div class="empty">${t("noQuests")}</div>`);
