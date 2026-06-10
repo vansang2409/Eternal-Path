@@ -69,6 +69,8 @@ export class GameScene extends Phaser.Scene {
   // Sprint 257: auto-FX governor state.
   private lowFpsSeconds = 0;
   private fxAutoDropped = false;
+  // Sprint 263: previous craft counter for forge-spark detection.
+  private prevItemsCrafted?: number;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -1565,6 +1567,22 @@ export class GameScene extends Phaser.Scene {
           this.playGoldGain(player.stats.gold - this.prevSelfGold, player.position);
         }
         this.prevSelfGold = player.stats.gold;
+        // Sprint 263: forge sparks when a craft completes.
+        if (this.prevItemsCrafted !== undefined && (player.itemsCrafted ?? 0) > this.prevItemsCrafted) {
+          const self = this.players.get(this.selfId);
+          if (self) {
+            for (let i = 0; i < 12; i++) {
+              const spark = this.add.rectangle(self.x + (Math.random() - 0.5) * 8, self.y - 6, 2, 2, [0xffd166, 0xff9b3d, 0xffffff][i % 3], 1).setDepth(self.depth + 2);
+              const ang = Math.random() * Math.PI * 2;
+              const dist = 18 + Math.random() * 22;
+              this.tweens.add({ targets: spark, x: spark.x + Math.cos(ang) * dist, y: spark.y + Math.sin(ang) * dist - 8, alpha: 0, duration: 380 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
+            }
+            const hammer = this.add.text(self.x, self.y - 30, "⚒️", { fontSize: "18px" }).setOrigin(0.5).setDepth(9999).setScale(0.4);
+            this.tweens.add({ targets: hammer, scale: 1.1, duration: 160, ease: "Back.Out" });
+            this.tweens.add({ targets: hammer, y: hammer.y - 16, alpha: 0, delay: 500, duration: 500, onComplete: () => hammer.destroy() });
+          }
+        }
+        this.prevItemsCrafted = player.itemsCrafted ?? 0;
         this.selfPlayer = player;
         this.reconcileLocalPlayer(player.position);
         this.updateTargetPanel();
