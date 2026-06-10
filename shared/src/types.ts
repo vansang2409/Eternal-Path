@@ -320,6 +320,8 @@ export interface LeaderboardRow {
   pvpKills: number;
   /** Sprint 234: lifetime fish caught. */
   fishCaught?: number;
+  /** Sprint 284: highest tower floor cleared. */
+  towerFloor?: number;
 }
 
 export interface LeaderboardPayload {
@@ -328,6 +330,8 @@ export interface LeaderboardPayload {
   byKills: LeaderboardRow[];
   /** Sprint 234: top anglers. */
   byFish?: LeaderboardRow[];
+  /** Sprint 284: top tower climbers. */
+  byTower?: LeaderboardRow[];
 }
 
 export interface MonsterStatusEffect {

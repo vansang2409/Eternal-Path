@@ -1054,8 +1054,8 @@ export class GameScene extends Phaser.Scene {
 
   // ------- leaderboard -------
 
-  private lastLeaderboard?: { byLevel: any[]; byGold: any[]; byKills: any[]; byFish?: any[] };
-  private activeLeaderboardTab: "byLevel" | "byGold" | "byKills" | "byFish" = "byLevel";
+  private lastLeaderboard?: { byLevel: any[]; byGold: any[]; byKills: any[]; byFish?: any[]; byTower?: any[] };
+  private activeLeaderboardTab: "byLevel" | "byGold" | "byKills" | "byFish" | "byTower" = "byLevel";
 
   private renderLeaderboard(): void {
     if (!this.lastLeaderboard) return;
@@ -1066,7 +1066,8 @@ export class GameScene extends Phaser.Scene {
       { id: "byLevel" as const, label: "Cấp" },
       { id: "byGold" as const, label: "Vàng" },
       { id: "byKills" as const, label: "PvP" },
-      { id: "byFish" as const, label: "🎣 Cá" }
+      { id: "byFish" as const, label: "🎣 Cá" },
+      { id: "byTower" as const, label: "🗼 Tháp" }
     ];
     for (const t of tabs) {
       const btn = document.createElement("button");
@@ -1081,7 +1082,7 @@ export class GameScene extends Phaser.Scene {
     }
     const rows = this.lastLeaderboard[this.activeLeaderboardTab] ?? [];
     const valueHead = document.querySelector<HTMLTableCellElement>("#leaderboard-value-head");
-    if (valueHead) valueHead.textContent = this.activeLeaderboardTab === "byLevel" ? "Cấp" : this.activeLeaderboardTab === "byGold" ? "Vàng" : this.activeLeaderboardTab === "byFish" ? "Cá" : "Hạ";
+    if (valueHead) valueHead.textContent = this.activeLeaderboardTab === "byLevel" ? "Cấp" : this.activeLeaderboardTab === "byGold" ? "Vàng" : this.activeLeaderboardTab === "byFish" ? "Cá" : this.activeLeaderboardTab === "byTower" ? "Tầng" : "Hạ";
     const tbody = document.querySelector<HTMLTableSectionElement>("#leaderboard-table tbody");
     if (!tbody) return;
     tbody.innerHTML = "";
@@ -1091,7 +1092,7 @@ export class GameScene extends Phaser.Scene {
     }
     rows.forEach((row, i) => {
       const tr = document.createElement("tr");
-      const val = this.activeLeaderboardTab === "byLevel" ? row.level : this.activeLeaderboardTab === "byGold" ? row.gold : this.activeLeaderboardTab === "byFish" ? (row.fishCaught ?? 0) : row.pvpKills;
+      const val = this.activeLeaderboardTab === "byLevel" ? row.level : this.activeLeaderboardTab === "byGold" ? row.gold : this.activeLeaderboardTab === "byFish" ? (row.fishCaught ?? 0) : this.activeLeaderboardTab === "byTower" ? (row.towerFloor ?? 0) : row.pvpKills;
       tr.innerHTML = `<td style="padding:6px 4px;border-bottom:1px solid #2a2a2a;color:${i === 0 ? "#ffd166" : "#bdbdbd"}">${i + 1}</td><td style="padding:6px 4px;border-bottom:1px solid #2a2a2a">${row.accountName}</td><td style="text-align:right;padding:6px 4px;border-bottom:1px solid #2a2a2a;color:#ffd166">${val}</td>`;
       tbody.appendChild(tr);
     });

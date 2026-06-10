@@ -3741,14 +3741,17 @@ export class GameWorld {
         level: p.stats.level,
         gold: p.stats.gold,
         pvpKills: p.pvpKills ?? 0,
-        fishCaught: p.fishCaught ?? 0
+        fishCaught: p.fishCaught ?? 0,
+        towerFloor: Math.max(0, (p.towerFloor ?? 1) - 1)
       }));
       const byLevel = [...players].sort((a, b) => b.level - a.level || b.gold - a.gold).slice(0, 10);
       const byGold = [...players].sort((a, b) => b.gold - a.gold).slice(0, 10);
       const byKills = [...players].sort((a, b) => b.pvpKills - a.pvpKills).slice(0, 10);
       // Sprint 234: top anglers tab.
       const byFish = [...players].sort((a, b) => b.fishCaught - a.fishCaught).slice(0, 10);
-      socket.emit("leaderboard", { byLevel, byGold, byKills, byFish });
+      // Sprint 284: top tower climbers (floors CLEARED).
+      const byTower = [...players].sort((a, b) => (b.towerFloor ?? 0) - (a.towerFloor ?? 0)).slice(0, 10);
+      socket.emit("leaderboard", { byLevel, byGold, byKills, byFish, byTower });
     });
 
     socket.on("rerollDailyQuests", () => {
