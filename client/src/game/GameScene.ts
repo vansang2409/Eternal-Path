@@ -244,6 +244,8 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("exchange-material", (e) => {
       this.socket.emit("exchangeMaterials", { materialId: (e as CustomEvent).detail });
     });
+    // Sprint 232: piggy-bank break.
+    window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 226: scratch ticket buy + result reveal (jackpot screen flash).
     window.addEventListener("buy-scratch", () => this.socket.emit("buyScratchTicket"));
     this.socket.on("scratchResult", (r) => {

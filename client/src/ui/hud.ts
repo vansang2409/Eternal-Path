@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -924,6 +924,23 @@ export class Hud {
       <div class="gem-shop-action"><button id="mystery-buy-btn" class="gem-shop-buy-btn" type="button">💎 50 — Mở</button></div>`;
     root.appendChild(box);
     box.querySelector<HTMLButtonElement>("#mystery-buy-btn")?.addEventListener("click", () => this.onBuyMysteryBox());
+    // Sprint 232: piggy bank card — live fill bar + break button.
+    const piggy = this.player.piggyGold ?? 0;
+    const piggyPct = Math.min(100, Math.round((piggy / PIGGY_GOLD_CAP) * 100));
+    const pig = document.createElement("div");
+    pig.className = "gem-shop-card";
+    pig.style.cssText = "background:linear-gradient(to right,rgba(255,170,180,0.14),rgba(255,209,102,0.10));border:1px solid rgba(255,170,180,0.45)";
+    pig.innerHTML = `
+      <div class="gem-shop-swatch" style="background:radial-gradient(circle,#ffb9c4,#9b4c5e);display:flex;align-items:center;justify-content:center;font-size:20px">🐷</div>
+      <div class="gem-shop-info">
+        <strong>Heo Đất ${piggyPct >= 100 ? "(ĐẦY!)" : ""}</strong>
+        <p>Mỗi quái hạ gục bỏ ${PIGGY_GOLD_PER_KILL} vàng vào heo (tối đa ${PIGGY_GOLD_CAP.toLocaleString("vi-VN")}).</p>
+        <div style="height:6px;border-radius:3px;background:#222;overflow:hidden;margin-top:4px"><div style="height:100%;width:${piggyPct}%;background:linear-gradient(to right,#ffb9c4,#ffd166)"></div></div>
+        <small style="color:#ffd166">${piggy.toLocaleString("vi-VN")} 🪙 đang ủ trong heo</small>
+      </div>
+      <div class="gem-shop-action"><button id="piggy-break-btn" class="gem-shop-buy-btn" type="button" ${piggy <= 0 ? "disabled" : ""}>💎 ${PIGGY_BREAK_GEM_COST} — Đập</button></div>`;
+    root.appendChild(pig);
+    pig.querySelector<HTMLButtonElement>("#piggy-break-btn")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("break-piggy")));
     // Gem → Gold exchange row (Sprint 78).
     const ex = document.createElement("div");
     ex.className = "gem-shop-card";
