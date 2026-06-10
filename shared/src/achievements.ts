@@ -51,7 +51,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "fusionist",       title: "Bậc Thầy Hợp Nhất",    description: "Hợp nhất 3 trang bị Thường thành 1 Hiếm.", reward: { gems: 10 } },
   // Sprint 196 — collection completionist achievements.
   { id: "pet-collector",      title: "Nhà Sưu Thú",        description: "Sở hữu 6 linh thú.",   reward: { gems: 20 } },
-  { id: "cosmetic-collector", title: "Tủ Đồ Hoành Tráng",  description: "Sở hữu 6 trang phục.", reward: { gems: 20 } }
+  { id: "cosmetic-collector", title: "Tủ Đồ Hoành Tráng",  description: "Sở hữu 6 trang phục.", reward: { gems: 20 } },
+  // Sprint 204 — mailbox achievement.
+  { id: "pen-pal",         title: "Bưu Tá",              description: "Gửi 1 lá thư cho người chơi khác.",      reward: { gems: 10 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

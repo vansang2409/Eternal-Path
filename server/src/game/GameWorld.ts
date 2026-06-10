@@ -251,7 +251,8 @@ type QuestObjective =
   | { kind: "collectGold"; amount: number }
   | { kind: "salvageGear" }
   | { kind: "upgradeGear" }
-  | { kind: "socketGem" };
+  | { kind: "socketGem" }
+  | { kind: "sendMail" };
 
 interface QuestTemplate {
   id: string;
@@ -430,6 +431,14 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     description: "Khảm 1 viên đá quý vào trang bị.",
     required: 1, rewardGold: 280, rewardExp: 380,
     category: "daily", objective: { kind: "socketGem" }
+  },
+  // Sprint 204: send-mail daily quest.
+  {
+    id: "daily-mail-1",
+    title: "Hằng ngày: Gửi 1 lá thư",
+    description: "Gửi vàng/vật phẩm cho người chơi khác qua Hòm Thư.",
+    required: 1, rewardGold: 200, rewardExp: 300,
+    category: "daily", objective: { kind: "sendMail" }
   }
 ];
 
@@ -2728,6 +2737,8 @@ export class GameWorld {
       socket.emit("player", sender);
       const sentParts = [amount > 0 ? `${amount.toLocaleString("vi-VN")} vàng` : "", attached ? attached.name : ""].filter(Boolean).join(" + ");
       socket.emit("system", `📮 Đã gửi ${sentParts} cho ${cleanTo}.`);
+      this.unlockAchievement(sender, "pen-pal");
+      this.bumpQuestProgress(sender, ["sendMail"]);
       this.markDirty(sender);
       // Notify the recipient live if they're online.
       const online = [...this.players.values()].find((p) => p.accountName === cleanTo);
