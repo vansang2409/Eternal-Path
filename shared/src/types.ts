@@ -477,6 +477,7 @@ export interface ServerToClientEvents {
   announce: (payload: { accountName: string; itemName: string; rarity: Rarity }) => void;
   bossAnnounce: (payload: { kind: "spawn" | "defeat"; bossName: string; accountName?: string }) => void;
   worldEvent: (payload: { kind: string; until: number; multiplier: number }) => void;
+  mailList: (payload: MailMessage[]) => void;
   questList: (payload: QuestListPayload) => void;
   partyUpdate: (payload: PartyView | null) => void;
   partyInvite: (payload: PartyInvite) => void;
@@ -502,6 +503,16 @@ export interface ServerToClientEvents {
   mysteryBoxResult: (payload: { kind: string; label: string; converted: boolean }) => void;
   playerProfile: (payload: PlayerProfile | null) => void;
   onlineList: (payload: { count: number; players: Array<{ accountName: string; level: number; guildTag?: string }> }) => void;
+}
+
+// Mailbox (Sprint 201): player-to-player gold mail, delivered even offline.
+export interface MailMessage {
+  id: string;
+  from: string;
+  to: string;
+  gold: number;
+  message: string;
+  sentAt: number;
 }
 
 export interface ClientToServerEvents {
@@ -533,6 +544,9 @@ export interface ClientToServerEvents {
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
   claimStarterPack: () => void;
   claimWeeklyReward: () => void;
+  sendMail: (payload: { to: string; gold: number; message: string }) => void;
+  requestMail: () => void;
+  claimMail: (payload: { mailId: string }) => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;
   socketGem: (payload: { itemId: string; gemId: string }) => void;

@@ -187,7 +187,10 @@ export class GameScene extends Phaser.Scene {
       (petId) => this.socket.emit("sacrificePet", { petId }),
       (itemId, gemId) => this.socket.emit("socketGem", { itemId, gemId }),
       (itemId) => this.socket.emit("unsocketGem", { itemId }),
-      () => this.socket.emit("claimWeeklyReward")
+      () => this.socket.emit("claimWeeklyReward"),
+      (to, gold, message) => this.socket.emit("sendMail", { to, gold, message }),
+      () => this.socket.emit("requestMail"),
+      (mailId) => this.socket.emit("claimMail", { mailId })
     );
     this.socket = createSocket();
     this.registerSocketEvents();
@@ -1648,6 +1651,7 @@ export class GameScene extends Phaser.Scene {
         this.setHappyHourGlow(Math.max(0, until - Date.now()));
       }
     });
+    this.socket.on("mailList", (mail) => this.hud.setMail(mail));
     this.socket.on("chatHistory", (messages) => this.hud.setChatHistory(messages));
     this.socket.on("chatMessage", (message) => {
       this.hud.appendChat(message);

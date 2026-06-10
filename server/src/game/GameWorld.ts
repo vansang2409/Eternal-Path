@@ -197,6 +197,7 @@ import type {
 import type { PlayerRepository } from "../db/PlayerRepository.js";
 import { guildStore } from "../db/GuildStore.js";
 import { marketStore } from "../db/MarketStore.js";
+import { mailStore } from "../db/MailStore.js";
 
 type GameSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type GameServerSocket = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -809,6 +810,9 @@ export class GameWorld {
       }
       socket.emit("marketUpdate", this.marketView(player.accountName));
       socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
+      // Sprint 201: notify any waiting mail on login.
+      const mailCount = mailStore.countFor(player.accountName);
+      if (mailCount > 0) socket.emit("system", `📬 Bạn có ${mailCount} thư trong Hòm Thư.`);
       socket.emit("system", `Chào mừng trở lại, ${resolvedName}.`);
       // Notify online friends that this player just came online (Sprint 80).
       for (const other of this.players.values()) {
@@ -2692,6 +2696,50 @@ export class GameWorld {
       this.sockets.get(recipient.id)?.emit("system", `💰 ${sender.accountName} đã chuyển cho bạn ${net.toLocaleString("vi-VN")} vàng.`);
       this.markDirty(sender);
       this.markDirty(recipient);
+    });
+
+    // Sprint 201: mailbox — send gold to any player (delivered offline).
+    socket.on("sendMail", ({ to, gold, message }) => {
+      const sender = this.players.get(socket.id);
+      if (!sender) return;
+      const amount = Math.floor(Number(gold) || 0);
+      const cleanTo = String(to ?? "").trim().slice(0, 20);
+      const cleanMsg = String(message ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+      if (!cleanTo) { socket.emit("system", "Nhập tên người nhận."); return; }
+      if (cleanTo === sender.accountName) { socket.emit("system", "Không thể gửi thư cho chính mình."); return; }
+      if (amount < 1) { socket.emit("system", "Số vàng gửi không hợp lệ."); return; }
+      if (sender.stats.gold < amount) { socket.emit("system", `Không đủ vàng (đang có ${sender.stats.gold}).`); return; }
+      const mail = { id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: sender.accountName, to: cleanTo, gold: amount, message: cleanMsg, sentAt: Date.now() };
+      if (!mailStore.send(mail)) { socket.emit("system", `Hòm thư của ${cleanTo} đã đầy.`); return; }
+      sender.stats.gold -= amount;
+      socket.emit("player", sender);
+      socket.emit("system", `📮 Đã gửi ${amount.toLocaleString("vi-VN")} vàng cho ${cleanTo}.`);
+      this.markDirty(sender);
+      // Notify the recipient live if they're online.
+      const online = [...this.players.values()].find((p) => p.accountName === cleanTo);
+      if (online) {
+        this.sockets.get(online.id)?.emit("system", `📬 Bạn có thư mới từ ${sender.accountName} (mở Hòm Thư để nhận).`);
+        this.sockets.get(online.id)?.emit("mailList", mailStore.getFor(cleanTo));
+      }
+    });
+
+    socket.on("requestMail", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      socket.emit("mailList", mailStore.getFor(player.accountName));
+    });
+
+    socket.on("claimMail", ({ mailId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const mail = mailStore.claim(player.accountName, String(mailId ?? ""));
+      if (!mail) { socket.emit("system", "Thư không còn tồn tại."); return; }
+      player.stats.gold += mail.gold;
+      socket.emit("player", player);
+      socket.emit("mailList", mailStore.getFor(player.accountName));
+      socket.emit("system", `📨 Đã nhận ${mail.gold.toLocaleString("vi-VN")} vàng từ ${mail.from}.`);
+      this.emitFloating(player.id, player.position, mail.gold, "loot", `+${mail.gold} thư`);
+      this.markDirty(player);
     });
 
     socket.on("sellAllMaterials", () => {

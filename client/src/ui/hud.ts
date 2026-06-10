@@ -1,6 +1,6 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
 import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
-import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
+import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
 const rarityClass = {
@@ -13,6 +13,7 @@ export class Hud {
   private player?: PlayerState;
   private selectedItemId?: string;
   private buffTimer?: ReturnType<typeof setInterval>;
+  private mail: MailMessage[] = [];
   private autoRetargetEnabled = false;
   private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0, swiftStrike: 0, heal: 0, piercingStrike: 0, whirlwind: 0, swiftBlade: 0, greaterHeal: 0, lifedrain: 0, flameBurst: 0, thunderStrike: 0, icicleStorm: 0, shadowAssault: 0, healingWave: 0, divineLight: 0, voidNova: 0 };
   private party: PartyView | null = null;
@@ -92,7 +93,10 @@ export class Hud {
     private readonly onSacrificePet: (petId: string) => void = () => {},
     private readonly onSocketGem: (itemId: string, gemId: string) => void = () => {},
     private readonly onUnsocketGem: (itemId: string) => void = () => {},
-    private readonly onClaimWeekly: () => void = () => {}
+    private readonly onClaimWeekly: () => void = () => {},
+    private readonly onSendMail: (to: string, gold: number, message: string) => void = () => {},
+    private readonly onRequestMail: () => void = () => {},
+    private readonly onClaimMail: (mailId: string) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1680,6 +1684,53 @@ export class Hud {
     });
   }
 
+  // Sprint 201: mailbox state + modal (send gold + claim received mail).
+  setMail(mail: MailMessage[]): void {
+    this.mail = mail ?? [];
+    if (document.getElementById("mailbox-modal")) this.renderMailbox();
+  }
+  private openMailbox(): void {
+    if (document.getElementById("mailbox-modal")) { document.getElementById("mailbox-modal")?.remove(); return; }
+    const modal = document.createElement("div");
+    modal.id = "mailbox-modal";
+    modal.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:rgba(12,14,20,0.97);border:1px solid #3a4256;border-radius:12px;padding:18px 20px;width:360px;max-height:80vh;overflow:auto;color:#e8ecf5;box-shadow:0 12px 40px rgba(0,0,0,0.6)";
+    modal.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><strong style="font-size:15px">📬 Hòm Thư</strong><button id="mailbox-close" type="button" style="background:none;border:none;color:#9aa0a6;font-size:18px;cursor:pointer">✕</button></div>
+      <div style="background:#15171d;border:1px solid #2a2f3a;border-radius:8px;padding:10px;margin-bottom:12px">
+        <div style="font-size:12px;color:#9be7a8;margin-bottom:6px">Gửi vàng cho người chơi</div>
+        <input id="mail-to" placeholder="Tên người nhận" style="width:100%;box-sizing:border-box;margin-bottom:5px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
+        <input id="mail-gold" type="number" placeholder="Số vàng" style="width:100%;box-sizing:border-box;margin-bottom:5px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
+        <input id="mail-msg" placeholder="Lời nhắn (tuỳ chọn)" maxlength="120" style="width:100%;box-sizing:border-box;margin-bottom:6px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
+        <button id="mail-send" type="button" style="width:100%;padding:7px;border:none;border-radius:6px;font-weight:700;color:#06122a;background:linear-gradient(to bottom,#7db8ff,#3f6fd6);cursor:pointer">📮 Gửi</button>
+      </div>
+      <div id="mailbox-list"></div>`;
+    document.body.appendChild(modal);
+    modal.querySelector("#mailbox-close")?.addEventListener("click", () => modal.remove());
+    modal.querySelector("#mail-send")?.addEventListener("click", () => {
+      const to = (modal.querySelector("#mail-to") as HTMLInputElement)?.value.trim() ?? "";
+      const gold = Math.floor(Number((modal.querySelector("#mail-gold") as HTMLInputElement)?.value) || 0);
+      const msg = (modal.querySelector("#mail-msg") as HTMLInputElement)?.value ?? "";
+      if (to && gold >= 1) {
+        this.onSendMail(to, gold, msg);
+        (modal.querySelector("#mail-to") as HTMLInputElement).value = "";
+        (modal.querySelector("#mail-gold") as HTMLInputElement).value = "";
+        (modal.querySelector("#mail-msg") as HTMLInputElement).value = "";
+      } else this.log("Nhập tên người nhận và số vàng ≥ 1.", "log-line");
+    });
+    this.renderMailbox();
+  }
+  private renderMailbox(): void {
+    const list = document.querySelector("#mailbox-list");
+    if (!list) return;
+    if (this.mail.length === 0) { list.innerHTML = `<div style="color:#8e9192;font-size:12px;text-align:center;padding:8px">Hòm thư trống.</div>`; return; }
+    list.innerHTML = this.mail.map((m) =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:8px;margin-bottom:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a;border-radius:6px">
+        <div style="flex:1;min-width:0"><div style="font-weight:700;color:#ffd166">${m.gold.toLocaleString("vi-VN")} 🪙 <small style="color:#9aa0a6;font-weight:400">từ ${escapeHtml(m.from)}</small></div>${m.message ? `<div style="font-size:11px;color:#cdd3da">${escapeHtml(m.message)}</div>` : ""}</div>
+        <button type="button" data-claim="${m.id}" style="padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#08240f;background:linear-gradient(to bottom,#7bd88f,#3fa85f);cursor:pointer">Nhận</button>
+      </div>`
+    ).join("");
+    list.querySelectorAll<HTMLButtonElement>("[data-claim]").forEach((btn) => btn.addEventListener("click", () => this.onClaimMail(btn.dataset.claim!)));
+  }
+
   private handleSlashCommand(raw: string): void {
     const [cmd, ...rest] = raw.slice(1).split(/\s+/);
     const arg = rest.join(" ").trim();
@@ -1696,6 +1747,7 @@ export class Hud {
         "/inspect <tên> — xem hồ sơ người chơi",
         "/pay <tên> <số> — chuyển vàng (phí 5%)",
         "/who — danh sách người chơi online",
+        "/mail — mở Hòm Thư (gửi/nhận vàng)",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -1720,6 +1772,7 @@ export class Hud {
       return;
     }
     if (cmd === "who" || cmd === "online") { this.whoHandler?.(); return; }
+    if (cmd === "mail") { this.onRequestMail(); this.openMailbox(); return; }
     if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
     if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
     if (cmd === "gaccept") {
