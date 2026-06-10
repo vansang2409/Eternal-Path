@@ -74,7 +74,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "tower-25",        title: "Đỉnh Tháp Vô Song",   description: "Vượt Tầng 25 Tháp Thí Luyện.",              reward: { gems: 50 } },
   // Sprint 285 — paragon milestones.
   { id: "paragon-1",       title: "Khai Mở Cảnh Giới",   description: "Đạt điểm Cảnh Giới đầu tiên (100 kills).",  reward: { gems: 10 } },
-  { id: "paragon-10",      title: "Cảnh Giới Thâm Hậu",  description: "Đạt 10 điểm Cảnh Giới.",                    reward: { gems: 30 } }
+  { id: "paragon-10",      title: "Cảnh Giới Thâm Hậu",  description: "Đạt 10 điểm Cảnh Giới.",                    reward: { gems: 30 } },
+  // Sprint 296 — grand-finale achievements (Sprint 300 era).
+  { id: "completionist-40", title: "Vĩnh Hằng Chi Chủ",  description: "Mở khoá 40 thành tựu.",                     reward: { gems: 50 } },
+  { id: "era-300",         title: "Kỷ Nguyên 300",       description: "Đặt chân vào Linh Vực ở kỷ nguyên Sprint 300.", reward: { gems: 30 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

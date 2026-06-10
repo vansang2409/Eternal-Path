@@ -963,6 +963,8 @@ export class GameWorld {
       }
       // Sprint 271: settle any finished arena season on login.
       this.settleArenaSeason(player);
+      // Sprint 296: everyone logging into the Sprint-300 era gets the badge.
+      this.unlockAchievement(player, "era-300");
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
@@ -4321,6 +4323,9 @@ export class GameWorld {
     if (!achievement) return false;
     player.achievements.push(achievement.id);
     this.sockets.get(player.id)?.emit("achievementUnlocked", achievement);
+    // Sprint 296: meta-achievement — 40 unlocks crowns the completionist
+    // (idempotent guard above stops any recursion).
+    if (player.achievements.length >= 40) this.unlockAchievement(player, "completionist-40");
     // Sprint 198: broadcast prestige achievements server-wide for hype.
     const PRESTIGE = new Set(["slay-boss", "apex-smith", "streak-master", "pet-collector", "cosmetic-collector", "raid-slayer", "beast-master", "pvp-champion"]);
     if (PRESTIGE.has(achievement.id)) {
