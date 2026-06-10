@@ -187,6 +187,8 @@ export interface PlayerState {
   fishCaught?: number;
   /** Sprint 221: server-side cast cooldown timestamp (not persisted). */
   lastFishAt?: number;
+  /** Sprint 222: casts since the last fine-or-better catch (pity counter). */
+  fishPity?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).

@@ -158,6 +158,9 @@ import {
   RESTED_XP_CAP,
   rollFishing,
   FISHING_COOLDOWN_MS,
+  FISHING_PITY_CASTS,
+  FISHING_TABLE,
+  isFineCatch,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -757,6 +760,7 @@ export class GameWorld {
         restedXp: saved.restedXp ?? 0,
         firstKillDate: saved.firstKillDate,
         fishCaught: saved.fishCaught ?? 0,
+        fishPity: saved.fishPity ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3788,7 +3792,14 @@ export class GameWorld {
       return;
     }
     player.lastFishAt = now;
-    const result = rollFishing(rng);
+    let result = rollFishing(rng);
+    // Sprint 222: pity — guarantee a fine-or-better catch on the Nth cast.
+    const pity = (player.fishPity ?? 0) + 1;
+    if (!isFineCatch(result.id) && pity >= FISHING_PITY_CASTS) {
+      result = FISHING_TABLE.find((e) => e.id === "fine-fish") ?? result;
+      socket?.emit("system", "🎣 Vận may xoay chiều — cú câu này chắc chắn ra cá ngon!");
+    }
+    player.fishPity = isFineCatch(result.id) ? 0 : pity;
     let summary = result.label;
     if (result.gold) {
       player.stats.gold += result.gold;

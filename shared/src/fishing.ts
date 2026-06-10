@@ -25,6 +25,14 @@ export const FISHING_TABLE: FishingResult[] = [
   { id: "giant-fish", label: "CÁ KHỔNG LỒ 🐋", weight: 2, gold: 800, announce: true }
 ];
 
+/** Sprint 222: a fine-or-better catch is guaranteed on this cast count. */
+export const FISHING_PITY_CASTS = 8;
+
+/** Sprint 222: catches that count as "fine or better" (reset the pity). */
+export function isFineCatch(id: string): boolean {
+  return id === "fine-fish" || id === "treasure-weed" || id === "ember-catch" || id === "giant-fish";
+}
+
 /** Roll the fishing table with an injected rng in [0,1). */
 export function rollFishing(rng: number): FishingResult {
   const total = FISHING_TABLE.reduce((sum, e) => sum + e.weight, 0);
