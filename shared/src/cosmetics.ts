@@ -372,6 +372,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xbfe8ff,
     gemPrice: 180
+  },
+  // ── Season 14 (Sprint 280): golden-dynasty theme ──
+  {
+    id: "skin-pharaoh",
+    name: "Pharaoh Vĩnh Hằng",
+    description: "Giáp vàng ròng của vương triều sa mạc cổ.",
+    type: "skinTint",
+    color: 0xe8c04a,
+    gemPrice: 205
+  },
+  {
+    id: "skin-oasis-mystic",
+    name: "Pháp Sư Ốc Đảo",
+    description: "Sắc ngọc lam mát lành giữa biển cát.",
+    type: "skinTint",
+    color: 0x4ad0c0,
+    gemPrice: 185,
+    featured: true
+  },
+  {
+    id: "skill-fx-sandstorm",
+    name: "Hiệu Ứng Phép Cát Vàng",
+    description: "Kỹ năng cuốn theo lốc cát vàng óng.",
+    type: "skillEffectColor",
+    color: 0xe8d08a,
+    gemPrice: 170
   }
 ];
 
