@@ -42,11 +42,23 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
 });
 
 const repository = new PlayerRepository(createPool());
-const world = new GameWorld(io, repository);
-world.start();
+
+// Sprint 302: channel sharding — several independent worlds in one process.
+// Players pick a channel via the Socket.IO handshake query (default 1);
+// guild/market/mail stores stay global, world state is per channel.
+const channelCount = Math.max(1, Math.min(16, Number(process.env.CHANNELS ?? 2)));
+const worlds = new Map<number, GameWorld>();
+for (let channel = 1; channel <= channelCount; channel += 1) {
+  const world = new GameWorld(io, repository, channel);
+  world.start();
+  worlds.set(channel, world);
+}
+console.log(`[server] ${channelCount} channel(s) online`);
 
 io.on("connection", (socket) => {
-  world.connect(socket);
+  const requested = Number((socket.handshake.query?.channel as string) ?? 1);
+  const channel = worlds.has(requested) ? requested : 1;
+  worlds.get(channel)!.connect(socket);
 });
 
 server.listen(port, () => {

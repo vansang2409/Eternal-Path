@@ -568,9 +568,13 @@ export class GameWorld {
   private tickTimer?: NodeJS.Timeout;
   private snapshotTimer?: NodeJS.Timeout;
 
+  // Sprint 302: one account = one channel at a time (shared saves).
+  private static readonly onlineEmails = new Map<string, number>();
+
   constructor(
     private readonly io: GameServerSocket,
-    private readonly repository: PlayerRepository
+    private readonly repository: PlayerRepository,
+    private readonly channelId: number = 1
   ) {
     this.worldMap = generateWorld(WORLD_SEED, WORLD_WIDTH, WORLD_HEIGHT);
     this.worldMapPayload = {
@@ -582,6 +586,16 @@ export class GameWorld {
     };
     this.monsters = createMonsterSpawns(this.worldMap);
     this.initTreasureChestSlots();
+  }
+
+  /** Sprint 302: Socket.IO room for this world's channel. */
+  private get room(): string {
+    return `channel:${this.channelId}`;
+  }
+
+  // Sprint 302: every world-wide emit goes to this channel's room only.
+  private broadcast<E extends keyof ServerToClientEvents>(event: E, ...args: Parameters<ServerToClientEvents[E]>): void {
+    this.io.to(this.room).emit(event, ...args);
   }
 
   // Pick TREASURE_CHEST_COUNT walkable tiles in remote (mid-to-high level)
@@ -698,16 +712,16 @@ export class GameWorld {
   private happyHourUntil = 0;
   private startHappyHour(): void {
     this.happyHourUntil = Date.now() + HAPPY_HOUR_DURATION_MS;
-    this.io.emit("worldEvent", { kind: "happyHour", until: this.happyHourUntil, multiplier: HAPPY_HOUR_MULTIPLIER });
-    this.io.emit("system", `🌟 GIỜ VÀNG bắt đầu! x${HAPPY_HOUR_MULTIPLIER} vàng rơi ra trong ${Math.round(HAPPY_HOUR_DURATION_MS / 60000)} phút!`);
+    this.broadcast("worldEvent", { kind: "happyHour", until: this.happyHourUntil, multiplier: HAPPY_HOUR_MULTIPLIER });
+    this.broadcast("system", `🌟 GIỜ VÀNG bắt đầu! x${HAPPY_HOUR_MULTIPLIER} vàng rơi ra trong ${Math.round(HAPPY_HOUR_DURATION_MS / 60000)} phút!`);
   }
 
   // Sprint 266: Element Storm — doubled material-drop odds for 10 minutes.
   private elementStormUntil = 0;
   private startElementStorm(): void {
     this.elementStormUntil = Date.now() + ELEMENT_STORM_DURATION_MS;
-    this.io.emit("worldEvent", { kind: "elementStorm", until: this.elementStormUntil, multiplier: ELEMENT_STORM_DROP_MULT });
-    this.io.emit("system", `🌩️ BÃO NGUYÊN TỐ nổi lên! Tỉ lệ rơi nguyên liệu x${ELEMENT_STORM_DROP_MULT} trong ${Math.round(ELEMENT_STORM_DURATION_MS / 60000)} phút!`);
+    this.broadcast("worldEvent", { kind: "elementStorm", until: this.elementStormUntil, multiplier: ELEMENT_STORM_DROP_MULT });
+    this.broadcast("system", `🌩️ BÃO NGUYÊN TỐ nổi lên! Tỉ lệ rơi nguyên liệu x${ELEMENT_STORM_DROP_MULT} trong ${Math.round(ELEMENT_STORM_DURATION_MS / 60000)} phút!`);
   }
 
   // Sprint 169: credit an arena kill to the attacker — bumps their kill count,
@@ -762,7 +776,7 @@ export class GameWorld {
     const now = Date.now();
     const t01 = timeOfDay(now);
     const phase = dayPhaseAt(t01);
-    this.io.emit("worldTime", { serverTime: now, timeOfDay: t01, phase });
+    this.broadcast("worldTime", { serverTime: now, timeOfDay: t01, phase });
   }
 
   private markDirty(player: PlayerState): void {
@@ -807,6 +821,8 @@ export class GameWorld {
   }
 
   connect(socket: GameSocket): void {
+    // Sprint 302: scope every broadcast to this world's channel room.
+    void socket.join(this.room);
     socket.on("login", async ({ email, accountName, password, token }) => {
       let resolvedEmail: string;
       let resolvedName: string;
@@ -837,6 +853,15 @@ export class GameWorld {
         }
         resolvedEmail = normalizedEmail;
       }
+
+      // Sprint 302: one account may only be online in ONE channel at a time
+      // (both worlds share the same save — concurrent writes would clobber).
+      const activeChannel = GameWorld.onlineEmails.get(resolvedEmail);
+      if (activeChannel !== undefined && activeChannel !== this.channelId) {
+        socket.emit("system", `⚠️ Tài khoản đang online ở Kênh ${activeChannel}. Thoát ở đó trước khi vào Kênh ${this.channelId}.`);
+        return;
+      }
+      GameWorld.onlineEmails.set(resolvedEmail, this.channelId);
 
       const saved = await this.repository.load(resolvedEmail, resolvedName);
       // Guard against saved positions on tiles that became unwalkable after
@@ -1160,7 +1185,7 @@ export class GameWorld {
           } else {
             player.gems = (player.gems ?? 0) + STORY_CHAIN_BONUS_GEMS;
             socket.emit("system", `📜✨ Hoàn thành TOÀN BỘ cốt truyện — thưởng ${STORY_CHAIN_BONUS_GEMS} 💎!`);
-            this.io.emit("system", `📜 ${player.accountName} đã hoàn thành cốt truyện Linh Vực!`);
+            this.broadcast("system", `📜 ${player.accountName} đã hoàn thành cốt truyện Linh Vực!`);
             // Sprint 259: story-completion achievement.
             this.unlockAchievement(player, "story-hero");
           }
@@ -1803,7 +1828,7 @@ export class GameWorld {
       this.unlockAchievement(player, "guild-founder");
       socket.emit("player", player);
       this.emitGuildUpdate(record.id);
-      this.io.emit("system", `🏰 Guild [${record.tag}] ${record.name} vừa được thành lập bởi ${player.accountName}!`);
+      this.broadcast("system", `🏰 Guild [${record.tag}] ${record.name} vừa được thành lập bởi ${player.accountName}!`);
       this.markDirty(player);
     });
 
@@ -1911,7 +1936,7 @@ export class GameWorld {
       this.guildRaids.delete(guildId);
       this.guildRaidCooldownUntil.delete(guildId);
       guildStore.remove(guildId);
-      this.io.emit("system", `🏰 Guild [${tag}] ${name} (${memberNames.length} thành viên) đã giải tán.`);
+      this.broadcast("system", `🏰 Guild [${tag}] ${name} (${memberNames.length} thành viên) đã giải tán.`);
       this.broadcastGuildLeaderboard();
     });
 
@@ -3404,7 +3429,7 @@ export class GameWorld {
       if (floor % TOWER_GEM_EVERY === 0) {
         player.gems = (player.gems ?? 0) + TOWER_GEM_REWARD;
         summary += ` +${TOWER_GEM_REWARD} 💎`;
-        this.io.emit("system", `🗼 ${player.accountName} đã chinh phục Tầng ${floor} Tháp Thí Luyện!`);
+        this.broadcast("system", `🗼 ${player.accountName} đã chinh phục Tầng ${floor} Tháp Thí Luyện!`);
       }
       this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
       socket.emit("system", `${summary} (lực chiến ${power}/${need}).`);
@@ -3439,7 +3464,7 @@ export class GameWorld {
       this.recomputePetBonus(player);
       this.unlockAchievement(player, "evolver");
       socket.emit("system", `🐾✨ ${pet.name} đã TIẾN HOÁ — sức mạnh +50%!`);
-      this.io.emit("system", `🐾 ${player.accountName} vừa tiến hoá ${pet.name}!`);
+      this.broadcast("system", `🐾 ${player.accountName} vừa tiến hoá ${pet.name}!`);
       socket.emit("player", player);
       this.markDirty(player);
     });
@@ -3471,7 +3496,7 @@ export class GameWorld {
       if (now - (this.rollCooldowns.get(socket.id) ?? 0) < ROLL_COOLDOWN_MS) return;
       this.rollCooldowns.set(socket.id, now);
       const n = 1 + Math.floor(Math.random() * 100);
-      this.io.emit("system", `🎲 ${player.accountName} tung xúc xắc: ${n}/100`);
+      this.broadcast("system", `🎲 ${player.accountName} tung xúc xắc: ${n}/100`);
     });
 
     // Sprint 245: whitelisted emotes — broadcast for bubbles, log a chat line.
@@ -3483,8 +3508,8 @@ export class GameWorld {
       const now = Date.now();
       if (now - (this.emoteCooldowns.get(socket.id) ?? 0) < EMOTE_COOLDOWN_MS) return;
       this.emoteCooldowns.set(socket.id, now);
-      this.io.emit("emoteShown", { playerId: player.id, emote: def.id });
-      this.io.emit("system", `${def.icon} ${player.accountName} ${def.label}.`);
+      this.broadcast("emoteShown", { playerId: player.id, emote: def.id });
+      this.broadcast("system", `${def.icon} ${player.accountName} ${def.label}.`);
     });
 
     // Sprint 239: buy a vanity title with gold.
@@ -3927,12 +3952,16 @@ export class GameWorld {
       this.chatCooldowns.set(socket.id, now);
       this.chatMessages.push(chatMessage);
       while (this.chatMessages.length > 50) this.chatMessages.shift();
-      this.io.emit("chatMessage", chatMessage);
+      this.broadcast("chatMessage", chatMessage);
     });
 
     socket.on("disconnect", async () => {
       const player = this.players.get(socket.id);
       if (player) await this.saveNow(player);
+      // Sprint 302: free the cross-channel online lock (only if WE hold it).
+      if (player && GameWorld.onlineEmails.get(player.email) === this.channelId) {
+        GameWorld.onlineEmails.delete(player.email);
+      }
       this.removeFromParty(socket.id);
       const guildId = player?.guildId;
       this.players.delete(socket.id);
@@ -4162,7 +4191,7 @@ export class GameWorld {
       this.emitFloating(player.id, player.position, result.damage, "damage");
       // Visual projectile for ranged casters.
       if (def.ranged) {
-        this.io.emit("monsterProjectile", {
+        this.broadcast("monsterProjectile", {
           sourceId: monster.id,
           sourcePosition: { ...monster.position },
           targetPosition: { ...player.position },
@@ -4205,7 +4234,7 @@ export class GameWorld {
       const healed = player.stats.hp - before;
       player.skillCooldowns[skillId] = now + info.cooldownMs;
       this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
-      this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
+      this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -4228,7 +4257,7 @@ export class GameWorld {
         const healed = player.stats.hp - before;
         if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
       }
-      this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position }, targetPosition: { ...target.position } });
+      this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position }, targetPosition: { ...target.position } });
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -4245,7 +4274,7 @@ export class GameWorld {
       this.damageMonster(player, monster, (info.damageMultiplier ?? 1) * rankMul, now, label);
       this.applySkillEffect(monster, info.appliesEffect, now);
     }
-    this.io.emit("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
+    this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
     this.sockets.get(player.id)?.emit("player", player);
   }
 
@@ -4342,7 +4371,7 @@ export class GameWorld {
     // Sprint 198: broadcast prestige achievements server-wide for hype.
     const PRESTIGE = new Set(["slay-boss", "apex-smith", "streak-master", "pet-collector", "cosmetic-collector", "raid-slayer", "beast-master", "pvp-champion"]);
     if (PRESTIGE.has(achievement.id)) {
-      this.io.emit("system", `🎉 ${player.accountName} vừa mở thành tựu «${achievement.title}»!`);
+      this.broadcast("system", `🎉 ${player.accountName} vừa mở thành tựu «${achievement.title}»!`);
     }
     // Grant the one-time reward (Sprint 67), if any.
     const reward = achievement.reward;
@@ -4399,7 +4428,7 @@ export class GameWorld {
     }
     socket?.emit("scratchResult", { id: prize.id, label: prize.label, payout: prize.payout });
     socket?.emit("system", `🎫 Vé Cào: ${prize.label}${prize.payout > 0 ? ` (+${prize.payout} vàng)` : ""}`);
-    if (prize.announce) this.io.emit("system", `🎆 ${player.accountName} cào trúng ĐỘC ĐẮC ${prize.payout} vàng!`);
+    if (prize.announce) this.broadcast("system", `🎆 ${player.accountName} cào trúng ĐỘC ĐẮC ${prize.payout} vàng!`);
     socket?.emit("player", player);
     this.markDirty(player);
   }
@@ -4456,7 +4485,7 @@ export class GameWorld {
     if (result.id === "giant-fish") this.unlockAchievement(player, "giant-hunter");
     socket?.emit("fishResult", { id: result.id, label: result.label, gold: result.gold ?? 0, materialId: result.materialId });
     socket?.emit("system", `🎣 ${summary}`);
-    if (result.announce) this.io.emit("system", `🐋 ${player.accountName} câu được ${result.label}!`);
+    if (result.announce) this.broadcast("system", `🐋 ${player.accountName} câu được ${result.label}!`);
     socket?.emit("player", player);
     this.markDirty(player);
   }
@@ -4597,7 +4626,7 @@ export class GameWorld {
         player.inventory.items.push(lootItem);
         this.emitFloating(player.id, player.position, 0, "loot", lootItem.name);
         if (lootItem.rarity === "rare" || lootItem.rarity === "epic") {
-          this.io.emit("announce", {
+          this.broadcast("announce", {
             accountName: player.accountName,
             itemName: lootItem.name,
             rarity: lootItem.rarity
@@ -4607,7 +4636,7 @@ export class GameWorld {
       }
     }
     if (monster.boss) {
-      this.io.emit("bossAnnounce", { kind: "defeat", bossName: monster.name, accountName: player.accountName });
+      this.broadcast("bossAnnounce", { kind: "defeat", bossName: monster.name, accountName: player.accountName });
       // World boss guarantees a Mount Pendant if the player still has bag space.
       if (monster.type === "eternalWarden" && !isBagFull(player)) {
         const mount: EquipmentItem = {
@@ -5068,7 +5097,7 @@ export class GameWorld {
       this.returningToSpawn.delete(monster.id);
       if (monster.boss) {
         resetBoss(monster);
-        this.io.emit("bossAnnounce", { kind: "spawn", bossName: monster.name });
+        this.broadcast("bossAnnounce", { kind: "spawn", bossName: monster.name });
       } else {
         rerollMonsterRank(monster);
       }
@@ -5321,7 +5350,7 @@ export class GameWorld {
       this.creditArenaKill(attacker);
       this.sockets.get(target.id)?.emit("system", `Bạn đã bị ${attacker.accountName} hạ tại Đấu Trường.`);
       this.sockets.get(attacker.id)?.emit("system", `Bạn đã hạ ${target.accountName} tại Đấu Trường! +${ARENA_KILL_GOLD} vàng, +${ARENA_KILL_GEMS} 💎 (Kills: ${attacker.pvpKills})`);
-      this.io.emit("arenaKill", { killerName: attacker.accountName, victimName: target.accountName });
+      this.broadcast("arenaKill", { killerName: attacker.accountName, victimName: target.accountName });
       this.markDirty(target);
       this.markDirty(attacker);
     }
@@ -5531,7 +5560,7 @@ export class GameWorld {
     // Guild EXP reward + server-wide announcement (living-world flavor).
     if (guild) {
       this.broadcastGuildSystem(guild, `🎉 Guild đã hạ ${raid.bossName}!`);
-      this.io.emit("system", `🌍 Guild [${guild.tag}] ${guild.name} vừa hạ gục ${raid.bossName}!`);
+      this.broadcast("system", `🌍 Guild [${guild.tag}] ${guild.name} vừa hạ gục ${raid.bossName}!`);
       this.addGuildExp(guild, Math.round(raid.maxHp * GUILD_RAID_EXP_FACTOR));
     }
     this.broadcastGuildRaid(guildId);
@@ -5570,7 +5599,7 @@ export class GameWorld {
 
     if (guild.members.length === 0) {
       guildStore.remove(guild.id);
-      this.io.emit("system", `🏰 Guild [${guild.tag}] ${guild.name} đã giải tán.`);
+      this.broadcast("system", `🏰 Guild [${guild.tag}] ${guild.name} đã giải tán.`);
       return;
     }
 
@@ -5747,7 +5776,7 @@ export class GameWorld {
   }
 
   private emitFloating(entityId: string, position: { x: number; y: number }, amount: number, kind: FloatingTextEvent["kind"], text?: string): void {
-    this.io.emit("floatingText", {
+    this.broadcast("floatingText", {
       id: `${Date.now()}-${Math.random()}`,
       entityId,
       position,

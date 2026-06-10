@@ -2742,6 +2742,7 @@ export class GameScene extends Phaser.Scene {
       + btn("🖥️ Ẩn / hiện bảng & thanh công cụ", "h")
       + btn("🎬 Khung điện ảnh (letterbox)", "c")
       + btn(`📳 Rung màn hình: ${this.reduceShake ? "ĐANG TẮT" : "đang bật"}`, "shake")
+      + btn(`🔀 Kênh: ${localStorage.getItem("channel") ?? "1"} (đổi & tải lại)`, "channel")
       + btn("⌨️ Bảng phím tắt", "k");
     document.body.appendChild(panel);
     panel.querySelector("#settings-close")?.addEventListener("click", () => panel.remove());
@@ -2752,6 +2753,12 @@ export class GameScene extends Phaser.Scene {
       else if (key === "h") this.toggleHudPanels();
       else if (key === "c") this.toggleCinematicBars();
       else if (key === "shake") { this.toggleReduceShake(); b.textContent = `📳 Rung màn hình: ${this.reduceShake ? "ĐANG TẮT" : "đang bật"}`; }
+      else if (key === "channel") {
+        // Sprint 302: cycle channel 1↔2 and reconnect via reload.
+        const next = (Number(localStorage.getItem("channel") ?? "1") || 1) === 1 ? 2 : 1;
+        localStorage.setItem("channel", String(next));
+        window.location.reload();
+      }
       else if (key === "k") this.toggleKeybindHelp();
     }));
   }
