@@ -3565,7 +3565,7 @@ export class GameWorld {
       this.broadcastSnapshot();
     });
 
-    socket.on("chatMessage", ({ message }) => {
+    socket.on("chatMessage", ({ message, channel }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
       // Anti-cheat: bound message length + reject high-frequency spam beyond
@@ -3587,7 +3587,9 @@ export class GameWorld {
         playerId: socket.id,
         accountName: player.accountName,
         message: clean,
-        sentAt: now
+        sentAt: now,
+        // Sprint 247: trade channel for buy/sell talk; world is the default.
+        channel: channel === "trade" ? "trade" : "world"
       };
       this.chatCooldowns.set(socket.id, now);
       this.chatMessages.push(chatMessage);

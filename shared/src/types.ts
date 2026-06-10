@@ -375,6 +375,8 @@ export interface ChatMessage {
   accountName: string;
   message: string;
   sentAt: number;
+  /** Sprint 247: chat channel — defaults to "world" when absent. */
+  channel?: "world" | "trade";
 }
 
 export type QuestCategory = "tutorial" | "story" | "daily";
@@ -488,6 +490,8 @@ export interface TargetPlayerPayload {
 
 export interface ChatPayload {
   message: string;
+  /** Sprint 247: target channel (defaults to "world"). */
+  channel?: "world" | "trade";
 }
 
 /** Public profile shown by /inspect (Sprint 75). */

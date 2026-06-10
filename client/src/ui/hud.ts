@@ -32,11 +32,13 @@ export class Hud {
   private marketQuery = "";
   private marketKind: MarketKindFilter = "all";
   private marketSort: MarketSortKey = "featured";
+  /** Sprint 248: outgoing chat channel. */
+  private chatChannel: "world" | "trade" = "world";
 
   constructor(
     private readonly onEquip: (itemId: string) => void,
     private readonly onUnequip: (slot: EquipmentSlot) => void,
-    private readonly onChat: (message: string) => void,
+    private readonly onChat: (message: string, channel?: "world" | "trade") => void,
     private readonly onBuy: (shopId: string) => void,
     private readonly onSell: (itemId: string) => void,
     private readonly onDrop: (itemId: string) => void,
@@ -256,10 +258,28 @@ export class Hud {
       if (message.startsWith("/")) {
         this.handleSlashCommand(message);
       } else {
-        this.onChat(message);
+        this.onChat(message, this.chatChannel);
       }
       input.value = "";
     });
+    // Sprint 248: channel toggle button next to the chat input.
+    const chatForm = document.querySelector<HTMLFormElement>("#chat-form");
+    if (chatForm && !document.querySelector("#chat-channel-btn")) {
+      const toggle = document.createElement("button");
+      toggle.id = "chat-channel-btn";
+      toggle.type = "button";
+      toggle.title = "Đổi kênh chat (Thế Giới / Thương Mại)";
+      toggle.textContent = "🌐";
+      toggle.style.cssText = "border:1px solid #39424b;background:#1c2126;color:#fff;border-radius:4px;padding:0 8px;cursor:pointer";
+      toggle.addEventListener("click", () => {
+        this.chatChannel = this.chatChannel === "world" ? "trade" : "world";
+        toggle.textContent = this.chatChannel === "world" ? "🌐" : "💰";
+        const input2 = document.querySelector<HTMLInputElement>("#chat-input");
+        if (input2) input2.placeholder = this.chatChannel === "world" ? "Nhập tin nhắn..." : "Rao mua/bán (kênh Thương Mại)...";
+        toggle.blur();
+      });
+      chatForm.prepend(toggle);
+    }
   }
 
   // Sprint 163: render the timed-buff strip with live mm:ss countdowns.
@@ -1983,7 +2003,10 @@ export class Hud {
     const time = new Date(message.sentAt);
     const hh = time.getHours().toString().padStart(2, "0");
     const mm = time.getMinutes().toString().padStart(2, "0");
-    line.innerHTML = `<time class="chat-time">${hh}:${mm}</time><strong>${escapeHtml(message.accountName)}</strong><span>${escapeHtml(message.message)}</span>`;
+    // Sprint 248: trade-channel messages get a gold tag + tint.
+    const tradeTag = message.channel === "trade" ? `<span style="color:#ffd166;font-weight:700">[MuaBán]</span> ` : "";
+    line.innerHTML = `<time class="chat-time">${hh}:${mm}</time><strong>${escapeHtml(message.accountName)}</strong><span>${tradeTag}${escapeHtml(message.message)}</span>`;
+    if (message.channel === "trade") line.style.background = "rgba(255,209,102,0.07)";
     root.append(line);
     while (root.childElementCount > 50) root.firstElementChild?.remove();
     root.scrollTop = root.scrollHeight;

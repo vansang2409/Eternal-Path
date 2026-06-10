@@ -130,7 +130,7 @@ export class GameScene extends Phaser.Scene {
     this.hud = new Hud(
       (itemId) => this.socket.emit("equipItem", { itemId }),
       (slot) => this.socket.emit("unequipItem", { slot }),
-      (message) => this.socket.emit("chatMessage", { message }),
+      (message, channel) => this.socket.emit("chatMessage", { message, channel }),
       (shopId) => this.socket.emit("buyShopItem", { shopId }),
       (itemId) => this.socket.emit("sellItem", { itemId }),
       (itemId) => this.socket.emit("dropItem", { itemId }),
