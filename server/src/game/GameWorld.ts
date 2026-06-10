@@ -153,6 +153,9 @@ import {
   getMonsterDefinition,
   bestiaryTierForKills,
   bestiaryTierByNumber,
+  restedXpForOffline,
+  restedBonusFor,
+  RESTED_XP_CAP,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -749,6 +752,7 @@ export class GameWorld {
         itemsCrafted: saved.itemsCrafted ?? 0,
         bestiary: saved.bestiary ?? {},
         bestiaryRewarded: saved.bestiaryRewarded ?? {},
+        restedXp: saved.restedXp ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -801,6 +805,17 @@ export class GameWorld {
       this.activeQuests.set(socket.id, []);
       this.initQuestsForPlayer(player);
       const offlineRewards = this.applyOfflineRewards(player, saved.lastSeenAt, Date.now());
+      // Sprint 219: rested XP accrues while offline (capped pool).
+      if (saved.lastSeenAt) {
+        const restedGain = restedXpForOffline(Date.now() - saved.lastSeenAt);
+        if (restedGain > 0) {
+          const before = player.restedXp ?? 0;
+          player.restedXp = Math.min(RESTED_XP_CAP, before + restedGain);
+          if (player.restedXp > before) {
+            socket.emit("system", `😴 Nghỉ ngơi đủ giấc: +${player.restedXp - before} EXP Nghỉ Ngơi (kho: ${player.restedXp}). Hạ quái để nhận +50% EXP tới khi hết.`);
+          }
+        }
+      }
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
       socket.emit("session", { token: sessionToken });
@@ -1376,13 +1391,14 @@ export class GameWorld {
     // Dev-only cheat for automated smoke tests. Never enabled in production
     // (requires explicit DEV_CHEATS=1 env; not set in Dockerfile/compose).
     if (process.env.DEV_CHEATS === "1") {
-      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number }) => {
+      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number; restedXp?: number }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.stats.gold += Math.max(0, Number(payload?.gold) || 0);
         player.gems = (player.gems ?? 0) + Math.max(0, Number(payload?.gems) || 0);
         if (payload?.talentPoints) player.talentPoints = (player.talentPoints ?? 0) + Math.max(0, Number(payload.talentPoints) || 0);
         if (payload?.exp) this.grantExpAndStatPoints(player, Math.max(0, Number(payload.exp) || 0));
+        if (payload?.restedXp) player.restedXp = (player.restedXp ?? 0) + Math.max(0, Number(payload.restedXp) || 0);
         socket.emit("player", player);
       });
       (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number; slot?: EquipmentSlot; themeId?: string; stats?: ItemStats }) => {
@@ -1426,6 +1442,32 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         this.creditArenaKill(player);
+        socket.emit("player", player);
+      });
+      // Sprint 219: run the full killMonster path against a synthetic
+      // monster — exercises EXP/gold/loot/bestiary/first-kill bonuses e2e.
+      (socket as Socket).on("devSimKill", (payload: { level?: number; type?: string; elite?: boolean; boss?: boolean }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const level = Math.max(1, Math.min(50, Number(payload?.level) || 1));
+        const type = String(payload?.type ?? "forestSlime");
+        const m = {
+          id: `devkill-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+          type,
+          name: type,
+          level,
+          position: { ...player.position },
+          spawnPosition: { ...player.position },
+          velocity: { x: 0, y: 0 },
+          hp: 0,
+          maxHp: 10,
+          attack: 1,
+          defense: 0,
+          elite: Boolean(payload?.elite),
+          boss: Boolean(payload?.boss),
+          respawnDurationMs: 60_000
+        } as unknown as MonsterState;
+        this.killMonster(player, m, Date.now());
         socket.emit("player", player);
       });
       // Sprint 217: simulate bestiary kill credit without real combat.
@@ -3757,10 +3799,17 @@ export class GameWorld {
     if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;
     for (const recipient of this.expRecipientsFor(player)) {
-      const leveled = this.grantExpAndStatPoints(recipient, exp);
+      // Sprint 219: drain the rested-XP pool for +50% kill EXP.
+      const restedBonus = restedBonusFor(recipient.restedXp ?? 0, exp);
+      if (restedBonus > 0) {
+        recipient.restedXp = (recipient.restedXp ?? 0) - restedBonus;
+        if (recipient.restedXp <= 0) this.sockets.get(recipient.id)?.emit("system", "😴 EXP Nghỉ Ngơi đã dùng hết.");
+      }
+      const expFor = exp + restedBonus;
+      const leveled = this.grantExpAndStatPoints(recipient, expFor);
       if (leveled) this.updateReachLevelQuests(recipient);
       if (leveled) this.checkLevelAchievements(recipient);
-      this.emitFloating(recipient.id, recipient.position, exp, "exp", `+${exp} exp`);
+      this.emitFloating(recipient.id, recipient.position, expFor, "exp", `+${expFor} exp${restedBonus > 0 ? " 😴" : ""}`);
       if (leveled) this.emitFloating(recipient.id, recipient.position, recipient.stats.level, "level", `Level ${recipient.stats.level}`);
       if (recipient.id !== player.id) {
         this.sockets.get(recipient.id)?.emit("player", recipient);

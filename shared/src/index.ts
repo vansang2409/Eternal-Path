@@ -19,3 +19,4 @@ export * from "./mysterybox.js";
 export * from "./mounts.js";
 export * from "./gems.js";
 export * from "./bestiary.js";
+export * from "./rested.js";

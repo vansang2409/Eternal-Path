@@ -179,6 +179,8 @@ export interface PlayerState {
   bestiary?: Record<string, number>;
   /** Sprint 217: highest bestiary tier already rewarded per monster type. */
   bestiaryRewarded?: Record<string, number>;
+  /** Sprint 219: rested-XP pool accrued offline, drained as kill-EXP bonus. */
+  restedXp?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).
