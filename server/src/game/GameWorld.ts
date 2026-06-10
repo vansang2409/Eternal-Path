@@ -4895,7 +4895,11 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
     sandStalker: 6,
     frostWolfAlpha: 4,
     bogLurker: 5,
-    crystalWatcher: 4
+    crystalWatcher: 4,
+    // Sprint 211 additions
+    thornBeast: 6,
+    magmaGolem: 4,
+    voidReaper: 3
   };
   const species: string[] = [];
   for (const [type, n] of Object.entries(counts)) {

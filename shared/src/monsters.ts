@@ -359,6 +359,49 @@ export const MONSTER_DEFINITIONS: Record<string, MonsterDefinition> = {
     ranged: true,
     rangedProjectileColor: 0xcaa4ff,
     rangedAttackRange: 230
+  },
+  // ── Sprint 211: 3 new monsters (auto-placed by level band) ──
+  thornBeast: {
+    type: "thornBeast",
+    name: "Thorn Beast",
+    level: 3,
+    tint: 0x6f9e4a,
+    scale: 2.7,
+    hpMultiplier: 1.0,
+    attackMultiplier: 1.1,
+    defenseMultiplier: 0.9,
+    dropRate: 0.4,
+    preferredSlots: ["boots", "armor"],
+    lootTheme: "Thorn"
+  },
+  magmaGolem: {
+    type: "magmaGolem",
+    name: "Magma Golem",
+    level: 7,
+    tint: 0xff6a3a,
+    scale: 3.1,
+    hpMultiplier: 1.7,
+    attackMultiplier: 1.5,
+    defenseMultiplier: 1.5,
+    dropRate: 0.6,
+    preferredSlots: ["armor", "weapon"],
+    lootTheme: "Magma",
+    ranged: true,
+    rangedProjectileColor: 0xff7a3a,
+    rangedAttackRange: 210
+  },
+  voidReaper: {
+    type: "voidReaper",
+    name: "Void Reaper",
+    level: 11,
+    tint: 0x7a3fd6,
+    scale: 3.2,
+    hpMultiplier: 1.9,
+    attackMultiplier: 2.1,
+    defenseMultiplier: 1.5,
+    dropRate: 0.7,
+    preferredSlots: ["weapon", "ring"],
+    lootTheme: "Reaper"
   }
 };
 
