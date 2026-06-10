@@ -58,7 +58,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "celestial-dragon", name: "Thiên Long Vương", desc: "+18 công, +10 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 500, buff: { attack: 18, defense: 10, maxHp: 120 }, color: 0xfff0c0 },
   // ── Season 8 pets (Sprint 205) ──
   { id: "cerberus", name: "Ngao Tam Đầu", desc: "+14 công, +8 thủ, +90 HP", rarity: "epic", goldPrice: 0, gemPrice: 330, buff: { attack: 14, defense: 8, maxHp: 90 }, color: 0x8a3a3a },
-  { id: "valkyrie", name: "Nữ Thần Chiến", desc: "+12 công, +6 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 350, buff: { attack: 12, defense: 6, maxHp: 110 }, color: 0xe0d8a0 }
+  { id: "valkyrie", name: "Nữ Thần Chiến", desc: "+12 công, +6 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 350, buff: { attack: 12, defense: 6, maxHp: 110 }, color: 0xe0d8a0 },
+  // ── Season 9 (Sprint 230): ocean companions ──
+  { id: "leviathan", name: "Hải Long Cuồng Nộ", desc: "+17 công, +7 thủ, +95 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 17, defense: 7, maxHp: 95 }, color: 0x2e8fb8 },
+  { id: "moon-turtle", name: "Nguyệt Quy", desc: "+6 công, +14 thủ, +150 HP", rarity: "epic", goldPrice: 0, gemPrice: 380, buff: { attack: 6, defense: 14, maxHp: 150 }, color: 0x9fe0c8 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));

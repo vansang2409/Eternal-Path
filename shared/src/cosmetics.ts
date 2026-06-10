@@ -242,6 +242,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xff5ad0,
     gemPrice: 200
+  },
+  // ── Season 9 (Sprint 230): ocean theme — ties into the fishing update ──
+  {
+    id: "skin-deep-ocean",
+    name: "Giáp Hải Vương",
+    description: "Bộ giáp xanh thẳm của chúa tể đại dương.",
+    type: "skinTint",
+    color: 0x1e6f9f,
+    gemPrice: 170
+  },
+  {
+    id: "skin-coral-empress",
+    name: "Xiêm Y San Hô",
+    description: "Sắc hồng san hô lung linh dưới đáy biển.",
+    type: "skinTint",
+    color: 0xff7e9d,
+    gemPrice: 190,
+    featured: true
+  },
+  {
+    id: "skill-fx-tidal",
+    name: "Hiệu Ứng Phép Thủy Triều",
+    description: "Kỹ năng cuộn sóng xanh biếc như thủy triều.",
+    type: "skillEffectColor",
+    color: 0x35d0ff,
+    gemPrice: 160
   }
 ];
 
