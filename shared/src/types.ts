@@ -513,6 +513,8 @@ export interface MailMessage {
   gold: number;
   message: string;
   sentAt: number;
+  /** Optional item attachment (Sprint 202) — escrowed until claimed. */
+  item?: Item;
 }
 
 export interface ClientToServerEvents {
@@ -544,7 +546,7 @@ export interface ClientToServerEvents {
   setAutoSalvage: (payload: { rarity: "off" | "common" | "rare" }) => void;
   claimStarterPack: () => void;
   claimWeeklyReward: () => void;
-  sendMail: (payload: { to: string; gold: number; message: string }) => void;
+  sendMail: (payload: { to: string; gold: number; message: string; itemId?: string }) => void;
   requestMail: () => void;
   claimMail: (payload: { mailId: string }) => void;
   fuseGear: () => void;

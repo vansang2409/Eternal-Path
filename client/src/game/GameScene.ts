@@ -188,7 +188,7 @@ export class GameScene extends Phaser.Scene {
       (itemId, gemId) => this.socket.emit("socketGem", { itemId, gemId }),
       (itemId) => this.socket.emit("unsocketGem", { itemId }),
       () => this.socket.emit("claimWeeklyReward"),
-      (to, gold, message) => this.socket.emit("sendMail", { to, gold, message }),
+      (to, gold, message, itemId) => this.socket.emit("sendMail", { to, gold, message, itemId }),
       () => this.socket.emit("requestMail"),
       (mailId) => this.socket.emit("claimMail", { mailId })
     );

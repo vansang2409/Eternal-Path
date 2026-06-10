@@ -2699,7 +2699,7 @@ export class GameWorld {
     });
 
     // Sprint 201: mailbox — send gold to any player (delivered offline).
-    socket.on("sendMail", ({ to, gold, message }) => {
+    socket.on("sendMail", ({ to, gold, message, itemId }) => {
       const sender = this.players.get(socket.id);
       if (!sender) return;
       const amount = Math.floor(Number(gold) || 0);
@@ -2707,13 +2707,26 @@ export class GameWorld {
       const cleanMsg = String(message ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
       if (!cleanTo) { socket.emit("system", "Nhập tên người nhận."); return; }
       if (cleanTo === sender.accountName) { socket.emit("system", "Không thể gửi thư cho chính mình."); return; }
-      if (amount < 1) { socket.emit("system", "Số vàng gửi không hợp lệ."); return; }
-      if (sender.stats.gold < amount) { socket.emit("system", `Không đủ vàng (đang có ${sender.stats.gold}).`); return; }
-      const mail = { id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: sender.accountName, to: cleanTo, gold: amount, message: cleanMsg, sentAt: Date.now() };
+      // Sprint 202: optional item attachment — escrow it out of the bag.
+      let attached: Item | undefined;
+      let attachIdx = -1;
+      if (itemId) {
+        attachIdx = sender.inventory.items.findIndex((it) => it.id === itemId);
+        if (attachIdx < 0) { socket.emit("system", "Không tìm thấy vật phẩm để đính kèm."); return; }
+        const it = sender.inventory.items[attachIdx];
+        if (it.locked) { socket.emit("system", "🔒 Vật phẩm đang khóa — mở khóa trước khi gửi."); return; }
+        if (it.kind === "equipment" && sender.inventory.equipped[it.slot]?.id === it.id) { socket.emit("system", "Hãy tháo trang bị trước khi gửi."); return; }
+        attached = it;
+      }
+      if (amount < 1 && !attached) { socket.emit("system", "Nhập số vàng hoặc đính kèm vật phẩm."); return; }
+      if (amount > 0 && sender.stats.gold < amount) { socket.emit("system", `Không đủ vàng (đang có ${sender.stats.gold}).`); return; }
+      const mail = { id: `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, from: sender.accountName, to: cleanTo, gold: Math.max(0, amount), message: cleanMsg, sentAt: Date.now(), item: attached };
       if (!mailStore.send(mail)) { socket.emit("system", `Hòm thư của ${cleanTo} đã đầy.`); return; }
-      sender.stats.gold -= amount;
+      if (attached && attachIdx >= 0) sender.inventory.items.splice(attachIdx, 1);
+      sender.stats.gold -= Math.max(0, amount);
       socket.emit("player", sender);
-      socket.emit("system", `📮 Đã gửi ${amount.toLocaleString("vi-VN")} vàng cho ${cleanTo}.`);
+      const sentParts = [amount > 0 ? `${amount.toLocaleString("vi-VN")} vàng` : "", attached ? attached.name : ""].filter(Boolean).join(" + ");
+      socket.emit("system", `📮 Đã gửi ${sentParts} cho ${cleanTo}.`);
       this.markDirty(sender);
       // Notify the recipient live if they're online.
       const online = [...this.players.values()].find((p) => p.accountName === cleanTo);
@@ -2732,13 +2745,18 @@ export class GameWorld {
     socket.on("claimMail", ({ mailId }) => {
       const player = this.players.get(socket.id);
       if (!player) return;
+      // Peek first: if there's an item but the bag is full, don't consume the mail.
+      const peek = mailStore.getFor(player.accountName).find((m) => m.id === String(mailId ?? ""));
+      if (peek?.item && isBagFull(player)) { socket.emit("system", BAG_FULL_MESSAGE); return; }
       const mail = mailStore.claim(player.accountName, String(mailId ?? ""));
       if (!mail) { socket.emit("system", "Thư không còn tồn tại."); return; }
       player.stats.gold += mail.gold;
+      if (mail.item) player.inventory.items.push(mail.item);
       socket.emit("player", player);
       socket.emit("mailList", mailStore.getFor(player.accountName));
-      socket.emit("system", `📨 Đã nhận ${mail.gold.toLocaleString("vi-VN")} vàng từ ${mail.from}.`);
-      this.emitFloating(player.id, player.position, mail.gold, "loot", `+${mail.gold} thư`);
+      const gotParts = [mail.gold > 0 ? `${mail.gold.toLocaleString("vi-VN")} vàng` : "", mail.item ? mail.item.name : ""].filter(Boolean).join(" + ");
+      socket.emit("system", `📨 Đã nhận ${gotParts} từ ${mail.from}.`);
+      if (mail.gold > 0) this.emitFloating(player.id, player.position, mail.gold, "loot", `+${mail.gold} thư`);
       this.markDirty(player);
     });
 

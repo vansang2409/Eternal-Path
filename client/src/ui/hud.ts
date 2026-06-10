@@ -94,7 +94,7 @@ export class Hud {
     private readonly onSocketGem: (itemId: string, gemId: string) => void = () => {},
     private readonly onUnsocketGem: (itemId: string) => void = () => {},
     private readonly onClaimWeekly: () => void = () => {},
-    private readonly onSendMail: (to: string, gold: number, message: string) => void = () => {},
+    private readonly onSendMail: (to: string, gold: number, message: string, itemId?: string) => void = () => {},
     private readonly onRequestMail: () => void = () => {},
     private readonly onClaimMail: (mailId: string) => void = () => {}
   ) {
@@ -1700,6 +1700,7 @@ export class Hud {
         <input id="mail-to" placeholder="Tên người nhận" style="width:100%;box-sizing:border-box;margin-bottom:5px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
         <input id="mail-gold" type="number" placeholder="Số vàng" style="width:100%;box-sizing:border-box;margin-bottom:5px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
         <input id="mail-msg" placeholder="Lời nhắn (tuỳ chọn)" maxlength="120" style="width:100%;box-sizing:border-box;margin-bottom:6px;background:#0d0f14;border:1px solid #2a2f3a;border-radius:4px;color:#e8ecf5;padding:6px;font-size:12px">
+        <label id="mail-attach-row" style="display:flex;align-items:center;gap:6px;font-size:11px;color:#cdd3da;margin-bottom:6px"><input type="checkbox" id="mail-attach"> Đính kèm vật phẩm đang chọn</label>
         <button id="mail-send" type="button" style="width:100%;padding:7px;border:none;border-radius:6px;font-weight:700;color:#06122a;background:linear-gradient(to bottom,#7db8ff,#3f6fd6);cursor:pointer">📮 Gửi</button>
       </div>
       <div id="mailbox-list"></div>`;
@@ -1709,12 +1710,15 @@ export class Hud {
       const to = (modal.querySelector("#mail-to") as HTMLInputElement)?.value.trim() ?? "";
       const gold = Math.floor(Number((modal.querySelector("#mail-gold") as HTMLInputElement)?.value) || 0);
       const msg = (modal.querySelector("#mail-msg") as HTMLInputElement)?.value ?? "";
-      if (to && gold >= 1) {
-        this.onSendMail(to, gold, msg);
+      const attach = (modal.querySelector("#mail-attach") as HTMLInputElement)?.checked;
+      const attachId = attach ? this.selectedItemId : undefined;
+      if (to && (gold >= 1 || attachId)) {
+        this.onSendMail(to, gold, msg, attachId);
         (modal.querySelector("#mail-to") as HTMLInputElement).value = "";
         (modal.querySelector("#mail-gold") as HTMLInputElement).value = "";
         (modal.querySelector("#mail-msg") as HTMLInputElement).value = "";
-      } else this.log("Nhập tên người nhận và số vàng ≥ 1.", "log-line");
+        (modal.querySelector("#mail-attach") as HTMLInputElement).checked = false;
+      } else this.log("Nhập người nhận + (số vàng ≥1 hoặc đính kèm vật phẩm đang chọn).", "log-line");
     });
     this.renderMailbox();
   }
