@@ -1076,6 +1076,8 @@ export class GameWorld {
             player.gems = (player.gems ?? 0) + STORY_CHAIN_BONUS_GEMS;
             socket.emit("system", `📜✨ Hoàn thành TOÀN BỘ cốt truyện — thưởng ${STORY_CHAIN_BONUS_GEMS} 💎!`);
             this.io.emit("system", `📜 ${player.accountName} đã hoàn thành cốt truyện Linh Vực!`);
+            // Sprint 259: story-completion achievement.
+            this.unlockAchievement(player, "story-hero");
           }
           socket.emit("player", player);
         }
@@ -3341,6 +3343,8 @@ export class GameWorld {
       player.stats.gold += piggy;
       this.emitFloating(player.id, player.position, piggy, "loot", `+${piggy} gold`);
       socket.emit("system", `🐷💥 Đập Heo Đất: +${piggy} vàng!`);
+      // Sprint 259: first piggy break achievement.
+      this.unlockAchievement(player, "piggy-breaker");
       socket.emit("player", player);
       this.markDirty(player);
     });
@@ -4143,6 +4147,8 @@ export class GameWorld {
     player.scratchTickets = (player.scratchTickets ?? 0) + 1;
     // Sprint 249: daily scratch quest progress.
     this.bumpQuestProgress(player, ["scratchTicket"]);
+    // Sprint 259: scratch-collector achievement.
+    if ((player.scratchTickets ?? 0) >= 10) this.unlockAchievement(player, "scratch-addict");
     const prize = rollScratch(rng);
     if (prize.payout > 0) {
       player.stats.gold += prize.payout;

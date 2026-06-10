@@ -59,7 +59,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 224 — fishing achievements.
   { id: "angler",          title: "Cần Thủ",             description: "Câu được 10 con cá.",                       reward: { gems: 10 } },
   { id: "master-angler",   title: "Ngư Ông Đắc Lợi",     description: "Câu được 100 con cá.",                      reward: { gems: 25 } },
-  { id: "giant-hunter",    title: "Săn Cá Khổng Lồ",     description: "Câu được CÁ KHỔNG LỒ huyền thoại.",         reward: { gems: 20 } }
+  { id: "giant-hunter",    title: "Săn Cá Khổng Lồ",     description: "Câu được CÁ KHỔNG LỒ huyền thoại.",         reward: { gems: 20 } },
+  // Sprint 259 — achievements for the S225-243 loops.
+  { id: "scratch-addict",  title: "Vua Vé Số",           description: "Cào 10 Vé Cào May Mắn.",                    reward: { gems: 10 } },
+  { id: "story-hero",      title: "Anh Hùng Linh Vực",   description: "Hoàn thành toàn bộ chuỗi cốt truyện.",      reward: { gems: 20 } },
+  { id: "piggy-breaker",   title: "Đập Heo Phát Tài",    description: "Đập Heo Đất lần đầu tiên.",                 reward: { gems: 5 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {
