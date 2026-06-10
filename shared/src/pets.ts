@@ -67,7 +67,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "void-cat", name: "Hư Không Miêu", desc: "+11 công, +11 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 400, buff: { attack: 11, defense: 11, maxHp: 110 }, color: 0x6a4dc0 },
   // ── Season 11 (Sprint 250): sacred-forest companions ──
   { id: "elder-treant", name: "Thụ Nhân Cổ Đại", desc: "+8 công, +16 thủ, +140 HP", rarity: "epic", goldPrice: 0, gemPrice: 430, buff: { attack: 8, defense: 16, maxHp: 140 }, color: 0x5a7a3a },
-  { id: "spirit-stag", name: "Linh Lộc", desc: "+15 công, +9 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 410, buff: { attack: 15, defense: 9, maxHp: 100 }, color: 0xbfe8d0 }
+  { id: "spirit-stag", name: "Linh Lộc", desc: "+15 công, +9 thủ, +100 HP", rarity: "epic", goldPrice: 0, gemPrice: 410, buff: { attack: 15, defense: 9, maxHp: 100 }, color: 0xbfe8d0 },
+  // ── Season 12 (Sprint 260): blood-moon companions ──
+  { id: "blood-bat", name: "Huyết Bức Vương", desc: "+20 công, +5 thủ, +80 HP", rarity: "epic", goldPrice: 0, gemPrice: 460, buff: { attack: 20, defense: 5, maxHp: 80 }, color: 0xa03a4a },
+  { id: "moon-wolf", name: "Nguyệt Lang", desc: "+13 công, +10 thủ, +115 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 13, defense: 10, maxHp: 115 }, color: 0x8a8ab8 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));

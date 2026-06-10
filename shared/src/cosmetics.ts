@@ -320,6 +320,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x7dff9e,
     gemPrice: 165
+  },
+  // ── Season 12 (Sprint 260): blood-moon theme ──
+  {
+    id: "skin-crimson-shogun",
+    name: "Huyết Nguyệt Tướng Quân",
+    description: "Giáp đỏ thẫm nhuộm ánh trăng máu.",
+    type: "skinTint",
+    color: 0xb83a3a,
+    gemPrice: 195
+  },
+  {
+    id: "skin-night-wraith",
+    name: "Dạ Khốc U Hồn",
+    description: "Bóng đêm tím than phủ quanh thân ảnh.",
+    type: "skinTint",
+    color: 0x4a3a6a,
+    gemPrice: 185,
+    featured: true
+  },
+  {
+    id: "skill-fx-bloodmoon",
+    name: "Hiệu Ứng Phép Trăng Máu",
+    description: "Kỹ năng nhuốm đỏ rực như nguyệt thực.",
+    type: "skillEffectColor",
+    color: 0xff4a5a,
+    gemPrice: 175
   }
 ];
 
