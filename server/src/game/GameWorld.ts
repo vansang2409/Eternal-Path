@@ -188,6 +188,8 @@ import {
   STASH_MAX_BONUS,
   STASH_SLOTS_PER_PURCHASE,
   STASH_SLOT_GEM_COST,
+  craftLevelForXp,
+  CRAFT_XP_PER_CRAFT,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -817,6 +819,7 @@ export class GameWorld {
         storyQuestIndex: saved.storyQuestIndex ?? 0,
         stash: saved.stash ?? [],
         stashBonus: saved.stashBonus ?? 0,
+        craftXp: saved.craftXp ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -4731,6 +4734,12 @@ export class GameWorld {
       this.sockets.get(player.id)?.emit("system", "Công thức không tồn tại.");
       return;
     }
+    // Sprint 261: master recipes need a high enough smithing level.
+    const smithLevel = craftLevelForXp(player.craftXp ?? 0);
+    if ((recipe.minCraftLevel ?? 1) > smithLevel) {
+      this.sockets.get(player.id)?.emit("system", `⚒️ Cần nghề rèn cấp ${recipe.minCraftLevel} (đang cấp ${smithLevel}). Rèn thêm để lên tay!`);
+      return;
+    }
     // Verify the player has the required materials.
     const needed = new Map(Object.entries(recipe.cost) as [MaterialId, number][]);
     const owned = new Map<MaterialId, number>();
@@ -4783,6 +4792,13 @@ export class GameWorld {
     // Sprint 159: apex recipes unlock the master smith achievement.
     if (["abyssal-greatsword", "dragonscale-plate", "eternal-signet", "abyssal-crown", "dragonstride-boots"].includes(recipe.id)) {
       this.unlockAchievement(player, "apex-smith");
+    }
+    // Sprint 261: smithing XP — announce level-ups.
+    const levelBefore = craftLevelForXp(player.craftXp ?? 0);
+    player.craftXp = (player.craftXp ?? 0) + CRAFT_XP_PER_CRAFT;
+    const levelAfter = craftLevelForXp(player.craftXp);
+    if (levelAfter > levelBefore) {
+      this.sockets.get(player.id)?.emit("system", `⚒️✨ Nghề rèn lên cấp ${levelAfter}!${levelAfter >= 3 ? " Đã mở khoá công thức bậc thầy." : ""}`);
     }
   }
 

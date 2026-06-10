@@ -95,6 +95,31 @@ export interface Recipe {
   // monster type whose loot theme the item borrows
   themeFrom: string;
   cost: Partial<Record<MaterialId, number>>;
+  /** Sprint 261: minimum smithing level required (default 1). */
+  minCraftLevel?: number;
+}
+
+// ── Sprint 261: smithing profession levels ──
+export const CRAFT_XP_PER_CRAFT = 10;
+/** XP required to BE at level index+1 (L1=0, L2=50, L3=150, L4=300, L5=500). */
+export const CRAFT_LEVEL_THRESHOLDS = [0, 50, 150, 300, 500];
+export const CRAFT_MAX_LEVEL = CRAFT_LEVEL_THRESHOLDS.length;
+
+export function craftLevelForXp(xp: number): number {
+  let level = 1;
+  for (let i = 0; i < CRAFT_LEVEL_THRESHOLDS.length; i += 1) {
+    if (xp >= CRAFT_LEVEL_THRESHOLDS[i]) level = i + 1;
+  }
+  return level;
+}
+
+/** Progress toward the next smithing level (for the forge UI bar). */
+export function craftXpProgress(xp: number): { level: number; into: number; needed: number } {
+  const level = craftLevelForXp(xp);
+  if (level >= CRAFT_MAX_LEVEL) return { level, into: 0, needed: 0 };
+  const base = CRAFT_LEVEL_THRESHOLDS[level - 1];
+  const next = CRAFT_LEVEL_THRESHOLDS[level];
+  return { level, into: xp - base, needed: next - base };
 }
 
 export const RECIPES: Recipe[] = [
@@ -300,6 +325,27 @@ export const RECIPES: Recipe[] = [
     level: 13,
     themeFrom: "voidReaper",
     cost: { voidAsh: 5, cursedBark: 3, wardenHeart: 1 }
+  },
+  // Sprint 261: master recipes gated behind smithing level 3.
+  {
+    id: "master-dragonfang",
+    name: "Long Nha Kiếm",
+    slot: "weapon",
+    rarity: "epic",
+    level: 14,
+    themeFrom: "voidReaper",
+    cost: { wardenHeart: 2, voidAsh: 3, crystalShard: 3 },
+    minCraftLevel: 3
+  },
+  {
+    id: "master-aegis",
+    name: "Thánh Thuẫn Vĩnh Hằng",
+    slot: "armor",
+    rarity: "epic",
+    level: 14,
+    themeFrom: "magmaGolem",
+    cost: { wardenHeart: 2, emberHeart: 4, frostShard: 3 },
+    minCraftLevel: 3
   }
 ];
 

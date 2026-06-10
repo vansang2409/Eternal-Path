@@ -207,6 +207,8 @@ export interface PlayerState {
   stash?: Item[];
   /** Sprint 253: extra stash slots bought with gems. */
   stashBonus?: number;
+  /** Sprint 261: smithing profession XP (10 per craft). */
+  craftXp?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
