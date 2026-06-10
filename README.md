@@ -121,3 +121,30 @@ For the full system catalog and resume notes see `HANDOFF.md`; for the economy b
 - Hit flash, slash effect, floating damage, and small camera shake when damaged
 - Global Socket.IO chat with recent message history and anti-spam cooldown
 - PostgreSQL schema for accounts, characters, inventory, and equipment
+
+## Sprint 300 Era — Major Systems (S217–S300)
+
+**Progression & endgame**
+- Trial Tower (🗼): deterministic power-gated floors, 3 tickets/day, gem milestones, leaderboard tab
+- Cảnh Giới paragon grind: every 100 kills bakes permanent +1 ATK / +5 HP (cap 50 points)
+- Smithing profession: craft XP levels 1–5 gate two master recipes
+- Story quest chain: 8 sequential chapters with a 50-gem finale
+- Bestiary: per-monster kill tiers (Đồng/Bạc/Vàng) with gold/gem payouts
+- Rested XP pool (offline accrual → +50% kill EXP) and first-kill-of-day double EXP
+
+**Economy loops**
+- Fishing (🎣) with pity, achievements, angler leaderboard; scratch tickets (10% house edge)
+- Piggy bank (kills drip gold, 25-gem hammer), treasure maps, material exchange 5→1
+- Personal town stash (+gem expansion), mount upgrade tiers, gold title shop, gold-priced pets
+- Arena seasons (7-day cycles with milestone gem payouts) + kill-streak gold combo
+- Returning-player gifts, veteran pack (level 20+), Element Storm world event (x2 materials)
+
+**Social & QoL**
+- Trade chat channel, /roll dice, emotes with bubbles, extended /inspect brag sheet
+- DPS meter, world-event countdowns, combo counter, lifetime stats panel
+- Reduce-shake accessibility option, auto-FX governor on low FPS, big-number abbreviation
+- Guild levels 11–15 and tier-II raid boss (Hắc Diệt Cổ Thần)
+
+**Content**: Seasons 9–16 (ocean → cosmos → sacred forest → blood moon → thunder → golden dynasty → frost & flame → eternal-light capstone with the 999-gem Thái Cổ Thần Long), 50+ cosmetics, 40+ pets (evolution at L5), 5 mounts, monster wave II + elite affixes wave II, 60+ achievements.
+
+Regression: `node run-smoke.mjs` (use `--half 1|2` for shorter sweeps) — 130+ suites.
