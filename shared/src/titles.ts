@@ -50,7 +50,10 @@ export const TITLES: TitleDef[] = [
   // ── Sprint 208: social / economy titles ──
   { id: "courier", label: "Sứ Giả", desc: "Mở thành tựu Bưu Tá.", earned: (p) => (p.achievements ?? []).includes("pen-pal") },
   { id: "bargain-hunter", label: "Thợ Săn Sale", desc: "Mua 1 khuyến mãi hằng ngày.", earned: (p) => (p.lastDealDay ?? 0) > 0 },
-  { id: "mogul", label: "Trùm Tài Phiệt", desc: "Sở hữu 1.000.000 vàng.", earned: (p) => p.stats.gold >= 1_000_000 }
+  { id: "mogul", label: "Trùm Tài Phiệt", desc: "Sở hữu 1.000.000 vàng.", earned: (p) => p.stats.gold >= 1_000_000 },
+  // ── Sprint 215: combat-milestone titles ──
+  { id: "exterminator", label: "Đồ Long", desc: "Hạ tổng 5.000 quái.", earned: (p) => (p.totalKills ?? 0) >= 5000 },
+  { id: "boss-bane", label: "Khắc Tinh Ma Vương", desc: "Mở thành tựu hạ world boss.", earned: (p) => (p.achievements ?? []).includes("slay-boss") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
