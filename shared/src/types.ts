@@ -183,6 +183,10 @@ export interface PlayerState {
   restedXp?: number;
   /** Sprint 220: UTC date (YYYY-MM-DD) of the last first-kill-of-day bonus. */
   firstKillDate?: string;
+  /** Sprint 221: lifetime fish caught (excludes junk) — drives achievements. */
+  fishCaught?: number;
+  /** Sprint 221: server-side cast cooldown timestamp (not persisted). */
+  lastFishAt?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).
@@ -497,6 +501,8 @@ export interface ServerToClientEvents {
   chatMessage: (message: ChatMessage) => void;
   shopStock: (items: ShopItem[]) => void;
   system: (message: string) => void;
+  /** Sprint 221: outcome of one fishing cast. */
+  fishResult: (payload: { id: string; label: string; gold: number; materialId?: MaterialId }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
@@ -575,6 +581,8 @@ export interface ClientToServerEvents {
   rerollDailyQuests: () => void;
   enchantItem: (payload: { itemId: string }) => void;
   salvageItem: (payload: { itemId: string }) => void;
+  /** Sprint 221: cast a fishing line. */
+  fish: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

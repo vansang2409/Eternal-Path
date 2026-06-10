@@ -156,6 +156,8 @@ import {
   restedXpForOffline,
   restedBonusFor,
   RESTED_XP_CAP,
+  rollFishing,
+  FISHING_COOLDOWN_MS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -754,6 +756,7 @@ export class GameWorld {
         bestiaryRewarded: saved.bestiaryRewarded ?? {},
         restedXp: saved.restedXp ?? 0,
         firstKillDate: saved.firstKillDate,
+        fishCaught: saved.fishCaught ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1470,6 +1473,13 @@ export class GameWorld {
         } as unknown as MonsterState;
         this.killMonster(player, m, Date.now());
         socket.emit("player", player);
+      });
+      // Sprint 221: deterministic fishing roll (bypasses the cooldown).
+      (socket as Socket).on("devFish", (payload: { roll?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.lastFishAt = 0;
+        this.doFish(player, Math.max(0, Math.min(0.999999, Number(payload?.roll) || 0)));
       });
       // Sprint 217: simulate bestiary kill credit without real combat.
       (socket as Socket).on("devBestiaryKill", (payload: { type?: string; count?: number }) => {
@@ -3022,6 +3032,13 @@ export class GameWorld {
       this.salvageItem(player, itemId);
     });
 
+    // Sprint 221: cast a fishing line (cooldown-gated random table).
+    socket.on("fish", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.doFish(player, Math.random());
+    });
+
     // Sprint 151: toggle a protective lock on an inventory item so it can't be
     // accidentally sold, salvaged, or dropped.
     socket.on("toggleItemLock", ({ itemId }) => {
@@ -3759,6 +3776,48 @@ export class GameWorld {
     const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
     this.emitFloating(monster.id, monster.position, result.damage, "damage", text);
     if (monster.hp <= 0) this.killMonster(player, monster, now);
+  }
+
+  // Sprint 221: resolve one fishing cast — cooldown, weighted table roll,
+  // gold/material payout, lifetime counter, giant-catch announce.
+  private doFish(player: PlayerState, rng: number): void {
+    const socket = this.sockets.get(player.id);
+    const now = Date.now();
+    if (now - (player.lastFishAt ?? 0) < FISHING_COOLDOWN_MS) {
+      socket?.emit("system", "🎣 Cần câu chưa sẵn sàng — chờ vài giây nữa.");
+      return;
+    }
+    player.lastFishAt = now;
+    const result = rollFishing(rng);
+    let summary = result.label;
+    if (result.gold) {
+      player.stats.gold += result.gold;
+      summary += ` (+${result.gold} vàng)`;
+      this.emitFloating(player.id, player.position, result.gold, "loot", `+${result.gold} gold`);
+    }
+    if (result.materialId) {
+      if (isBagFull(player)) {
+        socket?.emit("system", BAG_FULL_MESSAGE);
+      } else {
+        const info = MATERIAL_CATALOG[result.materialId];
+        const mat: MaterialItem = {
+          id: `mat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          kind: "material",
+          materialId: result.materialId,
+          name: info.name,
+          rarity: info.rarity,
+          value: info.value
+        };
+        player.inventory.items.push(mat);
+        summary += ` (${info.name})`;
+      }
+    }
+    if (result.id !== "boot") player.fishCaught = (player.fishCaught ?? 0) + 1;
+    socket?.emit("fishResult", { id: result.id, label: result.label, gold: result.gold ?? 0, materialId: result.materialId });
+    socket?.emit("system", `🎣 ${summary}`);
+    if (result.announce) this.io.emit("system", `🐋 ${player.accountName} câu được ${result.label}!`);
+    socket?.emit("player", player);
+    this.markDirty(player);
   }
 
   // Sprint 217: bump the per-type bestiary counter and grant any newly

@@ -30,6 +30,7 @@ interface SavedPlayer {
   bestiaryRewarded?: Record<string, number>;
   restedXp?: number;
   firstKillDate?: string;
+  fishCaught?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -290,6 +291,7 @@ export class PlayerRepository {
       bestiaryRewarded: player.bestiaryRewarded ? { ...player.bestiaryRewarded } : undefined,
       restedXp: player.restedXp,
       firstKillDate: player.firstKillDate,
+      fishCaught: player.fishCaught,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
