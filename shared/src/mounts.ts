@@ -14,7 +14,10 @@ export interface MountDef {
 export const MOUNT_CATALOG: MountDef[] = [
   { id: "pony", name: "Ngựa Con", desc: "+15% tốc chạy", speedPct: 15, goldPrice: 15_000, color: 0xc9a36a },
   { id: "warhorse", name: "Chiến Mã", desc: "+25% tốc chạy", speedPct: 25, goldPrice: 50_000, color: 0x8a6b4a },
-  { id: "direwolf", name: "Lang Vương", desc: "+35% tốc chạy", speedPct: 35, goldPrice: 120_000, color: 0x6a7a8a }
+  { id: "direwolf", name: "Lang Vương", desc: "+35% tốc chạy", speedPct: 35, goldPrice: 120_000, color: 0x6a7a8a },
+  // ── Sprint 277: high-end mounts ──
+  { id: "griffon", name: "Sư Vương Điểu", desc: "+45% tốc chạy", speedPct: 45, goldPrice: 250_000, color: 0xd9c06a },
+  { id: "nightmare", name: "Mộng Yểm", desc: "+55% tốc chạy", speedPct: 55, goldPrice: 500_000, color: 0x6a3ad0 }
 ];
 
 const MOUNT_BY_ID = new Map(MOUNT_CATALOG.map((m) => [m.id, m]));
