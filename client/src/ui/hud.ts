@@ -99,7 +99,8 @@ export class Hud {
     private readonly onRequestMail: () => void = () => {},
     private readonly onClaimMail: (mailId: string) => void = () => {},
     private readonly onBuyDailyDeal: () => void = () => {},
-    private readonly onClaimAllMail: () => void = () => {}
+    private readonly onClaimAllMail: () => void = () => {},
+    private readonly onGiftFriends: (goldEach: number) => void = () => {}
   ) {
     this.applyLanguage();
     const form = document.querySelector("#chat-form") as HTMLFormElement;
@@ -1799,6 +1800,7 @@ export class Hud {
         "/pay <tên> <số> — chuyển vàng (phí 5%)",
         "/who — danh sách người chơi online",
         "/mail — mở Hòm Thư (gửi/nhận vàng)",
+        "/gift <số> — lì xì vàng cho mọi bạn online",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -1824,6 +1826,7 @@ export class Hud {
     }
     if (cmd === "who" || cmd === "online") { this.whoHandler?.(); return; }
     if (cmd === "mail") { this.onRequestMail(); this.openMailbox(); return; }
+    if (cmd === "gift") { const amt = Math.floor(Number(rest[0]) || 0); if (amt < 1) { this.log("Cú pháp: /gift <số vàng> — lì xì mọi bạn đang online.", "log-line"); return; } this.onGiftFriends(amt); return; }
     if ((cmd === "g" || cmd === "guild") && arg) { this.guildHandlers?.chat(arg); return; }
     if (cmd === "ginvite" && arg) { this.guildHandlers?.invite(arg); return; }
     if (cmd === "gaccept") {

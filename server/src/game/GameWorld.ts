@@ -1274,6 +1274,34 @@ export class GameWorld {
       this.markDirty(player);
     });
 
+    // Sprint 210: gift gold to every currently-online friend at once (lì xì).
+    socket.on("giftFriends", ({ goldEach }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const each = Math.max(1, Math.min(10000, Math.floor(Number(goldEach) || 0)));
+      const friendSet = new Set(player.friends ?? []);
+      const recipients = [...this.players.values()].filter((p) => p.id !== player.id && friendSet.has(p.accountName));
+      if (recipients.length === 0) {
+        socket.emit("system", "Không có bạn nào đang online để lì xì.");
+        return;
+      }
+      const total = each * recipients.length;
+      if (player.stats.gold < total) {
+        socket.emit("system", `Cần ${total.toLocaleString("vi-VN")} vàng để lì xì ${recipients.length} bạn (${each} mỗi người).`);
+        return;
+      }
+      player.stats.gold -= total;
+      for (const r of recipients) {
+        r.stats.gold += each;
+        this.sockets.get(r.id)?.emit("player", r);
+        this.sockets.get(r.id)?.emit("system", `🧧 ${player.accountName} lì xì cho bạn ${each.toLocaleString("vi-VN")} vàng!`);
+        this.markDirty(r);
+      }
+      socket.emit("player", player);
+      socket.emit("system", `🧧 Đã lì xì ${each.toLocaleString("vi-VN")} vàng cho ${recipients.length} bạn (tổng ${total.toLocaleString("vi-VN")}).`);
+      this.markDirty(player);
+    });
+
     socket.on("removeFriend", ({ name }) => {
       const player = this.players.get(socket.id);
       if (!player) return;

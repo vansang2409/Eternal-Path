@@ -552,6 +552,7 @@ export interface ClientToServerEvents {
   requestMail: () => void;
   claimMail: (payload: { mailId: string }) => void;
   claimAllMail: () => void;
+  giftFriends: (payload: { goldEach: number }) => void;
   buyDailyDeal: () => void;
   fuseGear: () => void;
   sacrificePet: (payload: { petId: string }) => void;
