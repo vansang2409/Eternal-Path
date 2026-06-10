@@ -62,6 +62,8 @@ export class GameScene extends Phaser.Scene {
   private dpsHits: Array<{ at: number; amount: number }> = [];
   private lastDpsHitAt = 0;
   private dpsText?: Phaser.GameObjects.Text;
+  // Sprint 255: hit-stop guard so overlapping MEGA hits don't stack.
+  private hitStopActive = false;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -1618,6 +1620,23 @@ export class GameScene extends Phaser.Scene {
         // an expanding shock ripple + a harder camera punch.
         if (isMegaHit) {
           this.cameras.main.shake(220, 0.013);
+          // Sprint 255: hit-stop — freeze the world for a few frames so the
+          // big number LANDS (anime impact frames).
+          if (!this.hitStopActive) {
+            this.hitStopActive = true;
+            const prevTime = this.time.timeScale;
+            const prevTween = this.tweens.timeScale;
+            const prevAnim = this.anims.globalTimeScale;
+            this.time.timeScale = 0.12;
+            this.tweens.timeScale = 0.12;
+            this.anims.globalTimeScale = 0.12;
+            setTimeout(() => {
+              this.time.timeScale = prevTime;
+              this.tweens.timeScale = prevTween;
+              this.anims.globalTimeScale = prevAnim;
+              this.hitStopActive = false;
+            }, 80);
+          }
           for (const [dx, tint] of [[-3, "#22e0ff"], [3, "#ff2bd6"]] as const) {
             const ghost = this.add.text(text.x + dx, text.y, event.text ?? `${event.amount}`, {
               fontFamily: "monospace", fontSize: `${fontSize}px`, color: tint, fontStyle: "bold"
