@@ -290,7 +290,9 @@ type QuestObjective =
   | { kind: "salvageGear" }
   | { kind: "upgradeGear" }
   | { kind: "socketGem" }
-  | { kind: "sendMail" };
+  | { kind: "sendMail" }
+  | { kind: "fishCatch" }
+  | { kind: "scratchTicket" };
 
 interface QuestTemplate {
   id: string;
@@ -477,6 +479,21 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
     description: "Gửi vàng/vật phẩm cho người chơi khác qua Hòm Thư.",
     required: 1, rewardGold: 200, rewardExp: 300,
     category: "daily", objective: { kind: "sendMail" }
+  },
+  // Sprint 249: daily quests for the fishing & scratch loops.
+  {
+    id: "daily-fish-5",
+    title: "Hằng ngày: Câu 5 con cá",
+    description: "Thả câu và kéo lên 5 con cá (ủng không tính).",
+    required: 5, rewardGold: 250, rewardExp: 350,
+    category: "daily", objective: { kind: "fishCatch" }
+  },
+  {
+    id: "daily-scratch-1",
+    title: "Hằng ngày: Thử vận may",
+    description: "Mua và cào 1 Vé Cào May Mắn ở Cửa hàng.",
+    required: 1, rewardGold: 300, rewardExp: 250,
+    category: "daily", objective: { kind: "scratchTicket" }
   }
 ];
 
@@ -4048,6 +4065,8 @@ export class GameWorld {
     }
     player.stats.gold -= SCRATCH_TICKET_COST;
     player.scratchTickets = (player.scratchTickets ?? 0) + 1;
+    // Sprint 249: daily scratch quest progress.
+    this.bumpQuestProgress(player, ["scratchTicket"]);
     const prize = rollScratch(rng);
     if (prize.payout > 0) {
       player.stats.gold += prize.payout;
@@ -4101,7 +4120,11 @@ export class GameWorld {
         summary += ` (${info.name})`;
       }
     }
-    if (result.id !== "boot") player.fishCaught = (player.fishCaught ?? 0) + 1;
+    if (result.id !== "boot") {
+      player.fishCaught = (player.fishCaught ?? 0) + 1;
+      // Sprint 249: daily fishing quest progress.
+      this.bumpQuestProgress(player, ["fishCatch"]);
+    }
     // Sprint 224: fishing achievements.
     if ((player.fishCaught ?? 0) >= 10) this.unlockAchievement(player, "angler");
     if ((player.fishCaught ?? 0) >= 100) this.unlockAchievement(player, "master-angler");
