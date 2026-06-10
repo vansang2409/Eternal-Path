@@ -190,6 +190,12 @@ import {
   STASH_SLOT_GEM_COST,
   craftLevelForXp,
   CRAFT_XP_PER_CRAFT,
+  GUILD_RAID_T2_MIN_LEVEL,
+  GUILD_RAID_T2_HP_MULT,
+  GUILD_RAID_T2_GOLD_FACTOR,
+  GUILD_RAID_T2_TOP_GEM,
+  GUILD_RAID_T2_COST_MULT,
+  GUILD_RAID_T2_BOSS_NAME,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -524,7 +530,7 @@ export class GameWorld {
   // Pending guild invites keyed by invitee accountName.
   private readonly guildInvites = new Map<string, { guildId: string; expiresAt: number }>();
   // Ephemeral guild raid bosses keyed by guildId (Sprint 66).
-  private readonly guildRaids = new Map<string, { bossName: string; maxHp: number; hp: number; startedAt: number; expiresAt: number; contributors: Map<string, number> }>();
+  private readonly guildRaids = new Map<string, { bossName: string; maxHp: number; hp: number; startedAt: number; expiresAt: number; contributors: Map<string, number>; goldFactor?: number; topGem?: number }>();
   private readonly guildRaidCooldownUntil = new Map<string, number>();
   private readonly raidAttackCooldown = new Map<string, number>();
   // Sprint 245: per-player social cooldowns.
@@ -2032,12 +2038,14 @@ export class GameWorld {
       socket.emit("guildLeaderboard", this.guildLeaderboard(player.guildId));
     });
 
-    socket.on("summonGuildRaid", () => {
+    socket.on("summonGuildRaid", (payload) => {
       const player = this.players.get(socket.id);
       if (!player || !player.guildId) {
         socket.emit("system", "Bạn cần ở trong guild để triệu hồi Boss.");
         return;
       }
+      // Sprint 265: optional tier-2 boss for high-level guilds.
+      const wantTier = Number(payload?.tier) === 2 ? 2 : 1;
       const guild = guildStore.get(player.guildId);
       if (!guild) return;
       const rank = guild.members.find((m) => m.accountName === player.accountName)?.rank;
@@ -2056,23 +2064,30 @@ export class GameWorld {
         return;
       }
       const level = guildLevelForExp(guild.exp ?? 0);
-      const summonCost = guildRaidSummonCost(level);
+      if (wantTier === 2 && level < GUILD_RAID_T2_MIN_LEVEL) {
+        socket.emit("system", `⚔️ Boss Bậc II yêu cầu guild cấp ${GUILD_RAID_T2_MIN_LEVEL} (đang cấp ${level}).`);
+        return;
+      }
+      const summonCost = guildRaidSummonCost(level) * (wantTier === 2 ? GUILD_RAID_T2_COST_MULT : 1);
       if ((guild.bank ?? 0) < summonCost) {
         socket.emit("system", `Cần ${summonCost.toLocaleString("vi-VN")} vàng trong Quỹ Guild để triệu hồi Boss (quỹ đang có ${(guild.bank ?? 0).toLocaleString("vi-VN")}).`);
         return;
       }
       guild.bank = (guild.bank ?? 0) - summonCost;
       guildStore.markDirty();
-      const maxHp = guildRaidMaxHp(level);
+      const maxHp = Math.round(guildRaidMaxHp(level) * (wantTier === 2 ? GUILD_RAID_T2_HP_MULT : 1));
+      const bossName = wantTier === 2 ? GUILD_RAID_T2_BOSS_NAME : "Hỗn Độn Ma Vương";
       this.guildRaids.set(guild.id, {
-        bossName: "Hỗn Độn Ma Vương",
+        bossName,
         maxHp,
         hp: maxHp,
         startedAt: now,
         expiresAt: now + GUILD_RAID_DURATION_MS,
-        contributors: new Map()
+        contributors: new Map(),
+        goldFactor: wantTier === 2 ? GUILD_RAID_T2_GOLD_FACTOR : undefined,
+        topGem: wantTier === 2 ? GUILD_RAID_T2_TOP_GEM : undefined
       });
-      this.broadcastGuildSystem(guild, `⚔️ ${player.accountName} đã triệu hồi Boss Hỗn Độn Ma Vương (${maxHp.toLocaleString("vi-VN")} HP, tốn ${summonCost.toLocaleString("vi-VN")} vàng quỹ)! Mở bảng Guild (U) để cùng đánh.`);
+      this.broadcastGuildSystem(guild, `⚔️ ${player.accountName} đã triệu hồi Boss ${bossName}${wantTier === 2 ? " (BẬC II)" : ""} (${maxHp.toLocaleString("vi-VN")} HP, tốn ${summonCost.toLocaleString("vi-VN")} vàng quỹ)! Mở bảng Guild (U) để cùng đánh.`);
       this.broadcastGuildRaid(guild.id);
       this.emitGuildUpdate(guild.id);
     });
@@ -5243,12 +5258,13 @@ export class GameWorld {
   }
 
   /** Boss defeated: split gold by damage share, grant guild EXP + top Gem. */
-  private resolveGuildRaid(guildId: string, raid: { bossName: string; maxHp: number; hp: number; contributors: Map<string, number> }): void {
+  private resolveGuildRaid(guildId: string, raid: { bossName: string; maxHp: number; hp: number; contributors: Map<string, number>; goldFactor?: number; topGem?: number }): void {
     this.guildRaids.delete(guildId);
     this.guildRaidCooldownUntil.set(guildId, Date.now() + GUILD_RAID_COOLDOWN_MS);
     const guild = guildStore.get(guildId);
     const totalDamage = [...raid.contributors.values()].reduce((a, b) => a + b, 0) || 1;
-    const goldPool = Math.round(raid.maxHp * GUILD_RAID_GOLD_FACTOR);
+    // Sprint 265: tier-2 raids carry richer pools.
+    const goldPool = Math.round(raid.maxHp * (raid.goldFactor ?? GUILD_RAID_GOLD_FACTOR));
     let topName = "";
     let topDmg = -1;
     for (const [name, dmg] of raid.contributors) {
@@ -5266,9 +5282,10 @@ export class GameWorld {
     // Top contributor Gem bonus.
     const top = [...this.players.values()].find((p) => p.accountName === topName);
     if (top) {
-      top.gems = (top.gems ?? 0) + GUILD_RAID_TOP_GEM;
+      const topGem = raid.topGem ?? GUILD_RAID_TOP_GEM;
+      top.gems = (top.gems ?? 0) + topGem;
       this.sockets.get(top.id)?.emit("player", top);
-      this.sockets.get(top.id)?.emit("system", `🥇 Bạn gây nhiều sát thương nhất — thưởng thêm ${GUILD_RAID_TOP_GEM} 💎!`);
+      this.sockets.get(top.id)?.emit("system", `🥇 Bạn gây nhiều sát thương nhất — thưởng thêm ${topGem} 💎!`);
       this.markDirty(top);
     }
     // Guild EXP reward + server-wide announcement (living-world flavor).

@@ -697,7 +697,7 @@ export interface ClientToServerEvents {
   withdrawGuildBank: (payload: { amount: number }) => void;
   disbandGuild: () => void;
   requestGuildLeaderboard: () => void;
-  summonGuildRaid: () => void;
+  summonGuildRaid: (payload?: { tier?: number }) => void;
   raidAttack: () => void;
   requestMarket: () => void;
   listMarketItem: (payload: { itemId: string; price: number }) => void;

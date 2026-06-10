@@ -203,6 +203,19 @@ export function guildRaidMaxHp(level: number): number {
   return GUILD_RAID_BASE_HP + Math.max(0, level - 1) * GUILD_RAID_HP_PER_LEVEL;
 }
 
+// ── Sprint 265: raid tier II (Hắc Diệt Cổ Thần) ──
+/** Minimum guild level to summon the tier-2 boss. */
+export const GUILD_RAID_T2_MIN_LEVEL = 5;
+/** HP multiplier over the tier-1 boss at the same guild level. */
+export const GUILD_RAID_T2_HP_MULT = 2.5;
+/** Gold pool factor (vs 0.15 at tier 1) — bigger boss, richer pool. */
+export const GUILD_RAID_T2_GOLD_FACTOR = 0.3;
+/** Top-contributor gem bonus at tier 2. */
+export const GUILD_RAID_T2_TOP_GEM = 40;
+/** Summon cost multiplier over tier 1. */
+export const GUILD_RAID_T2_COST_MULT = 2;
+export const GUILD_RAID_T2_BOSS_NAME = "Hắc Diệt Cổ Thần";
+
 export interface GuildRaidContributor {
   accountName: string;
   damage: number;
