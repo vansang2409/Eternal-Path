@@ -32,3 +32,4 @@ export * from "./emotes.js";
 export * from "./stash.js";
 export * from "./arenaseason.js";
 export * from "./tower.js";
+export * from "./paragon.js";

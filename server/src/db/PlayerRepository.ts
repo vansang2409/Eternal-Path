@@ -47,6 +47,8 @@ interface SavedPlayer {
   towerFloor?: number;
   towerTicketDate?: string;
   towerTicketsUsed?: number;
+  paragonPoints?: number;
+  paragonProgress?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -324,6 +326,8 @@ export class PlayerRepository {
       towerFloor: player.towerFloor,
       towerTicketDate: player.towerTicketDate,
       towerTicketsUsed: player.towerTicketsUsed,
+      paragonPoints: player.paragonPoints,
+      paragonProgress: player.paragonProgress,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

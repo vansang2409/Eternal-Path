@@ -71,7 +71,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "pet-zoo",         title: "Vườn Thú Di Động",    description: "Sở hữu 10 linh thú.",                       reward: { gems: 30 } },
   // Sprint 282 — Trial Tower milestones.
   { id: "tower-10",        title: "Thập Tầng Anh Kiệt",  description: "Vượt Tầng 10 Tháp Thí Luyện.",              reward: { gems: 20 } },
-  { id: "tower-25",        title: "Đỉnh Tháp Vô Song",   description: "Vượt Tầng 25 Tháp Thí Luyện.",              reward: { gems: 50 } }
+  { id: "tower-25",        title: "Đỉnh Tháp Vô Song",   description: "Vượt Tầng 25 Tháp Thí Luyện.",              reward: { gems: 50 } },
+  // Sprint 285 — paragon milestones.
+  { id: "paragon-1",       title: "Khai Mở Cảnh Giới",   description: "Đạt điểm Cảnh Giới đầu tiên (100 kills).",  reward: { gems: 10 } },
+  { id: "paragon-10",      title: "Cảnh Giới Thâm Hậu",  description: "Đạt 10 điểm Cảnh Giới.",                    reward: { gems: 30 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

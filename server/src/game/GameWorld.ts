@@ -210,6 +210,10 @@ import {
   TOWER_TICKETS_PER_DAY,
   TOWER_GEM_EVERY,
   TOWER_GEM_REWARD,
+  PARAGON_KILLS_PER_POINT,
+  PARAGON_ATTACK_PER_POINT,
+  PARAGON_HP_PER_POINT,
+  PARAGON_MAX_POINTS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -889,6 +893,8 @@ export class GameWorld {
         towerFloor: saved.towerFloor ?? 1,
         towerTicketDate: saved.towerTicketDate,
         towerTicketsUsed: saved.towerTicketsUsed ?? 0,
+        paragonPoints: saved.paragonPoints ?? 0,
+        paragonProgress: saved.paragonProgress ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1561,7 +1567,7 @@ export class GameWorld {
     // Dev-only cheat for automated smoke tests. Never enabled in production
     // (requires explicit DEV_CHEATS=1 env; not set in Dockerfile/compose).
     if (process.env.DEV_CHEATS === "1") {
-      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number; restedXp?: number; lootPity?: number }) => {
+      (socket as Socket).on("devGrant", (payload: { gold?: number; gems?: number; talentPoints?: number; exp?: number; restedXp?: number; lootPity?: number; paragonProgress?: number; paragonPoints?: number }) => {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.stats.gold += Math.max(0, Number(payload?.gold) || 0);
@@ -1570,6 +1576,8 @@ export class GameWorld {
         if (payload?.exp) this.grantExpAndStatPoints(player, Math.max(0, Number(payload.exp) || 0));
         if (payload?.restedXp) player.restedXp = (player.restedXp ?? 0) + Math.max(0, Number(payload.restedXp) || 0);
         if (payload?.lootPity !== undefined) player.lootPity = Math.max(0, Number(payload.lootPity) || 0);
+        if (payload?.paragonProgress !== undefined) player.paragonProgress = Math.max(0, Number(payload.paragonProgress) || 0);
+        if (payload?.paragonPoints !== undefined) player.paragonPoints = Math.max(0, Number(payload.paragonPoints) || 0);
         socket.emit("player", player);
       });
       (socket as Socket).on("devGrantItem", (payload: { name?: string; rarity?: Rarity; value?: number; slot?: EquipmentSlot; themeId?: string; stats?: ItemStats }) => {
@@ -4487,6 +4495,19 @@ export class GameWorld {
     }
     this.updateQuestProgressForKill(player, monster);
     player.totalKills = (player.totalKills ?? 0) + 1;
+    // Sprint 285: paragon grind — every 100 kills bakes +1 atk/+5 HP.
+    if ((player.paragonPoints ?? 0) < PARAGON_MAX_POINTS) {
+      player.paragonProgress = (player.paragonProgress ?? 0) + 1;
+      if (player.paragonProgress >= PARAGON_KILLS_PER_POINT) {
+        player.paragonProgress = 0;
+        player.paragonPoints = (player.paragonPoints ?? 0) + 1;
+        player.stats.attack += PARAGON_ATTACK_PER_POINT;
+        player.stats.maxHp += PARAGON_HP_PER_POINT;
+        this.sockets.get(player.id)?.emit("system", `🔮 CẢNH GIỚI +1 (${player.paragonPoints}/${PARAGON_MAX_POINTS}) — vĩnh viễn +${PARAGON_ATTACK_PER_POINT} công, +${PARAGON_HP_PER_POINT} HP!`);
+        if (player.paragonPoints >= 1) this.unlockAchievement(player, "paragon-1");
+        if (player.paragonPoints >= 10) this.unlockAchievement(player, "paragon-10");
+      }
+    }
     // Sprint 231: drip gold into the piggy bank (notify once when it fills).
     const piggyBefore = player.piggyGold ?? 0;
     player.piggyGold = piggyAfterKill(piggyBefore);

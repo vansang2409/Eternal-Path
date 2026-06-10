@@ -221,6 +221,10 @@ export interface PlayerState {
   towerTicketDate?: string;
   /** Sprint 281: tickets used today. */
   towerTicketsUsed?: number;
+  /** Sprint 285: paragon points earned (each = +1 atk, +5 HP, baked in). */
+  paragonPoints?: number;
+  /** Sprint 285: kills toward the next paragon point. */
+  paragonProgress?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
