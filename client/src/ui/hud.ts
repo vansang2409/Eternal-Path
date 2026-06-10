@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, arenaSeasonIndexFor, arenaSeasonRewardGems, ARENA_SEASON_TIERS, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -410,6 +410,7 @@ export class Hud {
     this.renderBestiaryModal();
     this.renderStatsModal();
     this.renderStashModal();
+    this.renderArenaSeason();
     this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
@@ -1335,6 +1336,23 @@ export class Hud {
     body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Hạ quái để nâng hạng Sổ Tay: ${BESTIARY_TIERS.map((b) => `${b.name} (${b.kills})`).join(" → ")}. Mỗi hạng thưởng vàng/💎. Đạt Vàng: ${goldTiers} loại.</p>
       ${rows || `<p style="color:#8e9192;font-size:12px">Chưa ghi nhận quái nào — ra ngoài săn thôi!</p>`}
       ${undiscovered > 0 ? `<p style="color:#8e9192;font-size:11px;margin-top:8px">🔍 Chưa khám phá: ${undiscovered} loại quái.</p>` : ""}`;
+  }
+
+  // Sprint 272: arena season box — current season, kills, next milestone.
+  private renderArenaSeason(): void {
+    const box = document.querySelector<HTMLDivElement>("#arena-season-box");
+    const p = this.player;
+    if (!box || !p) return;
+    const season = arenaSeasonIndexFor();
+    const kills = p.arenaSeasonKills ?? 0;
+    const sorted = [...ARENA_SEASON_TIERS].sort((a, b) => a.kills - b.kills);
+    const next = sorted.find((t2) => kills < t2.kills);
+    const reached = arenaSeasonRewardGems(kills);
+    box.innerHTML = `
+      <div style="padding:8px 10px;margin:0 0 10px;border-radius:6px;background:rgba(40,24,28,0.6);border:1px solid #6b3a44">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><strong style="color:#ff8a9a">🏟️ Mùa Đấu #${season}</strong><span style="color:#d6dddf">${kills} hạ gục mùa này</span></div>
+        <div style="font-size:11px;color:#9aa;margin-top:4px">${next ? `Còn ${next.kills - kills} hạ gục tới mốc ${next.kills} (+${next.gems} 💎 khi mùa khép lại).` : "Đã đạt mốc cao nhất!"}${reached > 0 ? ` Mốc hiện tại: +${reached} 💎.` : ""}</div>
+      </div>`;
   }
 
   // Sprint 252: stash modal — list stored items, withdraw, expansion card.
