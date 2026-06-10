@@ -71,6 +71,9 @@ export class GameScene extends Phaser.Scene {
   private fxAutoDropped = false;
   // Sprint 263: previous craft counter for forge-spark detection.
   private prevItemsCrafted?: number;
+  // Sprint 267: Element Storm ambience.
+  private stormUntil = 0;
+  private stormTimer?: Phaser.Time.TimerEvent;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -1823,6 +1826,24 @@ export class GameScene extends Phaser.Scene {
       if (kind === "happyHour") {
         this.showTopBanner(`🌟 GIỜ VÀNG! x${multiplier} vàng rơi ra!`, "level", 3500);
         this.setHappyHourGlow(Math.max(0, until - Date.now()));
+      }
+      // Sprint 267: Element Storm — banner + ambient lightning flickers.
+      if (kind === "elementStorm") {
+        this.showTopBanner(`🌩️ BÃO NGUYÊN TỐ! x${multiplier} nguyên liệu rơi ra!`, "level", 3500);
+        this.stormUntil = until;
+        if (!this.stormTimer) {
+          this.stormTimer = this.time.addEvent({ delay: 2600, loop: true, callback: () => {
+            if (Date.now() > this.stormUntil || !this.fxHigh) return;
+            // Brief electric sky flicker + a couple of spark motes near the hero.
+            this.cameras.main.flash(120, 110, 140, 255, false);
+            const self = this.players.get(this.selfId);
+            if (!self) return;
+            for (let i = 0; i < 3; i++) {
+              const mote = this.add.star(self.x + (Math.random() - 0.5) * 160, self.y + (Math.random() - 0.5) * 110, 4, 1.5, 4, 0x9ad0ff, 0.9).setDepth(9000);
+              this.tweens.add({ targets: mote, y: mote.y - 18, alpha: 0, duration: 700, ease: "Quad.Out", onComplete: () => mote.destroy() });
+            }
+          } });
+        }
       }
     });
     this.socket.on("mailList", (mail) => this.hud.setMail(mail));
