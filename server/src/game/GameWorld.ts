@@ -598,6 +598,20 @@ export class GameWorld {
     this.io.to(this.room).emit(event, ...args);
   }
 
+  // Sprint 303: positional events (damage numbers, casts, projectiles) only
+  // reach clients whose hero is within AOI of the event — at scale this is
+  // the difference between O(events × everyone) and O(events × nearby).
+  private broadcastNear<E extends keyof ServerToClientEvents>(position: { x: number; y: number }, event: E, ...args: Parameters<ServerToClientEvents[E]>): void {
+    const r2 = AOI_RADIUS * AOI_RADIUS;
+    for (const [id, socket] of this.sockets) {
+      const viewer = this.players.get(id);
+      if (!viewer) continue;
+      const dx = viewer.position.x - position.x;
+      const dy = viewer.position.y - position.y;
+      if (dx * dx + dy * dy <= r2) socket.emit(event, ...args);
+    }
+  }
+
   // Pick TREASURE_CHEST_COUNT walkable tiles in remote (mid-to-high level)
   // biomes; deterministic by world seed.
   private initTreasureChestSlots(): void {
@@ -4189,9 +4203,9 @@ export class GameWorld {
       const result = rollDamage(monster.attack, player.stats.defense, monster.level - player.stats.level);
       player.stats.hp = Math.max(0, player.stats.hp - result.damage);
       this.emitFloating(player.id, player.position, result.damage, "damage");
-      // Visual projectile for ranged casters.
+      // Visual projectile for ranged casters (Sprint 303: AOI-scoped).
       if (def.ranged) {
-        this.broadcast("monsterProjectile", {
+        this.broadcastNear(monster.position, "monsterProjectile", {
           sourceId: monster.id,
           sourcePosition: { ...monster.position },
           targetPosition: { ...player.position },
@@ -4234,8 +4248,8 @@ export class GameWorld {
       const healed = player.stats.hp - before;
       player.skillCooldowns[skillId] = now + info.cooldownMs;
       this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
-      this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
-      this.sockets.get(player.id)?.emit("player", player);
+      this.broadcastNear(player.position, "skillCast", { casterId: player.id, skillId, position: { ...player.position } });
+  this.sockets.get(player.id)?.emit("player", player);
       return;
     }
 
@@ -4257,7 +4271,7 @@ export class GameWorld {
         const healed = player.stats.hp - before;
         if (healed > 0) this.emitFloating(player.id, player.position, healed, "heal", `+${healed} hp`);
       }
-      this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position }, targetPosition: { ...target.position } });
+      this.broadcastNear(player.position, "skillCast", { casterId: player.id, skillId, position: { ...player.position }, targetPosition: { ...target.position } });
       this.sockets.get(player.id)?.emit("player", player);
       return;
     }
@@ -4274,7 +4288,7 @@ export class GameWorld {
       this.damageMonster(player, monster, (info.damageMultiplier ?? 1) * rankMul, now, label);
       this.applySkillEffect(monster, info.appliesEffect, now);
     }
-    this.broadcast("skillCast", { casterId: player.id, skillId, position: { ...player.position } });
+    this.broadcastNear(player.position, "skillCast", { casterId: player.id, skillId, position: { ...player.position } });
     this.sockets.get(player.id)?.emit("player", player);
   }
 
@@ -5776,7 +5790,8 @@ export class GameWorld {
   }
 
   private emitFloating(entityId: string, position: { x: number; y: number }, amount: number, kind: FloatingTextEvent["kind"], text?: string): void {
-    this.broadcast("floatingText", {
+    // Sprint 303: only clients near the event receive the damage number.
+    this.broadcastNear(position, "floatingText", {
       id: `${Date.now()}-${Math.random()}`,
       entityId,
       position,
