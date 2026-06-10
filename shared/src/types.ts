@@ -99,6 +99,8 @@ export interface ConsumableItem extends BaseItem {
   heal: number;
   /** Special use: teleport player to town spawn. */
   recall?: boolean;
+  /** Sprint 241: special use — dig up instant treasure (gold + maybe loot). */
+  treasureMap?: boolean;
 }
 
 export interface MaterialItem extends BaseItem {

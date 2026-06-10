@@ -176,6 +176,9 @@ import {
   mountUpgradeCost,
   MOUNT_MAX_LEVEL,
   goldTitleOffer,
+  makeTreasureMapItem,
+  rollTreasureGold,
+  TREASURE_MAP_DROP_RATE,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -1501,6 +1504,13 @@ export class GameWorld {
         this.killMonster(player, m, Date.now());
         socket.emit("player", player);
       });
+      // Sprint 241: grant a treasure map directly.
+      (socket as Socket).on("devGrantMap", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.inventory.items.push(makeTreasureMapItem());
+        socket.emit("player", player);
+      });
       // Sprint 233: simulate an absence for the welcome-back gift.
       (socket as Socket).on("devReturning", (payload: { days?: number }) => {
         const player = this.players.get(socket.id);
@@ -2762,6 +2772,27 @@ export class GameWorld {
       if (itemIndex < 0) return;
       const item = player.inventory.items[itemIndex];
       if (item.kind !== "consumable") return;
+      // Sprint 241: treasure map — dig up instant riches on the spot.
+      if (item.treasureMap) {
+        player.inventory.items.splice(itemIndex, 1);
+        const gold = rollTreasureGold(Math.random());
+        player.stats.gold += gold;
+        player.chestsOpened = (player.chestsOpened ?? 0) + 1;
+        if (player.chestsOpened >= 10) this.unlockAchievement(player, "treasure-hoard");
+        this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
+        // 30% bonus: the digging also unearths a guaranteed elite-quality item.
+        if (Math.random() < 0.3 && !isBagFull(player)) {
+          const bonus = createLoot(player.stats.level, "forestSlime", true, true);
+          if (bonus) {
+            player.inventory.items.push(bonus);
+            this.emitFloating(player.id, player.position, 0, "loot", bonus.name);
+          }
+        }
+        socket.emit("system", `🗺️⛏️ Đào kho báu: +${gold} vàng!`);
+        socket.emit("player", player);
+        this.markDirty(player);
+        return;
+      }
       // Recall scroll: teleport to town spawn.
       if (item.recall) {
         player.inventory.items.splice(itemIndex, 1);
@@ -4184,6 +4215,13 @@ export class GameWorld {
     }
     // Material drop: 30% chance per kill (50% for elite, 100% for boss).
     this.tryDropMaterial(player, monster);
+    // Sprint 241: 2% treasure-map drop.
+    if (Math.random() < TREASURE_MAP_DROP_RATE && !isBagFull(player)) {
+      const map = makeTreasureMapItem();
+      player.inventory.items.push(map);
+      this.emitFloating(player.id, player.position, 0, "loot", map.name);
+      this.sockets.get(player.id)?.emit("system", "🗺️ Nhặt được Bản Đồ Kho Báu — dùng trong túi đồ để đào!");
+    }
     this.sockets.get(player.id)?.emit("loot", { playerId: player.id, gold, item: collectedItem });
     this.tryAutoRetarget(player);
     this.emitQuestList(player);
