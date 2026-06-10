@@ -168,6 +168,7 @@ import {
   piggyAfterKill,
   PIGGY_BREAK_GEM_COST,
   PIGGY_GOLD_CAP,
+  returningRewardFor,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -832,6 +833,8 @@ export class GameWorld {
             socket.emit("system", `😴 Nghỉ ngơi đủ giấc: +${player.restedXp - before} EXP Nghỉ Ngơi (kho: ${player.restedXp}). Hạ quái để nhận +50% EXP tới khi hết.`);
           }
         }
+        // Sprint 233: welcome-back gift after 3+ days away.
+        this.grantReturningReward(player, Date.now() - saved.lastSeenAt);
       }
       const sessionToken = crypto.randomUUID();
       this.sessions.set(sessionToken, { email: resolvedEmail, accountName: resolvedName });
@@ -1485,6 +1488,14 @@ export class GameWorld {
           respawnDurationMs: 60_000
         } as unknown as MonsterState;
         this.killMonster(player, m, Date.now());
+        socket.emit("player", player);
+      });
+      // Sprint 233: simulate an absence for the welcome-back gift.
+      (socket as Socket).on("devReturning", (payload: { days?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const days = Math.max(0, Number(payload?.days) || 0);
+        this.grantReturningReward(player, days * 86_400_000);
         socket.emit("player", player);
       });
       // Sprint 225: deterministic scratch roll.
@@ -3854,6 +3865,16 @@ export class GameWorld {
     const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
     this.emitFloating(monster.id, monster.position, result.damage, "damage", text);
     if (monster.hp <= 0) this.killMonster(player, monster, now);
+  }
+
+  // Sprint 233: pay the welcome-back gift for a long absence.
+  private grantReturningReward(player: PlayerState, offlineMs: number): void {
+    const reward = returningRewardFor(offlineMs);
+    if (!reward) return;
+    player.stats.gold += reward.gold;
+    player.gems = (player.gems ?? 0) + reward.gems;
+    this.sockets.get(player.id)?.emit("system", `🎁 Mừng bạn trở lại sau ${reward.days}+ ngày xa cách: +${reward.gold.toLocaleString("vi-VN")} vàng, +${reward.gems} 💎!`);
+    this.markDirty(player);
   }
 
   // Sprint 225: resolve one scratch ticket — deduct cost, roll, pay out.
