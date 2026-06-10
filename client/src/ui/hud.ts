@@ -14,6 +14,7 @@ export class Hud {
   private selectedItemId?: string;
   private buffTimer?: ReturnType<typeof setInterval>;
   private mail: MailMessage[] = [];
+  private prevMailCount = 0;
   private autoRetargetEnabled = false;
   private skillCooldowns: Record<SkillId, number> = { powerStrike: 0, cleave: 0, swiftStrike: 0, heal: 0, piercingStrike: 0, whirlwind: 0, swiftBlade: 0, greaterHeal: 0, lifedrain: 0, flameBurst: 0, thunderStrike: 0, icicleStorm: 0, shadowAssault: 0, healingWave: 0, divineLight: 0, voidNova: 0 };
   private party: PartyView | null = null;
@@ -1724,6 +1725,15 @@ export class Hud {
       if (this.mail.length > 0) { badge.textContent = String(this.mail.length); badge.style.display = "block"; }
       else badge.style.display = "none";
     }
+    // Sprint 209: glow while unread; bounce once when new mail arrives.
+    btn.style.boxShadow = this.mail.length > 0 ? "0 0 14px 3px rgba(224,70,58,0.6)" : "0 4px 14px rgba(0,0,0,0.5)";
+    btn.style.animation = this.mail.length > 0 ? "mailGlow 1.8s ease-in-out infinite" : "none";
+    if (this.mail.length > this.prevMailCount && this.prevMailCount >= 0) {
+      btn.classList.remove("mail-bounce");
+      void btn.offsetWidth; // reflow to restart the animation
+      btn.classList.add("mail-bounce");
+    }
+    this.prevMailCount = this.mail.length;
   }
   private openMailbox(): void {
     if (document.getElementById("mailbox-modal")) { document.getElementById("mailbox-modal")?.remove(); return; }

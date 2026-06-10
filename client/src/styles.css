@@ -2597,3 +2597,8 @@ h2 {
 
 /* Sprint 188: socketed-gem twinkle on inventory items. */
 @keyframes gemTwinkle { 0%, 100% { opacity: 0.55; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.15); } }
+
+/* Sprint 209: mailbox button feedback. */
+@keyframes mailGlow { 0%,100% { box-shadow:0 0 10px 2px rgba(224,70,58,0.4); } 50% { box-shadow:0 0 18px 5px rgba(224,70,58,0.75); } }
+@keyframes mailBounce { 0% { transform:translateY(0); } 30% { transform:translateY(-10px) scale(1.12); } 60% { transform:translateY(0) scale(0.96); } 100% { transform:translateY(0) scale(1); } }
+#mailbox-fab.mail-bounce { animation: mailBounce 0.55s ease-out, mailGlow 1.8s ease-in-out 0.55s infinite !important; }
