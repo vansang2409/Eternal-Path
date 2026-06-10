@@ -2046,6 +2046,9 @@ export class Hud {
         "/gift <số> — lì xì vàng cho mọi bạn online",
         "/roll — tung xúc xắc 1-100 công khai",
         "/dance /wave /laugh /cry /heart — emote",
+        "/fish — thả câu nhanh",
+        "/tower — mở Tháp Thí Luyện",
+        "/stats — mở bảng Thống Kê",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
@@ -2058,6 +2061,19 @@ export class Hud {
     }
     if (["dance", "wave", "laugh", "cry", "heart"].includes(cmd)) {
       window.dispatchEvent(new CustomEvent("social-emote", { detail: cmd }));
+      return;
+    }
+    // Sprint 294: quick-access shortcuts.
+    if (cmd === "fish" || cmd === "cau") {
+      window.dispatchEvent(new CustomEvent("do-fish"));
+      return;
+    }
+    if (cmd === "tower" || cmd === "thap") {
+      document.querySelector<HTMLElement>("#tower-modal")?.classList.remove("hidden");
+      return;
+    }
+    if (cmd === "stats" || cmd === "thongke") {
+      document.querySelector<HTMLElement>("#stats-modal")?.classList.remove("hidden");
       return;
     }
     if (cmd === "me" && arg) { this.onChat(`* ${arg}`); return; }
