@@ -25,3 +25,4 @@ export * from "./scratch.js";
 export * from "./exchange.js";
 export * from "./piggy.js";
 export * from "./returning.js";
+export * from "./killstreak.js";

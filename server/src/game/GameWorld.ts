@@ -169,6 +169,8 @@ import {
   PIGGY_BREAK_GEM_COST,
   PIGGY_GOLD_CAP,
   returningRewardFor,
+  killStreakGoldBonus,
+  KILL_STREAK_WINDOW_MS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -3997,6 +3999,13 @@ export class GameWorld {
     goldMult *= this.guildGoldMultiplier(player);
     if (isGoldBoostActive(player.goldBoostUntil)) goldMult *= GOLD_BOOST_MULTIPLIER;
     if (isHappyHourActive(this.happyHourUntil)) goldMult *= HAPPY_HOUR_MULTIPLIER;
+    // Sprint 235: kill-streak combo — chained kills boost gold up to +50%.
+    const streak = now <= (player.killStreakExpiresAt ?? 0) ? (player.killStreak ?? 0) + 1 : 1;
+    player.killStreak = streak;
+    player.killStreakExpiresAt = now + KILL_STREAK_WINDOW_MS;
+    const streakBonus = killStreakGoldBonus(streak);
+    if (streakBonus > 0) goldMult *= 1 + streakBonus;
+    this.sockets.get(player.id)?.emit("killStreak", { streak, bonus: streakBonus });
     let gold = goldForMonster(monster);
     if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;

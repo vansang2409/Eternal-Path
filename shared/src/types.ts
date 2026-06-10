@@ -193,6 +193,10 @@ export interface PlayerState {
   scratchTickets?: number;
   /** Sprint 231: piggy-bank gold accrued from kills (break with gems). */
   piggyGold?: number;
+  /** Sprint 235: current kill-streak count (session-only, not persisted). */
+  killStreak?: number;
+  /** Sprint 235: timestamp the current streak expires (session-only). */
+  killStreakExpiresAt?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).
@@ -515,6 +519,8 @@ export interface ServerToClientEvents {
   fishResult: (payload: { id: string; label: string; gold: number; materialId?: MaterialId }) => void;
   /** Sprint 225: outcome of one scratch ticket. */
   scratchResult: (payload: { id: string; label: string; payout: number }) => void;
+  /** Sprint 235: the killer's current streak (for combo VFX). */
+  killStreak: (payload: { streak: number; bonus: number }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
