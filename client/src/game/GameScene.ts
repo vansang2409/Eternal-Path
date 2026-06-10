@@ -251,6 +251,22 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
+    // Sprint 242: treasure dig — dirt burst + golden sparkles + shake.
+    this.socket.on("treasureDug", ({ gold }) => {
+      const self = this.players.get(this.selfId);
+      if (!self) return;
+      this.cameras.main.shake(180, 0.004);
+      for (let i = 0; i < 10; i++) {
+        const dirt = this.add.ellipse(self.x + (Math.random() - 0.5) * 10, self.y + 6, 5, 3, 0x8a6a42, 0.9).setDepth(self.depth + 1);
+        this.tweens.add({ targets: dirt, x: dirt.x + (Math.random() - 0.5) * 44, y: dirt.y - 10 - Math.random() * 26, alpha: 0, duration: 420 + Math.random() * 180, ease: "Quad.Out", onComplete: () => dirt.destroy() });
+      }
+      for (let i = 0; i < 8; i++) {
+        const spark = this.add.star(self.x + (Math.random() - 0.5) * 22, self.y - Math.random() * 10, 4, 2, 5, 0xffd166, 1).setDepth(self.depth + 2);
+        this.tweens.add({ targets: spark, y: spark.y - 22 - Math.random() * 16, angle: 180, alpha: 0, duration: 600 + Math.random() * 200, ease: "Quad.Out", onComplete: () => spark.destroy() });
+      }
+      const label = this.add.text(self.x, self.y - 30, `⛏️ +${gold} 🪙`, { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#ffd166", stroke: "#000000", strokeThickness: 4 }).setOrigin(0.5).setDepth(9999);
+      this.tweens.add({ targets: label, y: label.y - 26, alpha: 0, duration: 1200, ease: "Quad.Out", onComplete: () => label.destroy() });
+    });
     // Sprint 236: kill-streak combo counter (screen-space, pops per kill).
     this.socket.on("killStreak", ({ streak, bonus }) => {
       if (streak < 2) { this.comboText?.setAlpha(0); return; }

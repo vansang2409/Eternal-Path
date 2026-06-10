@@ -2789,6 +2789,7 @@ export class GameWorld {
           }
         }
         socket.emit("system", `🗺️⛏️ Đào kho báu: +${gold} vàng!`);
+        socket.emit("treasureDug", { gold });
         socket.emit("player", player);
         this.markDirty(player);
         return;

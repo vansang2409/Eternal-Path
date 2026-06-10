@@ -529,6 +529,8 @@ export interface ServerToClientEvents {
   scratchResult: (payload: { id: string; label: string; payout: number }) => void;
   /** Sprint 235: the killer's current streak (for combo VFX). */
   killStreak: (payload: { streak: number; bonus: number }) => void;
+  /** Sprint 242: a treasure map was dug up (for dig VFX). */
+  treasureDug: (payload: { gold: number }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
