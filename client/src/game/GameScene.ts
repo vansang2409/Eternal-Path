@@ -74,6 +74,8 @@ export class GameScene extends Phaser.Scene {
   // Sprint 267: Element Storm ambience.
   private stormUntil = 0;
   private stormTimer?: Phaser.Time.TimerEvent;
+  // Sprint 274: evolved-pet count for the ascension VFX.
+  private prevEvolvedCount?: number;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -267,6 +269,24 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
+    // Sprint 274: pet evolution — request + golden ascension burst.
+    window.addEventListener("pet-evolve", (e) => this.socket.emit("evolvePet", { petId: (e as CustomEvent).detail }));
+    this.socket.on("player", (player) => {
+      if (player.id !== this.selfId) return;
+      const evolvedCount = Object.values(player.petEvolved ?? {}).filter(Boolean).length;
+      if (this.prevEvolvedCount !== undefined && evolvedCount > this.prevEvolvedCount) {
+        const self = this.players.get(this.selfId);
+        if (self) {
+          this.cameras.main.flash(420, 255, 230, 140);
+          for (let i = 0; i < 14; i++) {
+            const star = this.add.star(self.x, self.y - 4, 5, 2.5, 6, 0xffd166, 1).setDepth(self.depth + 2);
+            const ang = (i / 14) * Math.PI * 2;
+            this.tweens.add({ targets: star, x: self.x + Math.cos(ang) * 42, y: self.y - 4 + Math.sin(ang) * 30 - 12, angle: 200, alpha: 0, duration: 700, ease: "Quad.Out", onComplete: () => star.destroy() });
+          }
+        }
+      }
+      this.prevEvolvedCount = evolvedCount;
+    });
     // Sprint 252: stash actions.
     window.addEventListener("stash-deposit", (e) => this.socket.emit("stashDeposit", { itemId: (e as CustomEvent).detail }));
     window.addEventListener("stash-withdraw", (e) => this.socket.emit("stashWithdraw", { itemId: (e as CustomEvent).detail }));

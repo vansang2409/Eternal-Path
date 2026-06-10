@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, arenaSeasonIndexFor, arenaSeasonRewardGems, ARENA_SEASON_TIERS, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, arenaSeasonIndexFor, arenaSeasonRewardGems, ARENA_SEASON_TIERS, petEffectiveBuff, PET_EVOLVE_GEM_COST, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -1804,7 +1804,9 @@ export class Hud {
       const swatch = "#" + p.color.toString(16).padStart(6, "0");
       const xp = xpMap[p.id] ?? 0;
       const lvl = petLevelForXp(xp);
-      const buff = petBuffAtLevel(p.buff, lvl);
+      // Sprint 274: show the evolved buff when applicable.
+      const isEvolved = Boolean(this.player?.petEvolved?.[p.id]);
+      const buff = petEffectiveBuff(p.buff, lvl, isEvolved);
       const buffText = [buff.attack ? `+${buff.attack} công` : "", buff.defense ? `+${buff.defense} thủ` : "", buff.maxHp ? `+${buff.maxHp} HP` : ""].filter(Boolean).join(", ");
       let action: string;
       if (!has) {
@@ -1817,8 +1819,16 @@ export class Hud {
       // XP bar (owned pets only).
       const prog = petXpProgress(xp);
       const pct = prog.atMax ? 100 : Math.round((prog.into / Math.max(1, prog.span)) * 100);
+      // Sprint 274: evolution row — badge when done, gem button at L5.
+      const evolveRow = has
+        ? (isEvolved
+            ? `<div style="font-size:10px;color:#ffd166;margin-top:3px">⭐ Đã tiến hoá (+50% chỉ số)</div>`
+            : (prog.atMax
+                ? `<button type="button" data-pet-evolve="${p.id}" style="margin-top:4px;padding:3px 10px;border:none;border-radius:4px;font-weight:700;font-size:11px;color:#1d1500;background:linear-gradient(to bottom,#ffd166,#c8a948);cursor:pointer">✨ Tiến hoá (💎 ${PET_EVOLVE_GEM_COST})</button>`
+                : `<div style="font-size:10px;color:#8e9192;margin-top:3px">✨ Đạt cấp 5 để tiến hoá</div>`))
+        : "";
       const levelBar = has
-        ? `<div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8e9192"><span>Cấp ${lvl}${prog.atMax ? " (MAX)" : ""}</span><span>${prog.atMax ? "" : `${prog.into}/${prog.span} XP`}</span></div><div style="height:6px;background:#101820;border-radius:3px;overflow:hidden;margin-top:2px"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,#6e4c9b,#c79bff)"></div></div></div>`
+        ? `<div style="margin-top:4px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8e9192"><span>Cấp ${lvl}${prog.atMax ? " (MAX)" : ""}${isEvolved ? " ⭐" : ""}</span><span>${prog.atMax ? "" : `${prog.into}/${prog.span} XP`}</span></div><div style="height:6px;background:#101820;border-radius:3px;overflow:hidden;margin-top:2px"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,${isEvolved ? "#c8a948,#ffd166" : "#6e4c9b,#c79bff"})"></div></div>${evolveRow}</div>`
         : "";
       return `<div class="rarity-${p.rarity}" style="display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:6px;border-radius:6px;background:${isActive ? "rgba(255,209,102,0.12)" : "rgba(28,28,28,0.5)"};border:1px solid ${isActive ? "#ffd166" : "#2a2a2a"};border-left:3px solid currentColor">
         <div style="width:22px;height:22px;border-radius:50%;background:${swatch};border:2px solid #0008;flex:none"></div>
@@ -1874,6 +1884,10 @@ export class Hud {
     });
     body.querySelectorAll<HTMLButtonElement>("[data-pet-sac]").forEach((btn) => {
       btn.addEventListener("click", () => { if (confirm("Hiến tế linh thú này để lấy XP? Không hoàn lại.")) this.onSacrificePet(btn.dataset.petSac!); });
+    });
+    // Sprint 274: evolve button.
+    body.querySelectorAll<HTMLButtonElement>("[data-pet-evolve]").forEach((btn) => {
+      btn.addEventListener("click", () => window.dispatchEvent(new CustomEvent("pet-evolve", { detail: btn.dataset.petEvolve })));
     });
   }
 
