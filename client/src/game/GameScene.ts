@@ -66,6 +66,9 @@ export class GameScene extends Phaser.Scene {
   private hitStopActive = false;
   // Sprint 256: accessibility — suppress camera shake when enabled.
   private reduceShake = typeof localStorage !== "undefined" && localStorage.getItem("reduceShake") === "1";
+  // Sprint 257: auto-FX governor state.
+  private lowFpsSeconds = 0;
+  private fxAutoDropped = false;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -269,6 +272,21 @@ export class GameScene extends Phaser.Scene {
       this.dpsHits.push({ at: now, amount });
       this.lastDpsHitAt = now;
     });
+    // Sprint 257: auto-FX governor — sustained low FPS flips ambient FX to
+    // Low once per session (player can flip it back with G).
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => {
+      if (this.fxAutoDropped || !this.fxHigh) return;
+      const fps = this.game.loop.actualFps;
+      this.lowFpsSeconds = fps > 0 && fps < 30 ? this.lowFpsSeconds + 1 : 0;
+      if (this.lowFpsSeconds >= 5) {
+        this.fxAutoDropped = true;
+        this.toggleFx();
+        const note = this.add.text(this.scale.width / 2, 84, "⚙️ FPS thấp — đã tự giảm hiệu ứng nền (phím G để bật lại)", {
+          fontFamily: "monospace", fontSize: "12px", color: "#ffd166", stroke: "#000000", strokeThickness: 3
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(100001);
+        this.tweens.add({ targets: note, alpha: 0, delay: 3500, duration: 600, onComplete: () => note.destroy() });
+      }
+    } });
     this.time.addEvent({ delay: 1000, loop: true, callback: () => {
       const now = Date.now();
       while (this.dpsHits.length && now - this.dpsHits[0].at > 10_000) this.dpsHits.shift();
