@@ -53,7 +53,10 @@ export const TITLES: TitleDef[] = [
   { id: "mogul", label: "Trùm Tài Phiệt", desc: "Sở hữu 1.000.000 vàng.", earned: (p) => p.stats.gold >= 1_000_000 },
   // ── Sprint 215: combat-milestone titles ──
   { id: "exterminator", label: "Đồ Long", desc: "Hạ tổng 5.000 quái.", earned: (p) => (p.totalKills ?? 0) >= 5000 },
-  { id: "boss-bane", label: "Khắc Tinh Ma Vương", desc: "Mở thành tựu hạ world boss.", earned: (p) => (p.achievements ?? []).includes("slay-boss") }
+  { id: "boss-bane", label: "Khắc Tinh Ma Vương", desc: "Mở thành tựu hạ world boss.", earned: (p) => (p.achievements ?? []).includes("slay-boss") },
+  // ── Sprint 224: fishing titles ──
+  { id: "angler-title", label: "Ngư Ông", desc: "Câu được 100 con cá.", earned: (p) => (p.fishCaught ?? 0) >= 100 },
+  { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") }
 ];
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));

@@ -3824,6 +3824,10 @@ export class GameWorld {
       }
     }
     if (result.id !== "boot") player.fishCaught = (player.fishCaught ?? 0) + 1;
+    // Sprint 224: fishing achievements.
+    if ((player.fishCaught ?? 0) >= 10) this.unlockAchievement(player, "angler");
+    if ((player.fishCaught ?? 0) >= 100) this.unlockAchievement(player, "master-angler");
+    if (result.id === "giant-fish") this.unlockAchievement(player, "giant-hunter");
     socket?.emit("fishResult", { id: result.id, label: result.label, gold: result.gold ?? 0, materialId: result.materialId });
     socket?.emit("system", `🎣 ${summary}`);
     if (result.announce) this.io.emit("system", `🐋 ${player.accountName} câu được ${result.label}!`);

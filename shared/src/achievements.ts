@@ -55,7 +55,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Sprint 204 — mailbox achievement.
   { id: "pen-pal",         title: "Bưu Tá",              description: "Gửi 1 lá thư cho người chơi khác.",      reward: { gems: 10 } },
   // Sprint 217 — bestiary achievement.
-  { id: "scholar",         title: "Học Giả Quái Vật",    description: "Đạt hạng Đồng một loại quái trong Sổ Tay.", reward: { gems: 10 } }
+  { id: "scholar",         title: "Học Giả Quái Vật",    description: "Đạt hạng Đồng một loại quái trong Sổ Tay.", reward: { gems: 10 } },
+  // Sprint 224 — fishing achievements.
+  { id: "angler",          title: "Cần Thủ",             description: "Câu được 10 con cá.",                       reward: { gems: 10 } },
+  { id: "master-angler",   title: "Ngư Ông Đắc Lợi",     description: "Câu được 100 con cá.",                      reward: { gems: 25 } },
+  { id: "giant-hunter",    title: "Săn Cá Khổng Lồ",     description: "Câu được CÁ KHỔNG LỒ huyền thoại.",         reward: { gems: 20 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {
