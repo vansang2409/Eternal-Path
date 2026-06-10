@@ -239,6 +239,15 @@ export class Hud {
       // Drop focus so the checkbox doesn't keep keyboard focus and freeze movement.
       autoRetargetToggle.blur();
     });
+    // Sprint 223: fishing button — fires the cast and sweeps a 5s cooldown.
+    const fishBtn = document.querySelector<HTMLButtonElement>("#fish-btn");
+    fishBtn?.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("do-fish"));
+      fishBtn.disabled = true;
+      fishBtn.style.opacity = "0.35";
+      setTimeout(() => { fishBtn.disabled = false; fishBtn.style.opacity = ""; }, 5000);
+      fishBtn.blur();
+    });
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const message = input.value.trim();

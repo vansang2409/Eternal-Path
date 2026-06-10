@@ -240,6 +240,21 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("guildRaidUpdate", (view) => this.hud.setGuildRaid(view));
     this.hud.setMysteryBannerProxy((text) => this.showTopBanner(text, "achievement", 3500));
     this.socket.on("mysteryBoxResult", (r) => this.hud.showMysteryBoxResult(r.label));
+    // Sprint 223: fishing — cast on button click, splash + label on result.
+    window.addEventListener("do-fish", () => this.socket.emit("fish"));
+    this.socket.on("fishResult", (r) => {
+      const self = this.players.get(this.selfId);
+      if (!self) return;
+      const ring = this.add.ellipse(self.x, self.y + 8, 10, 5).setStrokeStyle(2, 0x7fd4ff, 0.9).setDepth(self.depth + 1);
+      this.tweens.add({ targets: ring, scaleX: 3.2, scaleY: 3.2, alpha: 0, duration: 520, ease: "Quad.Out", onComplete: () => ring.destroy() });
+      for (let i = 0; i < 6; i++) {
+        const drop = this.add.circle(self.x + (Math.random() - 0.5) * 14, self.y + 6, 2, 0x9fe8ff, 0.9).setDepth(self.depth + 1);
+        this.tweens.add({ targets: drop, y: drop.y - 14 - Math.random() * 10, alpha: 0, duration: 380 + Math.random() * 160, ease: "Quad.Out", onComplete: () => drop.destroy() });
+      }
+      const label = this.add.text(self.x, self.y - 26, r.id === "boot" ? "🥾 ..." : `🎣 ${r.label}`, { fontFamily: "monospace", fontSize: "11px", color: r.id === "giant-fish" ? "#ffd166" : "#bfeaff", stroke: "#000000", strokeThickness: 3 }).setOrigin(0.5).setDepth(9999);
+      this.tweens.add({ targets: label, y: label.y - 22, alpha: 0, duration: 1100, ease: "Quad.Out", onComplete: () => label.destroy() });
+      if (r.id === "giant-fish") this.cameras.main.flash(420, 120, 200, 255);
+    });
     this.hud.setInspectHandler((name) => this.socket.emit("inspectPlayer", { name }));
     this.hud.setPayHandler((to, amount) => this.socket.emit("payPlayer", { to, amount }));
     this.hud.setWhoHandler(() => this.socket.emit("requestOnline"));
