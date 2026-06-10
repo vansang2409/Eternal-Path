@@ -424,6 +424,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0xff7ab8,
     gemPrice: 185
+  },
+  // ── Season 16 (Sprint 295): CAPSTONE — eternal light ──
+  {
+    id: "skin-eternal-light",
+    name: "Vĩnh Hằng Chi Quang",
+    description: "Bộ da tối thượng kỷ niệm Sprint 300 — thân thể tỏa hào quang trắng vàng.",
+    type: "skinTint",
+    color: 0xfff2c0,
+    gemPrice: 300,
+    featured: true
+  },
+  {
+    id: "skin-void-emperor",
+    name: "Hư Không Đại Đế",
+    description: "Bóng tối thẳm sâu nuốt chửng mọi ánh nhìn.",
+    type: "skinTint",
+    color: 0x2a2040,
+    gemPrice: 260
+  },
+  {
+    id: "skill-fx-genesis",
+    name: "Hiệu Ứng Phép Khởi Nguyên",
+    description: "Kỹ năng bùng nổ thứ ánh sáng khai thiên lập địa.",
+    type: "skillEffectColor",
+    color: 0xfff8d0,
+    gemPrice: 240
   }
 ];
 

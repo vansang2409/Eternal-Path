@@ -82,7 +82,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "sphinx-cub", name: "Nhân Sư Nhí", desc: "+16 công, +9 thủ, +105 HP", rarity: "epic", goldPrice: 0, gemPrice: 445, buff: { attack: 16, defense: 9, maxHp: 105 }, color: 0xd9a05a },
   // ── Season 15 (Sprint 290): frost-and-flame companions ──
   { id: "frostflame-fox", name: "Hồ Ly Băng Hỏa", desc: "+17 công, +10 thủ, +95 HP", rarity: "epic", goldPrice: 0, gemPrice: 455, buff: { attack: 17, defense: 10, maxHp: 95 }, color: 0xd06a9f },
-  { id: "ember-yeti", name: "Tuyết Quái Lửa Than", desc: "+11 công, +14 thủ, +135 HP", rarity: "epic", goldPrice: 0, gemPrice: 435, buff: { attack: 11, defense: 14, maxHp: 135 }, color: 0xb87a5a }
+  { id: "ember-yeti", name: "Tuyết Quái Lửa Than", desc: "+11 công, +14 thủ, +135 HP", rarity: "epic", goldPrice: 0, gemPrice: 435, buff: { attack: 11, defense: 14, maxHp: 135 }, color: 0xb87a5a },
+  // ── Season 16 (Sprint 295): CAPSTONE companions ──
+  { id: "primal-dragon", name: "Thái Cổ Thần Long", desc: "+25 công, +15 thủ, +200 HP — linh thú tối thượng", rarity: "epic", goldPrice: 0, gemPrice: 999, buff: { attack: 25, defense: 15, maxHp: 200 }, color: 0xfff0a0 },
+  { id: "light-wisp", name: "Quang Linh", desc: "+14 công, +11 thủ, +120 HP", rarity: "epic", goldPrice: 0, gemPrice: 470, buff: { attack: 14, defense: 11, maxHp: 120 }, color: 0xfff8d8 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
