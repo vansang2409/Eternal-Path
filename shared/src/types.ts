@@ -201,6 +201,8 @@ export interface PlayerState {
   mountLevels?: Record<string, number>;
   /** Sprint 239: vanity titles bought from the gold title shop. */
   boughtTitles?: string[];
+  /** Sprint 243: completed story-chain quest count (index of next chapter). */
+  storyQuestIndex?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */

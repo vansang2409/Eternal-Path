@@ -477,6 +477,13 @@ const QUEST_TEMPLATES: QuestTemplate[] = [
 
 const TUTORIAL_QUEST_IDS = QUEST_TEMPLATES.filter((q) => q.category === "tutorial").map((q) => q.id);
 const DAILY_QUEST_POOL = QUEST_TEMPLATES.filter((q) => q.category === "daily").map((q) => q.id);
+// Sprint 243: the story quests form an ordered chain — one active at a time,
+// the next unlocks when the previous is claimed. Finishing it all pays gems.
+const STORY_QUEST_CHAIN = [
+  "story-cull-5", "story-reach-5", "story-midlands", "story-reach-10",
+  "story-deeplands", "story-craft", "story-equip-epic", "story-treasure-hunter"
+];
+const STORY_CHAIN_BONUS_GEMS = 50;
 const DAILY_QUESTS_PER_DAY = 3;
 const DAILY_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
@@ -784,6 +791,7 @@ export class GameWorld {
         lootPity: saved.lootPity ?? 0,
         mountLevels: saved.mountLevels ?? {},
         boughtTitles: saved.boughtTitles ?? [],
+        storyQuestIndex: saved.storyQuestIndex ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -972,6 +980,14 @@ export class GameWorld {
         socket.emit("system", `Đã nhận trước đó: ${quest.title}.`);
         return;
       }
+      // Sprint 243: story chapters can only be taken in chain order.
+      if (quest.category === "story") {
+        const idx = STORY_QUEST_CHAIN.indexOf(quest.id);
+        if (idx === -1 || idx !== (player.storyQuestIndex ?? 0)) {
+          socket.emit("system", "📜 Chương này chưa mở — theo mạch cốt truyện đã.");
+          return;
+        }
+      }
       if (active.length >= MAX_ACTIVE_QUESTS) {
         socket.emit("system", "Đang làm tối đa 3 nhiệm vụ, hoàn tất hoặc bỏ bớt trước.");
         return;
@@ -1019,6 +1035,26 @@ export class GameWorld {
       this.grantBattlePassExp(player, BATTLE_PASS_EXP_PER_QUEST);
       socket.emit("player", player);
       socket.emit("system", `Hoàn tất nhiệm vụ: ${template.title} (+${template.rewardGold} vàng, +${template.rewardExp} kinh nghiệm).`);
+      // Sprint 243: story chain — advance to the next chapter on claim.
+      if (template.category === "story") {
+        const idx = STORY_QUEST_CHAIN.indexOf(template.id);
+        if (idx !== -1 && (player.storyQuestIndex ?? 0) <= idx) {
+          player.storyQuestIndex = idx + 1;
+          const nextId = STORY_QUEST_CHAIN[player.storyQuestIndex];
+          if (nextId) {
+            const next = questById(nextId);
+            if (next) {
+              active.push({ questId: nextId, progress: initialQuestProgress(next, player) });
+              socket.emit("system", `📜 Chương mới: ${next.title}`);
+            }
+          } else {
+            player.gems = (player.gems ?? 0) + STORY_CHAIN_BONUS_GEMS;
+            socket.emit("system", `📜✨ Hoàn thành TOÀN BỘ cốt truyện — thưởng ${STORY_CHAIN_BONUS_GEMS} 💎!`);
+            this.io.emit("system", `📜 ${player.accountName} đã hoàn thành cốt truyện Linh Vực!`);
+          }
+          socket.emit("player", player);
+        }
+      }
       this.emitQuestList(player);
       this.markDirty(player);
     });
@@ -4660,6 +4696,15 @@ export class GameWorld {
       }
       player.tutorialGiven = true;
     }
+    // Sprint 243: hand out the current story-chain quest (one at a time).
+    const storyIdx = player.storyQuestIndex ?? 0;
+    if (storyIdx < STORY_QUEST_CHAIN.length) {
+      const storyId = STORY_QUEST_CHAIN[storyIdx];
+      if (!active.find((entry) => entry.questId === storyId)) {
+        const template = questById(storyId);
+        if (template) active.push({ questId: storyId, progress: initialQuestProgress(template, player) });
+      }
+    }
     // Daily — pick fresh ones if expired or missing.
     const now = Date.now();
     const needsReset = !player.dailyResetAt || now - player.dailyResetAt >= DAILY_RESET_INTERVAL_MS;
@@ -5629,6 +5674,12 @@ function questListFor(player: PlayerState, active: ActiveQuestState[]): QuestLis
         // Tutorial quests are only browsable if not yet completed; once given
         // they live in active until claimed.
         if (quest.category === "tutorial" && player.tutorialGiven) return false;
+        // Sprint 243: story quests follow the chain — only the current
+        // chapter is ever browsable (no skipping, no re-claim farming).
+        if (quest.category === "story") {
+          const idx = STORY_QUEST_CHAIN.indexOf(quest.id);
+          if (idx === -1 || idx !== (player.storyQuestIndex ?? 0)) return false;
+        }
         return true;
       })
       .map((quest) => questView(quest, { questId: quest.id, progress: initialQuestProgress(quest, player) })),
