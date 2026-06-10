@@ -520,10 +520,19 @@ export class GameScene extends Phaser.Scene {
       this.lastAfterimageAt = time;
       const self = this.players.get(this.selfId);
       if (self) {
+        // Sprint 275: when riding a mount, the afterimage trail takes the
+        // mount's color — upgraded mounts add golden hoof sparks.
+        const mount = getMount(this.selfPlayer?.activeMount);
+        const trailTint = mount ? mount.color : 0x9ad0ff;
         const ghost = this.add.sprite(self.x, self.y, self.texture.key, self.frame.name)
           .setScale(self.scaleX, self.scaleY).setFlipX(self.flipX)
-          .setAlpha(0.45).setTint(0x9ad0ff).setDepth(self.depth - 1);
+          .setAlpha(0.45).setTint(trailTint).setDepth(self.depth - 1);
         this.tweens.add({ targets: ghost, alpha: 0, duration: 240, onComplete: () => ghost.destroy() });
+        const mountLvl = mount ? (this.selfPlayer?.mountLevels?.[mount.id] ?? 0) : 0;
+        if (mountLvl > 0 && Math.random() < 0.5) {
+          const spark = this.add.star(self.x + (Math.random() - 0.5) * 10, self.y + 7, 4, 1.5, 3.5, 0xffd166, 0.9).setDepth(self.depth - 1);
+          this.tweens.add({ targets: spark, y: spark.y - 8, alpha: 0, duration: 320, ease: "Quad.Out", onComplete: () => spark.destroy() });
+        }
       }
     }
     // Sprint 117: shounen dash speed-lines — faint streaks sweep inward from the
