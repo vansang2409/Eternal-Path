@@ -268,6 +268,32 @@ export const COSMETICS: Cosmetic[] = [
     type: "skillEffectColor",
     color: 0x35d0ff,
     gemPrice: 160
+  },
+  // ── Season 10 (Sprint 240): cosmos theme ──
+  {
+    id: "skin-nebula-walker",
+    name: "Du Hành Tinh Vân",
+    description: "Bộ giáp tím thẫm lấp lánh bụi sao tinh vân.",
+    type: "skinTint",
+    color: 0x8a5ad0,
+    gemPrice: 180
+  },
+  {
+    id: "skin-starforged",
+    name: "Thân Thể Sao Rèn",
+    description: "Rèn từ lõi sao — ánh kim rực rỡ chói lòa.",
+    type: "skinTint",
+    color: 0xffe08a,
+    gemPrice: 210,
+    featured: true
+  },
+  {
+    id: "skill-fx-comet",
+    name: "Hiệu Ứng Phép Sao Chổi",
+    description: "Mỗi kỹ năng kéo theo vệt đuôi sao chổi băng giá.",
+    type: "skillEffectColor",
+    color: 0x9fd8ff,
+    gemPrice: 170
   }
 ];
 

@@ -61,7 +61,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "valkyrie", name: "Nữ Thần Chiến", desc: "+12 công, +6 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 350, buff: { attack: 12, defense: 6, maxHp: 110 }, color: 0xe0d8a0 },
   // ── Season 9 (Sprint 230): ocean companions ──
   { id: "leviathan", name: "Hải Long Cuồng Nộ", desc: "+17 công, +7 thủ, +95 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 17, defense: 7, maxHp: 95 }, color: 0x2e8fb8 },
-  { id: "moon-turtle", name: "Nguyệt Quy", desc: "+6 công, +14 thủ, +150 HP", rarity: "epic", goldPrice: 0, gemPrice: 380, buff: { attack: 6, defense: 14, maxHp: 150 }, color: 0x9fe0c8 }
+  { id: "moon-turtle", name: "Nguyệt Quy", desc: "+6 công, +14 thủ, +150 HP", rarity: "epic", goldPrice: 0, gemPrice: 380, buff: { attack: 6, defense: 14, maxHp: 150 }, color: 0x9fe0c8 },
+  // ── Season 10 (Sprint 240): cosmos companions ──
+  { id: "star-phoenix", name: "Tinh Vẫn Phượng Hoàng", desc: "+19 công, +6 thủ, +85 HP", rarity: "epic", goldPrice: 0, gemPrice: 450, buff: { attack: 19, defense: 6, maxHp: 85 }, color: 0xffc46a },
+  { id: "void-cat", name: "Hư Không Miêu", desc: "+11 công, +11 thủ, +110 HP", rarity: "epic", goldPrice: 0, gemPrice: 400, buff: { attack: 11, defense: 11, maxHp: 110 }, color: 0x6a4dc0 }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
