@@ -64,6 +64,8 @@ export class GameScene extends Phaser.Scene {
   private dpsText?: Phaser.GameObjects.Text;
   // Sprint 255: hit-stop guard so overlapping MEGA hits don't stack.
   private hitStopActive = false;
+  // Sprint 256: accessibility — suppress camera shake when enabled.
+  private reduceShake = typeof localStorage !== "undefined" && localStorage.getItem("reduceShake") === "1";
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -298,7 +300,7 @@ export class GameScene extends Phaser.Scene {
     this.socket.on("treasureDug", ({ gold }) => {
       const self = this.players.get(this.selfId);
       if (!self) return;
-      this.cameras.main.shake(180, 0.004);
+      this.shakeCam(180, 0.004);
       for (let i = 0; i < 10; i++) {
         const dirt = this.add.ellipse(self.x + (Math.random() - 0.5) * 10, self.y + 6, 5, 3, 0x8a6a42, 0.9).setDepth(self.depth + 1);
         this.tweens.add({ targets: dirt, x: dirt.x + (Math.random() - 0.5) * 44, y: dirt.y - 10 - Math.random() * 26, alpha: 0, duration: 420 + Math.random() * 180, ease: "Quad.Out", onComplete: () => dirt.destroy() });
@@ -1601,7 +1603,7 @@ export class GameScene extends Phaser.Scene {
           this.tweens.add({ targets: tag, y: tag.y - 18, alpha: 0, duration: 760, delay: 260, onComplete: () => tag.destroy() });
         }
         if (isHeavyHit) {
-          this.cameras.main.shake(160, 0.008);
+          this.shakeCam(160, 0.008);
           // Crit indicator: 8 brief golden particles.
           for (let i = 0; i < 8; i += 1) {
             const ang = (Math.PI * 2 * i) / 8 + Math.random() * 0.2;
@@ -1619,7 +1621,7 @@ export class GameScene extends Phaser.Scene {
         // Sprint 111: MEGA crit — chromatic split echoes behind the number +
         // an expanding shock ripple + a harder camera punch.
         if (isMegaHit) {
-          this.cameras.main.shake(220, 0.013);
+          this.shakeCam(220, 0.013);
           // Sprint 255: hit-stop — freeze the world for a few frames so the
           // big number LANDS (anime impact frames).
           if (!this.hitStopActive) {
@@ -1673,7 +1675,7 @@ export class GameScene extends Phaser.Scene {
       // area skill, so big abilities have weight beyond the particles.
       if (casterId === this.selfId) {
         const info = SKILL_CATALOG[skillId];
-        if (info?.effect === "damageAoe") this.cameras.main.shake(130, 0.004);
+        if (info?.effect === "damageAoe") this.shakeCam(130, 0.004);
       }
     });
 
@@ -1942,7 +1944,7 @@ export class GameScene extends Phaser.Scene {
           this.lastBossAggroBannerAt = this.time.now;
           this.showTopBanner(`⚔ ${translateMonsterName(monster.name)} đã chú ý đến ngươi!`, "achievement", 2600);
           this.cameras.main.flash(260, 120, 0, 0, false);
-          this.cameras.main.shake(200, 0.006);
+          this.shakeCam(200, 0.006);
         }
       }
       this.monsterAggroPrev.set(monster.id, aggroOnMe);
@@ -2558,6 +2560,18 @@ export class GameScene extends Phaser.Scene {
     if (this.loggedIn) this.showTopBanner(this.showNameplates ? "🏷️ Hiện tên" : "🏷️ Ẩn tên", "achievement", 1200);
   }
 
+  // Sprint 256: central camera-shake helper honouring the accessibility
+  // "reduce shake" preference (persisted to localStorage).
+  private shakeCam(duration: number, intensity: number): void {
+    if (this.reduceShake) return;
+    this.cameras.main.shake(duration, intensity);
+  }
+
+  private toggleReduceShake(): void {
+    this.reduceShake = !this.reduceShake;
+    localStorage.setItem("reduceShake", this.reduceShake ? "1" : "0");
+  }
+
   // Sprint 191: a clickable settings panel mirroring the keyboard toggles, for
   // players who'd rather not memorise hotkeys. Press O (or ✕) to close.
   private toggleSettings(): void {
@@ -2572,6 +2586,7 @@ export class GameScene extends Phaser.Scene {
       + btn("🏷️ Ẩn / hiện tên nhân vật", "v")
       + btn("🖥️ Ẩn / hiện bảng & thanh công cụ", "h")
       + btn("🎬 Khung điện ảnh (letterbox)", "c")
+      + btn(`📳 Rung màn hình: ${this.reduceShake ? "ĐANG TẮT" : "đang bật"}`, "shake")
       + btn("⌨️ Bảng phím tắt", "k");
     document.body.appendChild(panel);
     panel.querySelector("#settings-close")?.addEventListener("click", () => panel.remove());
@@ -2581,6 +2596,7 @@ export class GameScene extends Phaser.Scene {
       else if (key === "v") this.toggleNameplates();
       else if (key === "h") this.toggleHudPanels();
       else if (key === "c") this.toggleCinematicBars();
+      else if (key === "shake") { this.toggleReduceShake(); b.textContent = `📳 Rung màn hình: ${this.reduceShake ? "ĐANG TẮT" : "đang bật"}`; }
       else if (key === "k") this.toggleKeybindHelp();
     }));
   }
@@ -2782,7 +2798,7 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => soul.destroy()
       });
     }
-    if (big) this.cameras.main.shake(180, 0.006);
+    if (big) this.shakeCam(180, 0.006);
   }
 
   // Sprint 110: monster respawn materialize — implode ring + rising sparkles so
@@ -3062,7 +3078,7 @@ export class GameScene extends Phaser.Scene {
   // dying lands with weight, and a bright revive flash when you come back.
   private playSelfDeath(): void {
     soundManager.play("hit");
-    this.cameras.main.shake(360, 0.01);
+    this.shakeCam(360, 0.01);
     this.cameras.main.flash(420, 120, 0, 0, false);
     const wash = this.add.rectangle(this.scale.width / 2, this.scale.height / 2, this.scale.width, this.scale.height, 0x4a0000, 0)
       .setScrollFactor(0).setDepth(99975);
@@ -3165,7 +3181,7 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => sprite.setScale(bx, by)
       });
       if (entityId === this.selfId) {
-        this.cameras.main.shake(110, 0.004);
+        this.shakeCam(110, 0.004);
         // Brief red damage flash at screen edges when the local player is hit.
         this.cameras.main.flash(120, 150, 20, 20, false);
       }
