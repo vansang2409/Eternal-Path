@@ -157,6 +157,8 @@ import {
   isWalkableTile,
   monsterAttack,
   monsterDefense,
+  ELITE_AFFIXES,
+  getAffix,
   monsterMaxHp,
   offlineRewardsFor,
   rollDamage
@@ -4941,7 +4943,7 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
     const ty = pick?.y ?? 14;
     const elite = rollElite();
     const maxHp = monsterMaxHp(definition, elite);
-    return {
+    const m: MonsterState = {
       id: `monster-${index}`,
       type,
       name: definition.name,
@@ -4960,6 +4962,8 @@ function createMonsterSpawns(map: WorldMap): MonsterState[] {
       respawnDurationMs: normalRespawnDurationMs(definition.level),
       lastAttackAt: 0
     };
+    applyMonsterAffix(m);
+    return m;
   });
   monsters.push(createWorldBoss(map));
   for (const dungeonBoss of createDungeonMiniBosses(map)) {
@@ -5003,13 +5007,31 @@ function createDungeonMiniBosses(map: WorldMap): MonsterState[] {
   return out;
 }
 
+// Sprint 212: layer a random elite affix (stat multipliers) onto an elite
+// monster, recomputing its stats from the base definition each time.
+function applyMonsterAffix(monster: MonsterState): void {
+  const def = getMonsterDefinition(monster.type);
+  let hp = monsterMaxHp(def, monster.elite);
+  let atk = monsterAttack(def, monster.elite);
+  let dfn = monsterDefense(def, monster.elite);
+  if (monster.elite && !monster.boss) {
+    const affix = ELITE_AFFIXES[Math.floor(Math.random() * ELITE_AFFIXES.length)];
+    monster.affix = affix.id;
+    hp = Math.round(hp * affix.hpMult);
+    atk = Math.round(atk * affix.atkMult);
+    dfn = Math.round(dfn * affix.defMult);
+  } else {
+    monster.affix = undefined;
+  }
+  monster.maxHp = hp;
+  monster.hp = hp;
+  monster.attack = atk;
+  monster.defense = dfn;
+}
+
 function rerollMonsterRank(monster: MonsterState): void {
-  const definition = getMonsterDefinition(monster.type);
   monster.elite = rollElite();
-  monster.maxHp = monsterMaxHp(definition, monster.elite);
-  monster.hp = monster.maxHp;
-  monster.attack = monsterAttack(definition, monster.elite);
-  monster.defense = monsterDefense(definition, monster.elite);
+  applyMonsterAffix(monster);
 }
 
 function createWorldBoss(map?: WorldMap): MonsterState {

@@ -292,6 +292,8 @@ export interface MonsterState {
   name: string;
   elite: boolean;
   boss: boolean;
+  /** Elite affix id (Sprint 212) — a random stat modifier on elites. */
+  affix?: string;
   position: Vec2;
   velocity: Vec2;
   spawn: Vec2;

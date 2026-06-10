@@ -409,6 +409,23 @@ export function getMonsterDefinition(type: string): MonsterDefinition {
   return MONSTER_DEFINITIONS[type] ?? MONSTER_DEFINITIONS.forestSlime;
 }
 
+// Elite affixes (Sprint 212): random stat modifiers that make elites feel
+// distinct. Stat-only (no new behaviors) so they're safe to roll anywhere.
+export interface EliteAffix { id: string; name: string; hpMult: number; atkMult: number; defMult: number; tint: number; }
+export const ELITE_AFFIXES: EliteAffix[] = [
+  { id: "fiery",    name: "Cuồng Hỏa",  hpMult: 1.0, atkMult: 1.4, defMult: 1.0, tint: 0xff5a3a },
+  { id: "armored",  name: "Giáp Thép",  hpMult: 1.2, atkMult: 1.0, defMult: 1.8, tint: 0x9aa6c0 },
+  { id: "giant",    name: "Khổng Lồ",   hpMult: 1.6, atkMult: 1.15, defMult: 1.0, tint: 0xc08a5a },
+  { id: "venomous", name: "Kịch Độc",   hpMult: 1.0, atkMult: 1.3, defMult: 1.2, tint: 0x6fd84a }
+];
+const AFFIX_BY_ID = new Map(ELITE_AFFIXES.map((a) => [a.id, a]));
+export function getAffix(id: string | undefined): EliteAffix | undefined {
+  return id ? AFFIX_BY_ID.get(id) : undefined;
+}
+export function affixLabel(id: string | undefined): string | undefined {
+  return getAffix(id)?.name;
+}
+
 export function monsterMaxHp(definition: MonsterDefinition, elite = false): number {
   const base = Math.floor((42 + definition.level * 36 + definition.level * definition.level * 4) * definition.hpMultiplier);
   return elite ? Math.floor(base * 2.2) : base;

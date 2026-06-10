@@ -14,6 +14,7 @@ import {
   getPet,
   getMount,
   mountLabel,
+  affixLabel,
   isWalkableTile,
   isVipActive,
   isGoldBoostActive,
@@ -2245,7 +2246,8 @@ export class GameScene extends Phaser.Scene {
     sprite.setDepth(iso.y);
     // Face direction of movement (or last facing if stationary).
     if (monster.velocity.x !== 0) sprite.setFlipX(monster.velocity.x < 0);
-    const name = `${monster.boss ? `${t("bossPrefix")} ` : monster.elite ? `${t("elitePrefix")} ` : ""}${translateMonsterName(monster.name)}`;
+    const affixPrefix = monster.affix ? `[${affixLabel(monster.affix)}] ` : "";
+    const name = `${monster.boss ? `${t("bossPrefix")} ` : monster.elite ? `${t("elitePrefix")} ` : ""}${affixPrefix}${translateMonsterName(monster.name)}`;
     // Sprint 133: con-style threat coloring — tint the nameplate by how the
     // monster's level compares to the player's so danger reads at a glance.
     const selfLevel = this.selfPlayer?.stats.level ?? monster.level;
