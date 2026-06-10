@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, arenaSeasonIndexFor, arenaSeasonRewardGems, ARENA_SEASON_TIERS, petEffectiveBuff, PET_EVOLVE_GEM_COST, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, arenaSeasonIndexFor, arenaSeasonRewardGems, ARENA_SEASON_TIERS, petEffectiveBuff, PET_EVOLVE_GEM_COST, playerPowerScore, towerRequirement, towerRewardGold, TOWER_TICKETS_PER_DAY, TOWER_GEM_EVERY, TOWER_GEM_REWARD, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -411,6 +411,7 @@ export class Hud {
     this.renderStatsModal();
     this.renderStashModal();
     this.renderArenaSeason();
+    this.renderTowerModal();
     this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
@@ -1342,6 +1343,29 @@ export class Hud {
     body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Hạ quái để nâng hạng Sổ Tay: ${BESTIARY_TIERS.map((b) => `${b.name} (${b.kills})`).join(" → ")}. Mỗi hạng thưởng vàng/💎. Đạt Vàng: ${goldTiers} loại.</p>
       ${rows || `<p style="color:#8e9192;font-size:12px">Chưa ghi nhận quái nào — ra ngoài săn thôi!</p>`}
       ${undiscovered > 0 ? `<p style="color:#8e9192;font-size:11px;margin-top:8px">🔍 Chưa khám phá: ${undiscovered} loại quái.</p>` : ""}`;
+  }
+
+  // Sprint 283: Trial Tower modal — floor, power check, tickets, challenge.
+  private renderTowerModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#tower-body");
+    const p = this.player;
+    if (!body || !p) return;
+    const floor = Math.max(1, p.towerFloor ?? 1);
+    const power = playerPowerScore(p.stats);
+    const need = towerRequirement(floor);
+    const ready = power >= need;
+    const ticketsLeft = Math.max(0, TOWER_TICKETS_PER_DAY - (p.towerTicketsUsed ?? 0));
+    const pct = Math.min(100, Math.round((power / need) * 100));
+    body.innerHTML = `
+      <p style="color:#d6dddf;font-size:12px;margin:0 0 10px">Leo tháp bằng <strong>lực chiến</strong> (công ×3 + thủ ×2 + HP/10). Mỗi tầng thưởng vàng, mỗi 5 tầng +${TOWER_GEM_REWARD} 💎. ${TOWER_TICKETS_PER_DAY} vé/ngày.</p>
+      <div style="padding:12px;border-radius:8px;background:rgba(28,28,40,0.6);border:1px solid ${ready ? "#5a9e5a" : "#6b5a2a"}">
+        <div style="display:flex;justify-content:space-between;font-size:14px"><strong style="color:#ffd166">Tầng ${floor}</strong><span style="color:#9aa">🎟️ ${ticketsLeft}/${TOWER_TICKETS_PER_DAY} vé</span></div>
+        <div style="font-size:12px;color:#d6dddf;margin-top:6px">Lực chiến: <strong style="color:${ready ? "#9be29b" : "#ff8a8a"}">${power.toLocaleString("vi-VN")}</strong> / cần ${need.toLocaleString("vi-VN")}</div>
+        <div style="height:7px;border-radius:3px;background:#222;overflow:hidden;margin-top:6px"><div style="height:100%;width:${pct}%;background:${ready ? "linear-gradient(to right,#5a9e5a,#9be29b)" : "linear-gradient(to right,#c8a948,#ffd166)"}"></div></div>
+        <div style="font-size:11px;color:#9aa;margin-top:4px">Phần thưởng tầng này: +${towerRewardGold(floor).toLocaleString("vi-VN")} 🪙${floor % TOWER_GEM_EVERY === 0 ? ` +${TOWER_GEM_REWARD} 💎` : ""}</div>
+        <button type="button" id="tower-challenge-btn" ${ticketsLeft <= 0 ? "disabled" : ""} style="margin-top:10px;width:100%;padding:8px;border:none;border-radius:6px;font-weight:800;font-size:14px;color:#1d1500;background:${ticketsLeft > 0 ? "linear-gradient(to bottom,#ffd166,#c8a948)" : "#444"};cursor:${ticketsLeft > 0 ? "pointer" : "not-allowed"}">${ticketsLeft > 0 ? "⚔️ KHIÊU CHIẾN" : "Hết vé hôm nay"}</button>
+      </div>`;
+    body.querySelector("#tower-challenge-btn")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("tower-challenge")));
   }
 
   // Sprint 272: arena season box — current season, kills, next milestone.

@@ -269,6 +269,8 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
+    // Sprint 283: tower challenge.
+    window.addEventListener("tower-challenge", () => this.socket.emit("challengeTower"));
     // Sprint 274: pet evolution — request + golden ascension burst.
     window.addEventListener("pet-evolve", (e) => this.socket.emit("evolvePet", { petId: (e as CustomEvent).detail }));
     this.socket.on("player", (player) => {
