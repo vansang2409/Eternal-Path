@@ -78,6 +78,8 @@ export class GameScene extends Phaser.Scene {
   private prevEvolvedCount?: number;
   // Sprint 287: paragon points for the radiance VFX.
   private prevParagonPoints?: number;
+  // Sprint 289: tower floor for the clear fanfare.
+  private prevTowerFloor?: number;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -273,6 +275,24 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
     // Sprint 283: tower challenge.
     window.addEventListener("tower-challenge", () => this.socket.emit("challengeTower"));
+    // Sprint 289: tower floor-clear fanfare — golden banner + rays.
+    this.socket.on("player", (player) => {
+      if (player.id !== this.selfId) return;
+      const floorNow = player.towerFloor ?? 1;
+      if (this.prevTowerFloor !== undefined && floorNow > this.prevTowerFloor) {
+        const cleared = floorNow - 1;
+        this.showTopBanner(`🗼 VƯỢT TẦNG ${cleared}!`, "level", 2600);
+        const self = this.players.get(this.selfId);
+        if (self) {
+          for (let i = 0; i < 10; i++) {
+            const ray = this.add.rectangle(self.x, self.y - 6, 2, 26, 0xffd166, 0.9).setOrigin(0.5, 1).setDepth(self.depth + 2);
+            ray.setAngle((i / 10) * 360);
+            this.tweens.add({ targets: ray, scaleY: 2.2, alpha: 0, duration: 540, ease: "Quad.Out", onComplete: () => ray.destroy() });
+          }
+        }
+      }
+      this.prevTowerFloor = floorNow;
+    });
     // Sprint 287: paragon point-up — violet radiance + rising rune.
     this.socket.on("player", (player) => {
       if (player.id !== this.selfId) return;
