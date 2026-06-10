@@ -19,14 +19,17 @@ const run = async () => {
   await once(b, "player");
 
   // A at town, B far away. A fights (devSimKill emits exp/gold floats at A).
+  // The shared smoke server has a LIVE world (DOT ticks from earlier suites
+  // can emit floats elsewhere), so only count floats near A's position.
+  const nearA = (f) => Math.hypot(f.position.x - 400, f.position.y - 400) < 1300;
   a.emit("devTeleport", { x: 400, y: 400 });
   b.emit("devTeleport", { x: 5500, y: 4300 });
   await sleepMs(600);
   bFloats.length = 0; aFloats.length = 0;
   a.emit("devSimKill", {});
   await sleepMs(700);
-  ok("attacker sees own combat floats", aFloats.length >= 1, `a=${aFloats.length}`);
-  ok("far player receives none", bFloats.length === 0, `b=${bFloats.length}`);
+  ok("attacker sees own combat floats", aFloats.filter(nearA).length >= 1, `a=${aFloats.length}`);
+  ok("far player receives none from A's fight", bFloats.filter(nearA).length === 0, `b=${bFloats.filter(nearA).length}`);
 
   // B moves next to A → now the floats arrive.
   b.emit("devTeleport", { x: 600, y: 400 });
@@ -34,7 +37,7 @@ const run = async () => {
   bFloats.length = 0;
   a.emit("devSimKill", {});
   await sleepMs(700);
-  ok("near player receives floats", bFloats.length >= 1, `b=${bFloats.length}`);
+  ok("near player receives A's floats", bFloats.filter(nearA).length >= 1, `b=${bFloats.filter(nearA).length}`);
 
   a.disconnect(); b.disconnect();
   const failed = results.filter(([, p]) => !p);
