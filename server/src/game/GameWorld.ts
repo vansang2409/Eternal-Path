@@ -3373,6 +3373,9 @@ export class GameWorld {
       const gold = towerRewardGold(floor);
       player.stats.gold += gold;
       player.towerFloor = floor + 1;
+      // Sprint 282: tower milestone achievements.
+      if (floor >= 10) this.unlockAchievement(player, "tower-10");
+      if (floor >= 25) this.unlockAchievement(player, "tower-25");
       let summary = `🗼 VƯỢT Tầng ${floor}! +${gold.toLocaleString("vi-VN")} vàng`;
       if (floor % TOWER_GEM_EVERY === 0) {
         player.gems = (player.gems ?? 0) + TOWER_GEM_REWARD;

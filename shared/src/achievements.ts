@@ -68,7 +68,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "evolver",         title: "Bậc Thầy Tiến Hoá",   description: "Tiến hoá 1 linh thú đạt cấp tối đa.",       reward: { gems: 20 } },
   // Sprint 279 — arena-season & collection achievements.
   { id: "season-warrior",  title: "Chiến Binh Mùa Giải", description: "Đạt 10 hạ gục trong một Mùa Đấu.",          reward: { gems: 10 } },
-  { id: "pet-zoo",         title: "Vườn Thú Di Động",    description: "Sở hữu 10 linh thú.",                       reward: { gems: 30 } }
+  { id: "pet-zoo",         title: "Vườn Thú Di Động",    description: "Sở hữu 10 linh thú.",                       reward: { gems: 30 } },
+  // Sprint 282 — Trial Tower milestones.
+  { id: "tower-10",        title: "Thập Tầng Anh Kiệt",  description: "Vượt Tầng 10 Tháp Thí Luyện.",              reward: { gems: 20 } },
+  { id: "tower-25",        title: "Đỉnh Tháp Vô Song",   description: "Vượt Tầng 25 Tháp Thí Luyện.",              reward: { gems: 50 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

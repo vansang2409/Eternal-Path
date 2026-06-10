@@ -57,6 +57,9 @@ export const TITLES: TitleDef[] = [
   // ── Sprint 224: fishing titles ──
   { id: "angler-title", label: "Ngư Ông", desc: "Câu được 100 con cá.", earned: (p) => (p.fishCaught ?? 0) >= 100 },
   { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") },
+  // ── Sprint 282: Trial Tower titles ──
+  { id: "tower-conqueror", label: "Chinh Phục Tháp", desc: "Vượt Tầng 10 Tháp Thí Luyện.", earned: (p) => (p.towerFloor ?? 1) > 10 },
+  { id: "tower-legend", label: "Huyền Thoại Đỉnh Tháp", desc: "Vượt Tầng 25 Tháp Thí Luyện.", earned: (p) => (p.towerFloor ?? 1) > 25 },
   // ── Sprint 279: arena-season & evolution titles ──
   { id: "season-champ", label: "Vương Mùa Giải", desc: "Mở thành tựu Chiến Binh Mùa Giải.", earned: (p) => (p.achievements ?? []).includes("season-warrior") },
   { id: "evolved-master", label: "Thần Thú Sư", desc: "Mở thành tựu Bậc Thầy Tiến Hoá.", earned: (p) => (p.achievements ?? []).includes("evolver") },
