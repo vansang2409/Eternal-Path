@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, craftXpProgress, CRAFT_MAX_LEVEL, CRAFT_XP_PER_CRAFT, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -425,13 +425,24 @@ export class Hud {
     const root = document.querySelector<HTMLDivElement>("#forge-recipes");
     if (!root) return;
     root.innerHTML = "";
+    // Sprint 262: smithing level header with an XP bar.
+    const prog = craftXpProgress(this.player?.craftXp ?? 0);
+    const pct = prog.needed > 0 ? Math.round((prog.into / prog.needed) * 100) : 100;
+    root.insertAdjacentHTML("beforeend", `
+      <div style="padding:8px 10px;margin-bottom:8px;border-radius:6px;background:rgba(40,34,18,0.55);border:1px solid #6b5a2a">
+        <div style="display:flex;justify-content:space-between;font-size:12px"><strong style="color:#ffd166">⚒️ Nghề Rèn — Cấp ${prog.level}/${CRAFT_MAX_LEVEL}</strong><span style="color:#d6dddf">${prog.needed > 0 ? `${prog.into}/${prog.needed} XP` : "TỐI ĐA"}</span></div>
+        <div style="height:6px;border-radius:3px;background:#222;overflow:hidden;margin-top:5px"><div style="height:100%;width:${pct}%;background:linear-gradient(to right,#c8a948,#ffd166)"></div></div>
+        <div style="font-size:10px;color:#9aa;margin-top:3px">Mỗi lần chế tạo +${CRAFT_XP_PER_CRAFT} XP. Cấp 3 mở công thức bậc thầy.</div>
+      </div>`);
     const owned = this.materialCounts();
+    const smithLevel = prog.level;
     for (const recipe of RECIPES) {
       const card = document.createElement("div");
       card.className = `forge-recipe rarity-${recipe.rarity}`;
       const header = document.createElement("div");
       header.className = "forge-name";
-      header.textContent = `${recipe.name} (${t(recipe.rarity)} ${t(recipe.slot)})`;
+      const gated = (recipe.minCraftLevel ?? 1) > smithLevel;
+      header.textContent = `${recipe.name} (${t(recipe.rarity)} ${t(recipe.slot)})${recipe.minCraftLevel ? ` ⚒️${recipe.minCraftLevel}` : ""}`;
       card.appendChild(header);
       const cost = document.createElement("div");
       cost.className = "forge-cost";
@@ -449,8 +460,8 @@ export class Hud {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "forge-craft";
-      btn.disabled = !canCraft;
-      btn.textContent = canCraft ? "Chế tạo" : "Thiếu nguyên liệu";
+      btn.disabled = !canCraft || gated;
+      btn.textContent = gated ? `🔒 Cần nghề rèn cấp ${recipe.minCraftLevel}` : canCraft ? "Chế tạo" : "Thiếu nguyên liệu";
       btn.addEventListener("click", () => this.onCraft(recipe.id));
       card.appendChild(btn);
       root.appendChild(card);
