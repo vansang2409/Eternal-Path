@@ -286,12 +286,16 @@ export interface LeaderboardRow {
   level: number;
   gold: number;
   pvpKills: number;
+  /** Sprint 234: lifetime fish caught. */
+  fishCaught?: number;
 }
 
 export interface LeaderboardPayload {
   byLevel: LeaderboardRow[];
   byGold: LeaderboardRow[];
   byKills: LeaderboardRow[];
+  /** Sprint 234: top anglers. */
+  byFish?: LeaderboardRow[];
 }
 
 export interface MonsterStatusEffect {

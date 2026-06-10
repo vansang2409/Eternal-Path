@@ -3300,12 +3300,15 @@ export class GameWorld {
         accountName: p.accountName,
         level: p.stats.level,
         gold: p.stats.gold,
-        pvpKills: p.pvpKills ?? 0
+        pvpKills: p.pvpKills ?? 0,
+        fishCaught: p.fishCaught ?? 0
       }));
       const byLevel = [...players].sort((a, b) => b.level - a.level || b.gold - a.gold).slice(0, 10);
       const byGold = [...players].sort((a, b) => b.gold - a.gold).slice(0, 10);
       const byKills = [...players].sort((a, b) => b.pvpKills - a.pvpKills).slice(0, 10);
-      socket.emit("leaderboard", { byLevel, byGold, byKills });
+      // Sprint 234: top anglers tab.
+      const byFish = [...players].sort((a, b) => b.fishCaught - a.fishCaught).slice(0, 10);
+      socket.emit("leaderboard", { byLevel, byGold, byKills, byFish });
     });
 
     socket.on("rerollDailyQuests", () => {
