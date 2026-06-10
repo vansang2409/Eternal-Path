@@ -57,6 +57,9 @@ export const TITLES: TitleDef[] = [
   // ── Sprint 224: fishing titles ──
   { id: "angler-title", label: "Ngư Ông", desc: "Câu được 100 con cá.", earned: (p) => (p.fishCaught ?? 0) >= 100 },
   { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") },
+  // ── Sprint 287: paragon titles ──
+  { id: "canh-gioi-gia", label: "Cảnh Giới Giả", desc: "Đạt điểm Cảnh Giới đầu tiên.", earned: (p) => (p.paragonPoints ?? 0) >= 1 },
+  { id: "vo-thuong-canh-gioi", label: "Vô Thượng Cảnh Giới", desc: "Đạt 50 điểm Cảnh Giới (tối đa).", earned: (p) => (p.paragonPoints ?? 0) >= 50 },
   // ── Sprint 282: Trial Tower titles ──
   { id: "tower-conqueror", label: "Chinh Phục Tháp", desc: "Vượt Tầng 10 Tháp Thí Luyện.", earned: (p) => (p.towerFloor ?? 1) > 10 },
   { id: "tower-legend", label: "Huyền Thoại Đỉnh Tháp", desc: "Vượt Tầng 25 Tháp Thí Luyện.", earned: (p) => (p.towerFloor ?? 1) > 25 },

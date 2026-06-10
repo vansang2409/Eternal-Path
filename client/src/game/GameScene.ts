@@ -76,6 +76,8 @@ export class GameScene extends Phaser.Scene {
   private stormTimer?: Phaser.Time.TimerEvent;
   // Sprint 274: evolved-pet count for the ascension VFX.
   private prevEvolvedCount?: number;
+  // Sprint 287: paragon points for the radiance VFX.
+  private prevParagonPoints?: number;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -271,6 +273,22 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
     // Sprint 283: tower challenge.
     window.addEventListener("tower-challenge", () => this.socket.emit("challengeTower"));
+    // Sprint 287: paragon point-up — violet radiance + rising rune.
+    this.socket.on("player", (player) => {
+      if (player.id !== this.selfId) return;
+      const pts = player.paragonPoints ?? 0;
+      if (this.prevParagonPoints !== undefined && pts > this.prevParagonPoints) {
+        const self = this.players.get(this.selfId);
+        if (self) {
+          this.cameras.main.flash(380, 160, 110, 255);
+          const ring = this.add.circle(self.x, self.y, 8).setStrokeStyle(3, 0xc79bff, 1).setDepth(self.depth + 2);
+          this.tweens.add({ targets: ring, radius: 46, alpha: 0, duration: 650, ease: "Quad.Out", onComplete: () => ring.destroy() });
+          const rune = this.add.text(self.x, self.y - 26, "🔮 CẢNH GIỚI +1", { fontFamily: "monospace", fontSize: "13px", fontStyle: "bold", color: "#c79bff", stroke: "#000000", strokeThickness: 4 }).setOrigin(0.5).setDepth(9999);
+          this.tweens.add({ targets: rune, y: rune.y - 30, alpha: 0, duration: 1300, ease: "Quad.Out", onComplete: () => rune.destroy() });
+        }
+      }
+      this.prevParagonPoints = pts;
+    });
     // Sprint 274: pet evolution — request + golden ascension burst.
     window.addEventListener("pet-evolve", (e) => this.socket.emit("evolvePet", { petId: (e as CustomEvent).detail }));
     this.socket.on("player", (player) => {
