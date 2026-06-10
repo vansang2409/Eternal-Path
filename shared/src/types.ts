@@ -543,6 +543,8 @@ export interface ServerToClientEvents {
   treasureDug: (payload: { gold: number }) => void;
   /** Sprint 245: someone played an emote (for the bubble VFX). */
   emoteShown: (payload: { playerId: string; emote: string }) => void;
+  /** Sprint 254: private per-hit damage tick for the attacker's DPS meter. */
+  dpsTick: (payload: { amount: number }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;

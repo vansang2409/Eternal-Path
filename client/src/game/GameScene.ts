@@ -58,6 +58,10 @@ export class GameScene extends Phaser.Scene {
   // Sprint 236: kill-streak combo HUD text + fade timer.
   private comboText?: Phaser.GameObjects.Text;
   private comboFadeTimer?: Phaser.Time.TimerEvent;
+  // Sprint 254: rolling DPS window.
+  private dpsHits: Array<{ at: number; amount: number }> = [];
+  private lastDpsHitAt = 0;
+  private dpsText?: Phaser.GameObjects.Text;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -255,6 +259,28 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("stash-deposit", (e) => this.socket.emit("stashDeposit", { itemId: (e as CustomEvent).detail }));
     window.addEventListener("stash-withdraw", (e) => this.socket.emit("stashWithdraw", { itemId: (e as CustomEvent).detail }));
     window.addEventListener("stash-expand", () => this.socket.emit("buyStashSlots"));
+    // Sprint 254: rolling 10s DPS meter under the combo counter.
+    this.socket.on("dpsTick", ({ amount }) => {
+      const now = Date.now();
+      this.dpsHits.push({ at: now, amount });
+      this.lastDpsHitAt = now;
+    });
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => {
+      const now = Date.now();
+      while (this.dpsHits.length && now - this.dpsHits[0].at > 10_000) this.dpsHits.shift();
+      if (!this.dpsText) {
+        this.dpsText = this.add.text(this.scale.width - 18, 162, "", {
+          fontFamily: "monospace", fontSize: "13px", color: "#ff9b6a", stroke: "#000000", strokeThickness: 3
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(10000);
+      }
+      if (now - this.lastDpsHitAt > 6000 || this.dpsHits.length === 0) {
+        this.dpsText.setText("");
+        return;
+      }
+      const windowMs = Math.max(1000, Math.min(10_000, now - this.dpsHits[0].at || 1000));
+      const total = this.dpsHits.reduce((s, h) => s + h.amount, 0);
+      this.dpsText.setText(`DPS ${(total / (windowMs / 1000)).toFixed(1)}`);
+    } });
     // Sprint 246: dice + emote commands and bubble rendering.
     window.addEventListener("social-roll", () => this.socket.emit("rollDice"));
     window.addEventListener("social-emote", (e) => this.socket.emit("emote", { emote: (e as CustomEvent).detail }));

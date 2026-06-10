@@ -4117,6 +4117,8 @@ export class GameWorld {
     monster.hp = Math.max(0, monster.hp - result.damage);
     const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
     this.emitFloating(monster.id, monster.position, result.damage, "damage", text);
+    // Sprint 254: private tick so the attacker's DPS meter can attribute hits.
+    this.sockets.get(player.id)?.emit("dpsTick", { amount: result.damage });
     if (monster.hp <= 0) this.killMonster(player, monster, now);
   }
 
