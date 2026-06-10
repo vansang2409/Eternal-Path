@@ -215,6 +215,12 @@ export interface PlayerState {
   arenaSeasonKills?: number;
   /** Sprint 273: pets that have been evolved (id → true). */
   petEvolved?: Record<string, boolean>;
+  /** Sprint 281: next Trial Tower floor to challenge (1 = chưa leo). */
+  towerFloor?: number;
+  /** Sprint 281: UTC date of the ticket counter. */
+  towerTicketDate?: string;
+  /** Sprint 281: tickets used today. */
+  towerTicketsUsed?: number;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -661,6 +667,8 @@ export interface ClientToServerEvents {
   buyStashSlots: () => void;
   /** Sprint 273: evolve a max-level pet (gem sink, +50% buff). */
   evolvePet: (payload: { petId: string }) => void;
+  /** Sprint 281: challenge the next Trial Tower floor. */
+  challengeTower: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

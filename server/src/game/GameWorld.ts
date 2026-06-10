@@ -204,6 +204,12 @@ import {
   petEffectiveBuff,
   PET_EVOLVE_GEM_COST,
   PET_MAX_LEVEL,
+  playerPowerScore,
+  towerRequirement,
+  towerRewardGold,
+  TOWER_TICKETS_PER_DAY,
+  TOWER_GEM_EVERY,
+  TOWER_GEM_REWARD,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -880,6 +886,9 @@ export class GameWorld {
         arenaSeasonIndex: saved.arenaSeasonIndex,
         arenaSeasonKills: saved.arenaSeasonKills ?? 0,
         petEvolved: saved.petEvolved ?? {},
+        towerFloor: saved.towerFloor ?? 1,
+        towerTicketDate: saved.towerTicketDate,
+        towerTicketsUsed: saved.towerTicketsUsed ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1677,6 +1686,13 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         player.arenaStreak = 0;
+        socket.emit("player", player);
+      });
+      // Sprint 281: refill tower tickets (tests).
+      (socket as Socket).on("devTowerReset", () => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        player.towerTicketsUsed = 0;
         socket.emit("player", player);
       });
       // Sprint 273: grant pet XP directly (evolution tests).
@@ -3327,6 +3343,44 @@ export class GameWorld {
       const [item] = stash.splice(idx, 1);
       player.inventory.items.push(item);
       socket.emit("system", `🏦 Đã rút ${item.name} về túi.`);
+      socket.emit("player", player);
+      this.markDirty(player);
+    });
+
+    // Sprint 281: Trial Tower — deterministic gear-check climb.
+    socket.on("challengeTower", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const today = new Date().toISOString().slice(0, 10);
+      if (player.towerTicketDate !== today) {
+        player.towerTicketDate = today;
+        player.towerTicketsUsed = 0;
+      }
+      if ((player.towerTicketsUsed ?? 0) >= TOWER_TICKETS_PER_DAY) {
+        socket.emit("system", `🗼 Hết Vé Thí Luyện hôm nay (${TOWER_TICKETS_PER_DAY}/ngày). Quay lại ngày mai!`);
+        return;
+      }
+      player.towerTicketsUsed = (player.towerTicketsUsed ?? 0) + 1;
+      const floor = Math.max(1, player.towerFloor ?? 1);
+      const power = playerPowerScore(player.stats);
+      const need = towerRequirement(floor);
+      if (power < need) {
+        socket.emit("system", `🗼 Tầng ${floor} đánh bại bạn — lực chiến ${power}/${need}. Cường hoá trang bị rồi thử lại!`);
+        socket.emit("player", player);
+        this.markDirty(player);
+        return;
+      }
+      const gold = towerRewardGold(floor);
+      player.stats.gold += gold;
+      player.towerFloor = floor + 1;
+      let summary = `🗼 VƯỢT Tầng ${floor}! +${gold.toLocaleString("vi-VN")} vàng`;
+      if (floor % TOWER_GEM_EVERY === 0) {
+        player.gems = (player.gems ?? 0) + TOWER_GEM_REWARD;
+        summary += ` +${TOWER_GEM_REWARD} 💎`;
+        this.io.emit("system", `🗼 ${player.accountName} đã chinh phục Tầng ${floor} Tháp Thí Luyện!`);
+      }
+      this.emitFloating(player.id, player.position, gold, "loot", `+${gold} gold`);
+      socket.emit("system", `${summary} (lực chiến ${power}/${need}).`);
       socket.emit("player", player);
       this.markDirty(player);
     });

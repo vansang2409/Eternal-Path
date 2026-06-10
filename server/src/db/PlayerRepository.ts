@@ -44,6 +44,9 @@ interface SavedPlayer {
   arenaSeasonIndex?: number;
   arenaSeasonKills?: number;
   petEvolved?: Record<string, boolean>;
+  towerFloor?: number;
+  towerTicketDate?: string;
+  towerTicketsUsed?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -318,6 +321,9 @@ export class PlayerRepository {
       arenaSeasonIndex: player.arenaSeasonIndex,
       arenaSeasonKills: player.arenaSeasonKills,
       petEvolved: player.petEvolved ? { ...player.petEvolved } : undefined,
+      towerFloor: player.towerFloor,
+      towerTicketDate: player.towerTicketDate,
+      towerTicketsUsed: player.towerTicketsUsed,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
