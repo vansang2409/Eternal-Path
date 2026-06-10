@@ -753,6 +753,7 @@ export class GameWorld {
         bestiary: saved.bestiary ?? {},
         bestiaryRewarded: saved.bestiaryRewarded ?? {},
         restedXp: saved.restedXp ?? 0,
+        firstKillDate: saved.firstKillDate,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3791,6 +3792,14 @@ export class GameWorld {
     this.returningToSpawn.delete(monster.id);
 
     const exp = Math.floor((28 + monster.level * 18) * rewardMultiplier(monster));
+    // Sprint 220: the killer's first kill of the (UTC) day gives double EXP.
+    const today = new Date().toISOString().slice(0, 10);
+    let firstKillMult = 1;
+    if (player.firstKillDate !== today) {
+      player.firstKillDate = today;
+      firstKillMult = 2;
+      this.sockets.get(player.id)?.emit("system", "🌅 Hạ gục đầu ngày: x2 EXP!");
+    }
     let goldMult = isVipActive(player.vipUntil) ? VIP_GOLD_MULTIPLIER : 1;
     goldMult *= this.guildGoldMultiplier(player);
     if (isGoldBoostActive(player.goldBoostUntil)) goldMult *= GOLD_BOOST_MULTIPLIER;
@@ -3799,13 +3808,15 @@ export class GameWorld {
     if (goldMult !== 1) gold = Math.round(gold * goldMult);
     player.stats.gold += gold;
     for (const recipient of this.expRecipientsFor(player)) {
+      // Sprint 220: only the killer benefits from the first-kill double.
+      const expBase = recipient.id === player.id ? exp * firstKillMult : exp;
       // Sprint 219: drain the rested-XP pool for +50% kill EXP.
-      const restedBonus = restedBonusFor(recipient.restedXp ?? 0, exp);
+      const restedBonus = restedBonusFor(recipient.restedXp ?? 0, expBase);
       if (restedBonus > 0) {
         recipient.restedXp = (recipient.restedXp ?? 0) - restedBonus;
         if (recipient.restedXp <= 0) this.sockets.get(recipient.id)?.emit("system", "😴 EXP Nghỉ Ngơi đã dùng hết.");
       }
-      const expFor = exp + restedBonus;
+      const expFor = expBase + restedBonus;
       const leveled = this.grantExpAndStatPoints(recipient, expFor);
       if (leveled) this.updateReachLevelQuests(recipient);
       if (leveled) this.checkLevelAchievements(recipient);

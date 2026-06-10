@@ -181,6 +181,8 @@ export interface PlayerState {
   bestiaryRewarded?: Record<string, number>;
   /** Sprint 219: rested-XP pool accrued offline, drained as kill-EXP bonus. */
   restedXp?: number;
+  /** Sprint 220: UTC date (YYYY-MM-DD) of the last first-kill-of-day bonus. */
+  firstKillDate?: string;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).

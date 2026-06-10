@@ -29,6 +29,7 @@ interface SavedPlayer {
   bestiary?: Record<string, number>;
   bestiaryRewarded?: Record<string, number>;
   restedXp?: number;
+  firstKillDate?: string;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -288,6 +289,7 @@ export class PlayerRepository {
       bestiary: player.bestiary ? { ...player.bestiary } : undefined,
       bestiaryRewarded: player.bestiaryRewarded ? { ...player.bestiaryRewarded } : undefined,
       restedXp: player.restedXp,
+      firstKillDate: player.firstKillDate,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
