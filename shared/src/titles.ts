@@ -56,8 +56,23 @@ export const TITLES: TitleDef[] = [
   { id: "boss-bane", label: "Khắc Tinh Ma Vương", desc: "Mở thành tựu hạ world boss.", earned: (p) => (p.achievements ?? []).includes("slay-boss") },
   // ── Sprint 224: fishing titles ──
   { id: "angler-title", label: "Ngư Ông", desc: "Câu được 100 con cá.", earned: (p) => (p.fishCaught ?? 0) >= 100 },
-  { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") }
+  { id: "sea-legend", label: "Vua Biển Cả", desc: "Câu được CÁ KHỔNG LỒ.", earned: (p) => (p.achievements ?? []).includes("giant-hunter") },
+  // ── Sprint 239: gold-shop vanity titles ──
+  { id: "phu-ho", label: "Phú Hộ", desc: "Mua tại Tiệm Danh Hiệu (5.000 vàng).", earned: (p) => (p.boughtTitles ?? []).includes("phu-ho") },
+  { id: "dai-thuong-gia", label: "Đại Thương Gia", desc: "Mua tại Tiệm Danh Hiệu (20.000 vàng).", earned: (p) => (p.boughtTitles ?? []).includes("dai-thuong-gia") },
+  { id: "vuong-gia", label: "Vương Giả", desc: "Mua tại Tiệm Danh Hiệu (50.000 vàng).", earned: (p) => (p.boughtTitles ?? []).includes("vuong-gia") }
 ];
+
+// ── Sprint 239: gold-priced title shop ──
+export interface GoldTitleOffer { id: string; goldPrice: number }
+export const GOLD_TITLE_SHOP: GoldTitleOffer[] = [
+  { id: "phu-ho", goldPrice: 5_000 },
+  { id: "dai-thuong-gia", goldPrice: 20_000 },
+  { id: "vuong-gia", goldPrice: 50_000 }
+];
+export function goldTitleOffer(id: string): GoldTitleOffer | undefined {
+  return GOLD_TITLE_SHOP.find((o) => o.id === id);
+}
 
 const TITLE_BY_ID = new Map(TITLES.map((t) => [t.id, t]));
 

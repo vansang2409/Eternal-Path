@@ -36,6 +36,7 @@ interface SavedPlayer {
   piggyGold?: number;
   lootPity?: number;
   mountLevels?: Record<string, number>;
+  boughtTitles?: string[];
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -302,6 +303,7 @@ export class PlayerRepository {
       piggyGold: player.piggyGold,
       lootPity: player.lootPity,
       mountLevels: player.mountLevels ? { ...player.mountLevels } : undefined,
+      boughtTitles: player.boughtTitles ? [...player.boughtTitles] : undefined,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

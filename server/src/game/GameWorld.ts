@@ -175,6 +175,7 @@ import {
   mountSpeedBonusAt,
   mountUpgradeCost,
   MOUNT_MAX_LEVEL,
+  goldTitleOffer,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -779,6 +780,7 @@ export class GameWorld {
         piggyGold: saved.piggyGold ?? 0,
         lootPity: saved.lootPity ?? 0,
         mountLevels: saved.mountLevels ?? {},
+        boughtTitles: saved.boughtTitles ?? [],
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3083,6 +3085,31 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       this.doScratch(player, Math.random());
+    });
+
+    // Sprint 239: buy a vanity title with gold.
+    socket.on("buyTitle", ({ titleId }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const offer = goldTitleOffer(titleId);
+      if (!offer) {
+        socket.emit("system", "🎖️ Danh hiệu này không bán.");
+        return;
+      }
+      if ((player.boughtTitles ?? []).includes(titleId)) {
+        socket.emit("system", "🎖️ Bạn đã sở hữu danh hiệu này.");
+        return;
+      }
+      if (player.stats.gold < offer.goldPrice) {
+        socket.emit("system", `🎖️ Cần ${offer.goldPrice.toLocaleString("vi-VN")} vàng để mua danh hiệu.`);
+        return;
+      }
+      player.stats.gold -= offer.goldPrice;
+      (player.boughtTitles ??= []).push(titleId);
+      socket.emit("system", `🎖️ Đã mua danh hiệu «${titleLabel(titleId) ?? titleId}»! Gắn trong bảng Danh Hiệu (T).`);
+      socket.emit("titlesUpdate", { earned: earnedTitles(player), active: player.activeTitle });
+      socket.emit("player", player);
+      this.markDirty(player);
     });
 
     // Sprint 238: upgrade an owned mount for gold (+5% speed per level).

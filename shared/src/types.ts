@@ -197,6 +197,8 @@ export interface PlayerState {
   lootPity?: number;
   /** Sprint 238: per-mount upgrade levels (0-3), persisted. */
   mountLevels?: Record<string, number>;
+  /** Sprint 239: vanity titles bought from the gold title shop. */
+  boughtTitles?: string[];
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -613,6 +615,8 @@ export interface ClientToServerEvents {
   breakPiggy: () => void;
   /** Sprint 238: upgrade an owned mount (+5% speed per level, gold sink). */
   upgradeMount: (payload: { mountId: string }) => void;
+  /** Sprint 239: buy a vanity title with gold. */
+  buyTitle: (payload: { titleId: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

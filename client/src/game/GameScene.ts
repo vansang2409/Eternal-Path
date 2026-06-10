@@ -249,6 +249,8 @@ export class GameScene extends Phaser.Scene {
     });
     // Sprint 232: piggy-bank break.
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
+    // Sprint 239: gold title shop.
+    window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
     // Sprint 236: kill-streak combo counter (screen-space, pops per kill).
     this.socket.on("killStreak", ({ streak, bonus }) => {
       if (streak < 2) { this.comboText?.setAlpha(0); return; }

@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -1248,11 +1248,26 @@ export class Hud {
           : `<span style="font-size:11px;color:#8e9192">🔒 Chưa đạt</span>`}
       </div>`;
     }).join("");
-    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Danh hiệu mở khoá theo thành tích và hiển thị cạnh tên bạn. Mở khoá: ${earned.size}/${TITLES.length}.</p>${cards}`;
+    // Sprint 239: gold title shop — vanity titles money can buy.
+    const bought = new Set(this.player?.boughtTitles ?? []);
+    const shopRows = GOLD_TITLE_SHOP.filter((o) => !bought.has(o.id)).map((o) => {
+      const def = TITLES.find((t) => t.id === o.id);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:5px;border-radius:6px;background:rgba(40,34,18,0.6);border:1px solid #6b5a2a">
+        <div style="flex:1"><strong style="color:#ffd166">«${escapeHtml(def?.label ?? o.id)}»</strong></div>
+        <button type="button" data-title-buy="${o.id}" style="padding:5px 12px;border:none;border-radius:4px;font-weight:700;color:#1d1500;background:linear-gradient(to bottom,#ffd166,#c8a948);cursor:pointer">🪙 ${o.goldPrice.toLocaleString("vi-VN")}</button>
+      </div>`;
+    }).join("");
+    const shopBlock = shopRows ? `<div style="margin-top:14px"><strong style="color:#ffd166;font-size:13px">🏪 Tiệm Danh Hiệu</strong><p style="color:#9aa;font-size:11px;margin:4px 0 8px">Khẳng định đẳng cấp bằng vàng.</p>${shopRows}</div>` : "";
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Danh hiệu mở khoá theo thành tích và hiển thị cạnh tên bạn. Mở khoá: ${earned.size}/${TITLES.length}.</p>${cards}${shopBlock}`;
     body.querySelectorAll<HTMLButtonElement>("[data-title-set]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = btn.dataset.titleSet;
         this.onSetTitle?.(id ? id : null);
+      });
+    });
+    body.querySelectorAll<HTMLButtonElement>("[data-title-buy]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("buy-title", { detail: btn.dataset.titleBuy }));
       });
     });
   }
