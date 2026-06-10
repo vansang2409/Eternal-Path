@@ -2101,7 +2101,13 @@ export class GameWorld {
         petLevel: pet ? petLevelForXp((target.petXp ?? {})[pet.id] ?? 0) : undefined,
         pvpKills: target.pvpKills ?? 0,
         totalKills: target.totalKills ?? 0,
-        vip: isVipActive(target.vipUntil)
+        vip: isVipActive(target.vipUntil),
+        // Sprint 278: extended brag-sheet stats.
+        fishCaught: target.fishCaught ?? 0,
+        craftLevel: craftLevelForXp(target.craftXp ?? 0),
+        storyChapter: target.storyQuestIndex ?? 0,
+        evolvedPets: Object.values(target.petEvolved ?? {}).filter(Boolean).length,
+        seasonKills: target.arenaSeasonKills ?? 0
       };
       socket.emit("playerProfile", profile);
     });

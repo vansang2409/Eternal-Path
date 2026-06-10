@@ -1164,7 +1164,7 @@ export class Hud {
     this.log(`🌐 Đang online (${payload.count}): ${names || "(chỉ mình bạn)"}`, "log-line");
   }
 
-  showPlayerProfile(p: { accountName: string; level: number; playerClass?: string; title?: string; guildTag?: string; guildName?: string; petName?: string; petLevel?: number; pvpKills: number; totalKills: number; vip: boolean }): void {
+  showPlayerProfile(p: { accountName: string; level: number; playerClass?: string; title?: string; guildTag?: string; guildName?: string; petName?: string; petLevel?: number; pvpKills: number; totalKills: number; vip: boolean; fishCaught?: number; craftLevel?: number; storyChapter?: number; evolvedPets?: number; seasonKills?: number }): void {
     const cls = p.playerClass ? CLASS_CATALOG[p.playerClass as PlayerClass]?.name : undefined;
     const bits = [
       `Lv ${p.level}`,
@@ -1174,7 +1174,13 @@ export class Hud {
       p.guildTag ? `[${p.guildTag}] ${p.guildName ?? ""}`.trim() : undefined,
       p.petName ? `🐾 ${p.petName} Lv${p.petLevel ?? 1}` : undefined,
       `⚔️ PvP ${p.pvpKills}`,
-      `Hạ ${p.totalKills} quái`
+      `Hạ ${p.totalKills} quái`,
+      // Sprint 278: extended brag sheet.
+      (p.fishCaught ?? 0) > 0 ? `🎣 ${p.fishCaught}` : undefined,
+      (p.craftLevel ?? 1) > 1 ? `⚒️ Rèn ${p.craftLevel}` : undefined,
+      (p.storyChapter ?? 0) > 0 ? `📜 Chương ${p.storyChapter}` : undefined,
+      (p.evolvedPets ?? 0) > 0 ? `⭐ ${p.evolvedPets} pet tiến hoá` : undefined,
+      (p.seasonKills ?? 0) > 0 ? `🏟️ Mùa: ${p.seasonKills}` : undefined
     ].filter(Boolean).join(" · ");
     this.log(`👤 ${p.accountName} — ${bits}`, "log-line");
   }

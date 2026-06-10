@@ -519,6 +519,12 @@ export interface PlayerProfile {
   pvpKills: number;
   totalKills: number;
   vip: boolean;
+  /** Sprint 278: extended profile stats. */
+  fishCaught?: number;
+  craftLevel?: number;
+  storyChapter?: number;
+  evolvedPets?: number;
+  seasonKills?: number;
 }
 
 export interface ServerToClientEvents {
