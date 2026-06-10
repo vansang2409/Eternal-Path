@@ -416,7 +416,10 @@ export const ELITE_AFFIXES: EliteAffix[] = [
   { id: "fiery",    name: "Cuồng Hỏa",  hpMult: 1.0, atkMult: 1.4, defMult: 1.0, tint: 0xff5a3a },
   { id: "armored",  name: "Giáp Thép",  hpMult: 1.2, atkMult: 1.0, defMult: 1.8, tint: 0x9aa6c0 },
   { id: "giant",    name: "Khổng Lồ",   hpMult: 1.6, atkMult: 1.15, defMult: 1.0, tint: 0xc08a5a },
-  { id: "venomous", name: "Kịch Độc",   hpMult: 1.0, atkMult: 1.3, defMult: 1.2, tint: 0x6fd84a }
+  { id: "venomous", name: "Kịch Độc",   hpMult: 1.0, atkMult: 1.3, defMult: 1.2, tint: 0x6fd84a },
+  // ── Sprint 268: affix wave II ──
+  { id: "frenzied", name: "Cuồng Loạn", hpMult: 0.85, atkMult: 1.6, defMult: 0.9, tint: 0xff8ad0 },
+  { id: "ancient",  name: "Viễn Cổ",    hpMult: 1.9, atkMult: 1.05, defMult: 1.35, tint: 0xd9c06a }
 ];
 const AFFIX_BY_ID = new Map(ELITE_AFFIXES.map((a) => [a.id, a]));
 export function getAffix(id: string | undefined): EliteAffix | undefined {
