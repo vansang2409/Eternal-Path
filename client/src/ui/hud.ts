@@ -1903,9 +1903,20 @@ export class Hud {
         "/who — danh sách người chơi online",
         "/mail — mở Hòm Thư (gửi/nhận vàng)",
         "/gift <số> — lì xì vàng cho mọi bạn online",
+        "/roll — tung xúc xắc 1-100 công khai",
+        "/dance /wave /laugh /cry /heart — emote",
         "/clear — xoá nội dung chat"
       ];
       for (const l of lines) this.log(l, "log-line");
+      return;
+    }
+    // Sprint 246: dice + emote slash commands.
+    if (cmd === "roll") {
+      window.dispatchEvent(new CustomEvent("social-roll"));
+      return;
+    }
+    if (["dance", "wave", "laugh", "cry", "heart"].includes(cmd)) {
+      window.dispatchEvent(new CustomEvent("social-emote", { detail: cmd }));
       return;
     }
     if (cmd === "me" && arg) { this.onChat(`* ${arg}`); return; }

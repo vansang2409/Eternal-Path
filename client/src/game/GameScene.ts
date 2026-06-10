@@ -251,6 +251,17 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
+    // Sprint 246: dice + emote commands and bubble rendering.
+    window.addEventListener("social-roll", () => this.socket.emit("rollDice"));
+    window.addEventListener("social-emote", (e) => this.socket.emit("emote", { emote: (e as CustomEvent).detail }));
+    this.socket.on("emoteShown", ({ playerId, emote }) => {
+      const sprite = this.players.get(playerId);
+      if (!sprite) return;
+      const icon = ({ dance: "💃", wave: "👋", laugh: "😂", cry: "😭", heart: "❤️" } as Record<string, string>)[emote] ?? "✨";
+      const bubble = this.add.text(sprite.x, sprite.y - 34, icon, { fontSize: "22px" }).setOrigin(0.5).setDepth(9999).setScale(0.3);
+      this.tweens.add({ targets: bubble, scale: 1, duration: 180, ease: "Back.Out" });
+      this.tweens.add({ targets: bubble, y: bubble.y - 16, alpha: 0, delay: 800, duration: 700, ease: "Quad.In", onComplete: () => bubble.destroy() });
+    });
     // Sprint 242: treasure dig — dirt burst + golden sparkles + shake.
     this.socket.on("treasureDug", ({ gold }) => {
       const self = this.players.get(this.selfId);
