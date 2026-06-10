@@ -73,7 +73,10 @@ export const PET_CATALOG: PetDef[] = [
   { id: "moon-wolf", name: "Nguyệt Lang", desc: "+13 công, +10 thủ, +115 HP", rarity: "epic", goldPrice: 0, gemPrice: 420, buff: { attack: 13, defense: 10, maxHp: 115 }, color: 0x8a8ab8 },
   // ── Season 13 (Sprint 270): thunder companions ──
   { id: "thunder-roc", name: "Lôi Bằng", desc: "+18 công, +8 thủ, +90 HP", rarity: "epic", goldPrice: 0, gemPrice: 440, buff: { attack: 18, defense: 8, maxHp: 90 }, color: 0x6ab8ff },
-  { id: "static-sprite", name: "Tinh Linh Tĩnh Điện", desc: "+10 công, +12 thủ, +125 HP", rarity: "epic", goldPrice: 0, gemPrice: 405, buff: { attack: 10, defense: 12, maxHp: 125 }, color: 0xd0e8ff }
+  { id: "static-sprite", name: "Tinh Linh Tĩnh Điện", desc: "+10 công, +12 thủ, +125 HP", rarity: "epic", goldPrice: 0, gemPrice: 405, buff: { attack: 10, defense: 12, maxHp: 125 }, color: 0xd0e8ff },
+  // ── Sprint 276: gold-priced companions (big F2P gold sinks) ──
+  { id: "iron-beetle", name: "Thiết Giáp Trùng", desc: "+5 công, +11 thủ, +85 HP", rarity: "rare", goldPrice: 80_000, gemPrice: 0, buff: { attack: 5, defense: 11, maxHp: 85 }, color: 0x8a8f9a },
+  { id: "shadow-cat", name: "Ám Dạ Miêu", desc: "+12 công, +6 thủ, +70 HP", rarity: "rare", goldPrice: 150_000, gemPrice: 0, buff: { attack: 12, defense: 6, maxHp: 70 }, color: 0x3a3a4f }
 ];
 
 const PET_BY_ID = new Map(PET_CATALOG.map((p) => [p.id, p]));
