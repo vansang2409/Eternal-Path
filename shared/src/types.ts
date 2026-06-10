@@ -225,6 +225,8 @@ export interface PlayerState {
   paragonPoints?: number;
   /** Sprint 285: kills toward the next paragon point. */
   paragonProgress?: number;
+  /** Sprint 292: one-time veteran pack (level 20+) claimed. */
+  veteranPackClaimed?: boolean;
   /** Sprint 235: current kill-streak count (session-only, not persisted). */
   killStreak?: number;
   /** Sprint 235: timestamp the current streak expires (session-only). */
@@ -677,6 +679,8 @@ export interface ClientToServerEvents {
   evolvePet: (payload: { petId: string }) => void;
   /** Sprint 281: challenge the next Trial Tower floor. */
   challengeTower: () => void;
+  /** Sprint 292: claim the one-time level-20 veteran pack. */
+  claimVeteranPack: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

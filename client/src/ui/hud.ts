@@ -975,6 +975,21 @@ export class Hud {
       <div class="gem-shop-action"><button id="piggy-break-btn" class="gem-shop-buy-btn" type="button" ${piggy <= 0 ? "disabled" : ""}>💎 ${PIGGY_BREAK_GEM_COST} — Đập</button></div>`;
     root.appendChild(pig);
     pig.querySelector<HTMLButtonElement>("#piggy-break-btn")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("break-piggy")));
+    // Sprint 292: veteran pack card (level 20+, one-time).
+    if (this.player.stats.level >= 20 && !this.player.veteranPackClaimed) {
+      const vet = document.createElement("div");
+      vet.className = "gem-shop-card";
+      vet.style.cssText = "background:linear-gradient(to right,rgba(155,255,205,0.14),rgba(255,209,102,0.10));border:1px solid rgba(155,255,205,0.45)";
+      vet.innerHTML = `
+        <div class="gem-shop-swatch" style="background:radial-gradient(circle,#9be29b,#3a6e4c);display:flex;align-items:center;justify-content:center;font-size:20px">🎖️</div>
+        <div class="gem-shop-info">
+          <strong>Gói Cao Thủ (cấp 20+)</strong>
+          <p>Một lần duy nhất: +5.000 vàng, +50 💎, 1 Bản Đồ Kho Báu.</p>
+        </div>
+        <div class="gem-shop-action"><button id="veteran-claim-btn" class="gem-shop-buy-btn" type="button">MIỄN PHÍ — Nhận</button></div>`;
+      root.appendChild(vet);
+      vet.querySelector<HTMLButtonElement>("#veteran-claim-btn")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("claim-veteran")));
+    }
     // Gem → Gold exchange row (Sprint 78).
     const ex = document.createElement("div");
     ex.className = "gem-shop-card";

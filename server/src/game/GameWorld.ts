@@ -895,6 +895,7 @@ export class GameWorld {
         towerTicketsUsed: saved.towerTicketsUsed ?? 0,
         paragonPoints: saved.paragonPoints ?? 0,
         paragonProgress: saved.paragonProgress ?? 0,
+        veteranPackClaimed: saved.veteranPackClaimed ?? false,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -3633,6 +3634,28 @@ export class GameWorld {
       socket.emit("player", player);
       socket.emit("system", "🎁 Gói Tân Thủ: +3.000 vàng, +30 💎, 5 Lõi Slime, và Bình Tăng XP 30 phút!");
       this.emitFloating(player.id, player.position, 3000, "loot", "Gói Tân Thủ");
+      this.markDirty(player);
+    });
+
+    // Sprint 292: one-time veteran pack for level-20+ heroes.
+    socket.on("claimVeteranPack", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      if (player.veteranPackClaimed) {
+        socket.emit("system", "Bạn đã nhận Gói Cao Thủ rồi.");
+        return;
+      }
+      if (player.stats.level < 20) {
+        socket.emit("system", `🎖️ Gói Cao Thủ yêu cầu cấp 20 (đang cấp ${player.stats.level}).`);
+        return;
+      }
+      player.veteranPackClaimed = true;
+      player.stats.gold += 5000;
+      player.gems = (player.gems ?? 0) + 50;
+      if (!isBagFull(player)) player.inventory.items.push(makeTreasureMapItem());
+      socket.emit("player", player);
+      socket.emit("system", "🎖️ Gói Cao Thủ: +5.000 vàng, +50 💎 và 1 Bản Đồ Kho Báu!");
+      this.emitFloating(player.id, player.position, 5000, "loot", "Gói Cao Thủ");
       this.markDirty(player);
     });
 

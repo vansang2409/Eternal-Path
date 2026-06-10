@@ -271,6 +271,8 @@ export class GameScene extends Phaser.Scene {
     });
     // Sprint 232: piggy-bank break.
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
+    // Sprint 292: veteran pack claim.
+    window.addEventListener("claim-veteran", () => this.socket.emit("claimVeteranPack"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
     // Sprint 283: tower challenge.
