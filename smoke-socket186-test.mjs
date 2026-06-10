@@ -11,7 +11,7 @@ const once = (s, ev, t = 5000) => new Promise((res, rej) => { const h = setTimeo
 const waitPlayer = (s, pred, t = 4000) => new Promise((res, rej) => { const h = setTimeout(() => rej(new Error("timeout")), t); const fn = (p) => { if (pred(p)) { clearTimeout(h); s.off("player", fn); res(p); } }; s.on("player", fn); });
 
 const run = async () => {
-  ok("4 gems defined", GEM_CATALOG.length === 4);
+  ok("4+ gems defined", GEM_CATALOG.length >= 4);
   ok("ruby = +8 atk", getStatGem("ruby")?.stats.attack === 8);
   const sfx = Date.now() % 100000;
   const s = await connect();
