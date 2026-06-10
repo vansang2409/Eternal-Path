@@ -53,7 +53,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "pet-collector",      title: "Nhà Sưu Thú",        description: "Sở hữu 6 linh thú.",   reward: { gems: 20 } },
   { id: "cosmetic-collector", title: "Tủ Đồ Hoành Tráng",  description: "Sở hữu 6 trang phục.", reward: { gems: 20 } },
   // Sprint 204 — mailbox achievement.
-  { id: "pen-pal",         title: "Bưu Tá",              description: "Gửi 1 lá thư cho người chơi khác.",      reward: { gems: 10 } }
+  { id: "pen-pal",         title: "Bưu Tá",              description: "Gửi 1 lá thư cho người chơi khác.",      reward: { gems: 10 } },
+  // Sprint 217 — bestiary achievement.
+  { id: "scholar",         title: "Học Giả Quái Vật",    description: "Đạt hạng Đồng một loại quái trong Sổ Tay.", reward: { gems: 10 } }
 ];
 
 export function achievementById(id: string): Achievement | undefined {

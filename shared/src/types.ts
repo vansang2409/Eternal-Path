@@ -175,6 +175,10 @@ export interface PlayerState {
   totalKills?: number;
   chestsOpened?: number;
   itemsCrafted?: number;
+  /** Sprint 217: per-monster-type lifetime kill counts (bestiary). */
+  bestiary?: Record<string, number>;
+  /** Sprint 217: highest bestiary tier already rewarded per monster type. */
+  bestiaryRewarded?: Record<string, number>;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).

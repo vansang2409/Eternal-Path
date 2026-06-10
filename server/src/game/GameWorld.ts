@@ -151,6 +151,8 @@ import {
   gatherSpawnHints,
   generateWorld,
   getMonsterDefinition,
+  bestiaryTierForKills,
+  bestiaryTierByNumber,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -745,6 +747,8 @@ export class GameWorld {
         totalKills: saved.totalKills ?? 0,
         chestsOpened: saved.chestsOpened ?? 0,
         itemsCrafted: saved.itemsCrafted ?? 0,
+        bestiary: saved.bestiary ?? {},
+        bestiaryRewarded: saved.bestiaryRewarded ?? {},
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1422,6 +1426,15 @@ export class GameWorld {
         const player = this.players.get(socket.id);
         if (!player) return;
         this.creditArenaKill(player);
+        socket.emit("player", player);
+      });
+      // Sprint 217: simulate bestiary kill credit without real combat.
+      (socket as Socket).on("devBestiaryKill", (payload: { type?: string; count?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        const type = String(payload?.type ?? "forestSlime");
+        const count = Math.min(500, Math.max(1, Number(payload?.count) || 1));
+        for (let i = 0; i < count; i++) this.creditBestiaryKill(player, type);
         socket.emit("player", player);
       });
       (socket as Socket).on("devArenaDeath", () => {
@@ -3705,6 +3718,30 @@ export class GameWorld {
     if (monster.hp <= 0) this.killMonster(player, monster, now);
   }
 
+  // Sprint 217: bump the per-type bestiary counter and grant any newly
+  // crossed tier rewards exactly once (highest rewarded tier is persisted).
+  private creditBestiaryKill(player: PlayerState, type: string): void {
+    const bestiary = (player.bestiary ??= {});
+    bestiary[type] = (bestiary[type] ?? 0) + 1;
+    const rewarded = (player.bestiaryRewarded ??= {});
+    const reached = bestiaryTierForKills(bestiary[type]);
+    const already = rewarded[type] ?? 0;
+    if (reached <= already) return;
+    rewarded[type] = reached;
+    let name = type;
+    try { name = getMonsterDefinition(type).name; } catch { /* unknown type — keep id */ }
+    for (let t = already + 1; t <= reached; t++) {
+      const tier = bestiaryTierByNumber(t);
+      if (!tier) continue;
+      if (tier.reward.gold) player.stats.gold += tier.reward.gold;
+      if (tier.reward.gems) player.gems = (player.gems ?? 0) + tier.reward.gems;
+      const parts = [tier.reward.gold ? `${tier.reward.gold} vàng` : "", tier.reward.gems ? `${tier.reward.gems} 💎` : ""].filter(Boolean).join(" + ");
+      this.sockets.get(player.id)?.emit("system", `📖 Sổ Tay Quái Vật: ${name} đạt hạng ${tier.name} — thưởng ${parts}.`);
+    }
+    this.unlockAchievement(player, "scholar");
+    this.markDirty(player);
+  }
+
   private killMonster(player: PlayerState, monster: MonsterState, now: number): void {
     monster.respawnsAt = now + monster.respawnDurationMs;
     monster.velocity = { x: 0, y: 0 };
@@ -3732,6 +3769,8 @@ export class GameWorld {
     }
     this.updateQuestProgressForKill(player, monster);
     player.totalKills = (player.totalKills ?? 0) + 1;
+    // Sprint 217: bestiary — track per-type kills and pay tier rewards.
+    this.creditBestiaryKill(player, monster.type);
     // Battle Pass exp from kills — silently accrue, leveling auto.
     this.grantBattlePassExp(player, BATTLE_PASS_EXP_PER_KILL);
     this.unlockAchievement(player, "first-blood");

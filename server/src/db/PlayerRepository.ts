@@ -26,6 +26,8 @@ interface SavedPlayer {
   totalKills?: number;
   chestsOpened?: number;
   itemsCrafted?: number;
+  bestiary?: Record<string, number>;
+  bestiaryRewarded?: Record<string, number>;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -282,6 +284,8 @@ export class PlayerRepository {
       totalKills: player.totalKills,
       chestsOpened: player.chestsOpened,
       itemsCrafted: player.itemsCrafted,
+      bestiary: player.bestiary ? { ...player.bestiary } : undefined,
+      bestiaryRewarded: player.bestiaryRewarded ? { ...player.bestiaryRewarded } : undefined,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,
