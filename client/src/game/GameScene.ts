@@ -55,6 +55,9 @@ export class GameScene extends Phaser.Scene {
   private socket!: GameSocket;
   private hud!: Hud;
   private selfId = "";
+  // Sprint 236: kill-streak combo HUD text + fade timer.
+  private comboText?: Phaser.GameObjects.Text;
+  private comboFadeTimer?: Phaser.Time.TimerEvent;
   private cursors!: Record<"F" | "Q" | "W" | "E" | "R" | "SHIFT", Phaser.Input.Keyboard.Key>;
   private seq = 0;
   private players = new Map<string, Phaser.GameObjects.Sprite>();
@@ -246,6 +249,25 @@ export class GameScene extends Phaser.Scene {
     });
     // Sprint 232: piggy-bank break.
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
+    // Sprint 236: kill-streak combo counter (screen-space, pops per kill).
+    this.socket.on("killStreak", ({ streak, bonus }) => {
+      if (streak < 2) { this.comboText?.setAlpha(0); return; }
+      if (!this.comboText) {
+        this.comboText = this.add.text(this.scale.width - 18, 130, "", {
+          fontFamily: "monospace", fontSize: "20px", fontStyle: "bold",
+          color: "#ffffff", stroke: "#000000", strokeThickness: 4
+        }).setOrigin(1, 0).setScrollFactor(0).setDepth(10000);
+      }
+      const color = streak >= 10 ? "#ff9b3d" : streak >= 5 ? "#ffd166" : "#ffffff";
+      this.comboText.setColor(color);
+      this.comboText.setText(`COMBO x${streak}${bonus > 0 ? `  +${Math.round(bonus * 100)}% 🪙` : ""}`);
+      this.comboText.setAlpha(1).setScale(1.45);
+      this.tweens.add({ targets: this.comboText, scale: 1, duration: 160, ease: "Back.Out" });
+      this.comboFadeTimer?.remove();
+      this.comboFadeTimer = this.time.delayedCall(8000, () => {
+        if (this.comboText) this.tweens.add({ targets: this.comboText, alpha: 0, duration: 500 });
+      });
+    });
     // Sprint 226: scratch ticket buy + result reveal (jackpot screen flash).
     window.addEventListener("buy-scratch", () => this.socket.emit("buyScratchTicket"));
     this.socket.on("scratchResult", (r) => {
