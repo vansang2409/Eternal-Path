@@ -30,13 +30,13 @@ const run = async () => {
   await sleepMs(400);
   ok("break without gems rejected", sysMsgs.some((m) => m.includes(`Cần ${PIGGY_BREAK_GEM_COST}`)) && (lastPlayer.piggyGold ?? 0) === 6);
 
-  // Grant gems, break → +6 gold, piggy 0, gems -25.
+  // Grant gems, break → +6 gold, piggy 0, gems -25 +5 (piggy-breaker, S259).
   s.emit("devGrant", { gems: PIGGY_BREAK_GEM_COST });
   await until((p) => (p.gems ?? 0) >= PIGGY_BREAK_GEM_COST);
   const goldBefore = lastPlayer.stats.gold; const gemsBefore = lastPlayer.gems;
   s.emit("breakPiggy");
-  const p2 = await until((p) => (p.piggyGold ?? 0) === 0 && p.stats.gold === goldBefore + 6);
-  ok("piggy paid out", p2.stats.gold === goldBefore + 6 && p2.gems === gemsBefore - PIGGY_BREAK_GEM_COST);
+  const p2 = await until((p) => (p.piggyGold ?? 0) === 0 && p.stats.gold === goldBefore + 6 && p.gems === gemsBefore - PIGGY_BREAK_GEM_COST + 5);
+  ok("piggy paid out (net -20 with achievement)", Boolean(p2), `gems ${gemsBefore}->${p2.gems}`);
 
   // Empty piggy break → friendly rejection.
   s.emit("breakPiggy");
