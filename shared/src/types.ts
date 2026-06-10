@@ -533,6 +533,8 @@ export interface ServerToClientEvents {
   killStreak: (payload: { streak: number; bonus: number }) => void;
   /** Sprint 242: a treasure map was dug up (for dig VFX). */
   treasureDug: (payload: { gold: number }) => void;
+  /** Sprint 245: someone played an emote (for the bubble VFX). */
+  emoteShown: (payload: { playerId: string; emote: string }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
@@ -623,6 +625,10 @@ export interface ClientToServerEvents {
   upgradeMount: (payload: { mountId: string }) => void;
   /** Sprint 239: buy a vanity title with gold. */
   buyTitle: (payload: { titleId: string }) => void;
+  /** Sprint 245: roll a public 1-100 dice. */
+  rollDice: () => void;
+  /** Sprint 245: play a whitelisted emote. */
+  emote: (payload: { emote: string }) => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

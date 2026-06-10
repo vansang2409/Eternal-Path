@@ -181,6 +181,9 @@ import {
   TREASURE_MAP_DROP_RATE,
   STORY_QUEST_CHAIN,
   STORY_CHAIN_BONUS_GEMS,
+  getEmote,
+  ROLL_COOLDOWN_MS,
+  EMOTE_COOLDOWN_MS,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -501,6 +504,9 @@ export class GameWorld {
   private readonly guildRaids = new Map<string, { bossName: string; maxHp: number; hp: number; startedAt: number; expiresAt: number; contributors: Map<string, number> }>();
   private readonly guildRaidCooldownUntil = new Map<string, number>();
   private readonly raidAttackCooldown = new Map<string, number>();
+  // Sprint 245: per-player social cooldowns.
+  private readonly rollCooldowns = new Map<string, number>();
+  private readonly emoteCooldowns = new Map<string, number>();
   private readonly sessions = new Map<string, { email: string; accountName: string }>();
   private readonly dirtyPlayers = new Set<string>();
   private readonly shopStock: ShopItem[] = createShopStock();
@@ -3149,6 +3155,30 @@ export class GameWorld {
       const player = this.players.get(socket.id);
       if (!player) return;
       this.doScratch(player, Math.random());
+    });
+
+    // Sprint 245: public dice roll (server-rolled so nobody can fake it).
+    socket.on("rollDice", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const now = Date.now();
+      if (now - (this.rollCooldowns.get(socket.id) ?? 0) < ROLL_COOLDOWN_MS) return;
+      this.rollCooldowns.set(socket.id, now);
+      const n = 1 + Math.floor(Math.random() * 100);
+      this.io.emit("system", `🎲 ${player.accountName} tung xúc xắc: ${n}/100`);
+    });
+
+    // Sprint 245: whitelisted emotes — broadcast for bubbles, log a chat line.
+    socket.on("emote", ({ emote }) => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      const def = getEmote(String(emote));
+      if (!def) return;
+      const now = Date.now();
+      if (now - (this.emoteCooldowns.get(socket.id) ?? 0) < EMOTE_COOLDOWN_MS) return;
+      this.emoteCooldowns.set(socket.id, now);
+      this.io.emit("emoteShown", { playerId: player.id, emote: def.id });
+      this.io.emit("system", `${def.icon} ${player.accountName} ${def.label}.`);
     });
 
     // Sprint 239: buy a vanity title with gold.
