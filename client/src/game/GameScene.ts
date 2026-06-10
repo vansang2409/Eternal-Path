@@ -251,6 +251,10 @@ export class GameScene extends Phaser.Scene {
     window.addEventListener("break-piggy", () => this.socket.emit("breakPiggy"));
     // Sprint 239: gold title shop.
     window.addEventListener("buy-title", (e) => this.socket.emit("buyTitle", { titleId: (e as CustomEvent).detail }));
+    // Sprint 252: stash actions.
+    window.addEventListener("stash-deposit", (e) => this.socket.emit("stashDeposit", { itemId: (e as CustomEvent).detail }));
+    window.addEventListener("stash-withdraw", (e) => this.socket.emit("stashWithdraw", { itemId: (e as CustomEvent).detail }));
+    window.addEventListener("stash-expand", () => this.socket.emit("buyStashSlots"));
     // Sprint 246: dice + emote commands and bubble rendering.
     window.addEventListener("social-roll", () => this.socket.emit("rollDice"));
     window.addEventListener("social-emote", (e) => this.socket.emit("emote", { emote: (e as CustomEvent).detail }));

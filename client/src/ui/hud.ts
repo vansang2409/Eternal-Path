@@ -1,5 +1,5 @@
 import { ACHIEVEMENTS, mountLabel, GEM_CATALOG, getStatGem, dailyDealCosmetic, dailyDealPrice, AFK_ZONE_DEFINITIONS, BAG_MAX_BONUS, GEM_TO_GOLD_RATE, GOLD_BOOST_GEM_COST, isGoldBoostActive, XP_BOOST_GEM_COST, isXpBoostActive, RAGE_GEM_COST, isRageActive, RESPEC_COST_PER_POINT, LEVEL_MILESTONES, ACHIEVEMENT_MILESTONES, WEEKLY_CLAIM_INTERVAL_MS, BATTLE_PASS_EXP_PER_TIER, BATTLE_PASS_TIERS, CLASS_CATALOG, COSMETICS, GUILD_BOOST_GEM_COST, GUILD_CREATE_COST_GOLD, GUILD_DONATE_MIN, GUILD_MOTD_MAX, MATERIAL_CATALOG, PLAYER_CLASSES, RECIPES, BREW_RECIPES, SKILL_CATALOG, SKILL_IDS, SKILL_LOADOUT_SIZE, SKILL_MAX_RANK, VIP_PACKAGES, bagCapacity, bagUpgradeCost, canManageGuild, describeBattlePassReward, expToNextLevel, guildRankLabel, isVipActive, vipRemainingDays } from "@mmorpg/shared";
-import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
+import { MARKET_FEATURE_GEM_COST, MARKET_MAX_LISTINGS_PER_SELLER, MARKET_TAX_RATE, PET_CATALOG, PET_FEED_GOLD_COST, PET_TREAT_GEM_COST, MOUNT_CATALOG, STREAK_REWARDS, TITLES, canClaimStreakToday, filterListings, petBuffAtLevel, petLevelForXp, petXpProgress, sortListings, titleLabel, MONSTER_DEFINITIONS, BESTIARY_TIERS, bestiaryTierForKills, nextBestiaryTier, nextMaterialTier, MATERIAL_UPGRADE_RATIO, PIGGY_GOLD_CAP, PIGGY_GOLD_PER_KILL, PIGGY_BREAK_GEM_COST, GOLD_TITLE_SHOP, STORY_QUEST_CHAIN, STORY_CHAIN_BONUS_GEMS, STASH_BASE_SLOTS, STASH_MAX_BONUS, STASH_SLOT_GEM_COST, STASH_SLOTS_PER_PURCHASE, type MarketKindFilter, type MarketSortKey } from "@mmorpg/shared";
 import type { Achievement, AfkZone, AllocatableStat, ChatMessage, EquipmentSlot, GuildChatPayload, GuildInvitePayload, GuildLeaderboardRow, GuildRaidView, GuildView, Item, MailMessage, MarketListingView, MaterialId, MaterialItem, MonsterState, OfflineRewardsEvent, PartyInvite, PartyView, PlayerClass, PlayerState, QuestCategory, QuestListPayload, QuestView, Rarity, ShopItem, SkillId } from "@mmorpg/shared";
 import { getLanguage, setLanguage, t, translateMonsterName, type Language } from "../i18n";
 
@@ -409,6 +409,7 @@ export class Hud {
     this.renderTitlesModal();
     this.renderBestiaryModal();
     this.renderStatsModal();
+    this.renderStashModal();
     this.renderPetsModal();
     this.skillCooldowns = player.skillCooldowns ?? this.skillCooldowns;
     if (!Array.isArray(player.equippedSkills)) player.equippedSkills = [];
@@ -1323,6 +1324,29 @@ export class Hud {
     body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 12px">Hạ quái để nâng hạng Sổ Tay: ${BESTIARY_TIERS.map((b) => `${b.name} (${b.kills})`).join(" → ")}. Mỗi hạng thưởng vàng/💎. Đạt Vàng: ${goldTiers} loại.</p>
       ${rows || `<p style="color:#8e9192;font-size:12px">Chưa ghi nhận quái nào — ra ngoài săn thôi!</p>`}
       ${undiscovered > 0 ? `<p style="color:#8e9192;font-size:11px;margin-top:8px">🔍 Chưa khám phá: ${undiscovered} loại quái.</p>` : ""}`;
+  }
+
+  // Sprint 252: stash modal — list stored items, withdraw, expansion card.
+  private renderStashModal(): void {
+    const body = document.querySelector<HTMLDivElement>("#stash-body");
+    const p = this.player;
+    if (!body || !p) return;
+    const stash = p.stash ?? [];
+    const cap = STASH_BASE_SLOTS + Math.max(0, Math.min(STASH_MAX_BONUS, p.stashBonus ?? 0));
+    const rows = stash.map((it) => `
+      <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;margin-bottom:5px;border-radius:6px;background:rgba(28,28,28,0.5);border:1px solid #2a2a2a">
+        <div style="flex:1;min-width:0"><strong class="${rarityClass[it.rarity]}">${escapeHtml(it.name)}</strong></div>
+        <button type="button" data-stash-withdraw="${it.id}" style="padding:4px 10px;border:1px solid #39424b;border-radius:4px;background:#1c2126;color:#fff;cursor:pointer">Rút</button>
+      </div>`).join("");
+    const expandBtn = (p.stashBonus ?? 0) < STASH_MAX_BONUS
+      ? `<button type="button" id="stash-expand-btn" style="margin-top:8px;padding:6px 12px;border:none;border-radius:4px;font-weight:700;color:#1d1500;background:linear-gradient(to bottom,#ffd166,#c8a948);cursor:pointer">💎 ${STASH_SLOT_GEM_COST} — Mở rộng +${STASH_SLOTS_PER_PURCHASE} ô</button>`
+      : `<p style="color:#8e9192;font-size:11px;margin-top:8px">Đã mở rộng tối đa.</p>`;
+    body.innerHTML = `<p style="color:#d6dddf;font-size:12px;margin:0 0 10px">Cất đồ quý khi ở <strong>thị trấn</strong>. Sức chứa: <strong style="color:#ffd166">${stash.length}/${cap}</strong>. Gửi đồ bằng nút 🏦 trong túi.</p>
+      ${rows || `<p style="color:#8e9192;font-size:12px">Két đang trống.</p>`}${expandBtn}`;
+    body.querySelectorAll<HTMLButtonElement>("[data-stash-withdraw]").forEach((btn) => {
+      btn.addEventListener("click", () => window.dispatchEvent(new CustomEvent("stash-withdraw", { detail: btn.dataset.stashWithdraw })));
+    });
+    body.querySelector("#stash-expand-btn")?.addEventListener("click", () => window.dispatchEvent(new CustomEvent("stash-expand")));
   }
 
   // Sprint 229: lifetime stats panel — every counter the server tracks.
@@ -2375,6 +2399,7 @@ export class Hud {
       ${salvageBtn}
       ${upgradeBtn}
       ${exchangeBtn}
+      <button type="button" data-action="stash" title="Gửi vào Két Riêng (ở thị trấn)">🏦 Gửi két</button>
       ${lockBtn}
       <button type="button" data-action="drop">${t("drop")}</button>
     `;
@@ -2384,6 +2409,9 @@ export class Hud {
     actions.querySelector('[data-action="salvage"]')?.addEventListener("click", () => this.onSalvage(item.id));
     actions.querySelector('[data-action="exchange"]')?.addEventListener("click", () => {
       if (item.kind === "material") window.dispatchEvent(new CustomEvent("exchange-material", { detail: item.materialId }));
+    });
+    actions.querySelector('[data-action="stash"]')?.addEventListener("click", () => {
+      window.dispatchEvent(new CustomEvent("stash-deposit", { detail: item.id }));
     });
     actions.querySelector('[data-action="lock"]')?.addEventListener("click", () => this.onToggleLock(item.id));
     actions.querySelector('[data-action="upgrade"]')?.addEventListener("click", () => this.onUpgradeItem(item.id));
