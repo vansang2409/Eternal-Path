@@ -281,6 +281,25 @@ export const RECIPES: Recipe[] = [
     level: 13,
     themeFrom: "ancientDrake",
     cost: { wardenHeart: 2, frostShard: 4, emberHeart: 3 }
+  },
+  // Sprint 214: recipes themed on the new monsters (S211).
+  {
+    id: "magma-warblade",
+    name: "Chiến Kiếm Dung Nham",
+    slot: "weapon",
+    rarity: "epic",
+    level: 12,
+    themeFrom: "magmaGolem",
+    cost: { emberHeart: 4, crystalShard: 2, voidAsh: 2 }
+  },
+  {
+    id: "reaper-mantle",
+    name: "Áo Choàng Tử Thần",
+    slot: "armor",
+    rarity: "epic",
+    level: 13,
+    themeFrom: "voidReaper",
+    cost: { voidAsh: 5, cursedBark: 3, wardenHeart: 1 }
   }
 ];
 
