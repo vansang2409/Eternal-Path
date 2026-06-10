@@ -189,6 +189,8 @@ export interface PlayerState {
   lastFishAt?: number;
   /** Sprint 222: casts since the last fine-or-better catch (pity counter). */
   fishPity?: number;
+  /** Sprint 225: lifetime scratch tickets bought. */
+  scratchTickets?: number;
   // Currently applied set bonus stats (subtracted before each equip change
   // and re-added after, so the player's stat sheet always reflects the
   // active set tier without double-counting).
@@ -505,6 +507,8 @@ export interface ServerToClientEvents {
   system: (message: string) => void;
   /** Sprint 221: outcome of one fishing cast. */
   fishResult: (payload: { id: string; label: string; gold: number; materialId?: MaterialId }) => void;
+  /** Sprint 225: outcome of one scratch ticket. */
+  scratchResult: (payload: { id: string; label: string; payout: number }) => void;
   skillCast: (event: { casterId: string; skillId: SkillId; position: Vec2; targetPosition?: Vec2 }) => void;
   monsterProjectile: (event: { sourceId: string; sourcePosition: Vec2; targetPosition: Vec2; color: number }) => void;
   arenaLeaderboard: (rows: ArenaLeaderRow[]) => void;
@@ -585,6 +589,8 @@ export interface ClientToServerEvents {
   salvageItem: (payload: { itemId: string }) => void;
   /** Sprint 221: cast a fishing line. */
   fish: () => void;
+  /** Sprint 225: buy + scratch one lucky ticket (gold sink). */
+  buyScratchTicket: () => void;
   toggleItemLock: (payload: { itemId: string }) => void;
   salvageAll: (payload: { rarity: string }) => void;
   buyXpBoost: () => void;

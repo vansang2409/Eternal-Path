@@ -161,6 +161,8 @@ import {
   FISHING_PITY_CASTS,
   FISHING_TABLE,
   isFineCatch,
+  rollScratch,
+  SCRATCH_TICKET_COST,
   grantExp,
   isAfkZone,
   isSkillId,
@@ -761,6 +763,7 @@ export class GameWorld {
         firstKillDate: saved.firstKillDate,
         fishCaught: saved.fishCaught ?? 0,
         fishPity: saved.fishPity ?? 0,
+        scratchTickets: saved.scratchTickets ?? 0,
         skillLoadouts: saved.skillLoadouts ?? [[], [], []],
         gems: saved.gems ?? 0,
         cosmetics: saved.cosmetics ?? [],
@@ -1477,6 +1480,12 @@ export class GameWorld {
         } as unknown as MonsterState;
         this.killMonster(player, m, Date.now());
         socket.emit("player", player);
+      });
+      // Sprint 225: deterministic scratch roll.
+      (socket as Socket).on("devScratch", (payload: { roll?: number }) => {
+        const player = this.players.get(socket.id);
+        if (!player) return;
+        this.doScratch(player, Math.max(0, Math.min(0.999999, Number(payload?.roll) || 0)));
       });
       // Sprint 221: deterministic fishing roll (bypasses the cooldown).
       (socket as Socket).on("devFish", (payload: { roll?: number }) => {
@@ -3043,6 +3052,13 @@ export class GameWorld {
       this.doFish(player, Math.random());
     });
 
+    // Sprint 225: scratch ticket — 200-gold sink with instant prizes.
+    socket.on("buyScratchTicket", () => {
+      const player = this.players.get(socket.id);
+      if (!player) return;
+      this.doScratch(player, Math.random());
+    });
+
     // Sprint 151: toggle a protective lock on an inventory item so it can't be
     // accidentally sold, salvaged, or dropped.
     socket.on("toggleItemLock", ({ itemId }) => {
@@ -3780,6 +3796,27 @@ export class GameWorld {
     const text = label ? `${result.damage} ${label}${result.crit ? " crit" : ""}` : result.crit ? `${result.damage} crit` : undefined;
     this.emitFloating(monster.id, monster.position, result.damage, "damage", text);
     if (monster.hp <= 0) this.killMonster(player, monster, now);
+  }
+
+  // Sprint 225: resolve one scratch ticket — deduct cost, roll, pay out.
+  private doScratch(player: PlayerState, rng: number): void {
+    const socket = this.sockets.get(player.id);
+    if (player.stats.gold < SCRATCH_TICKET_COST) {
+      socket?.emit("system", `🎫 Cần ${SCRATCH_TICKET_COST} vàng để mua Vé Cào.`);
+      return;
+    }
+    player.stats.gold -= SCRATCH_TICKET_COST;
+    player.scratchTickets = (player.scratchTickets ?? 0) + 1;
+    const prize = rollScratch(rng);
+    if (prize.payout > 0) {
+      player.stats.gold += prize.payout;
+      this.emitFloating(player.id, player.position, prize.payout, "loot", `+${prize.payout} gold`);
+    }
+    socket?.emit("scratchResult", { id: prize.id, label: prize.label, payout: prize.payout });
+    socket?.emit("system", `🎫 Vé Cào: ${prize.label}${prize.payout > 0 ? ` (+${prize.payout} vàng)` : ""}`);
+    if (prize.announce) this.io.emit("system", `🎆 ${player.accountName} cào trúng ĐỘC ĐẮC ${prize.payout} vàng!`);
+    socket?.emit("player", player);
+    this.markDirty(player);
   }
 
   // Sprint 221: resolve one fishing cast — cooldown, weighted table roll,

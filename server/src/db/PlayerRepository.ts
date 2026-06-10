@@ -32,6 +32,7 @@ interface SavedPlayer {
   firstKillDate?: string;
   fishCaught?: number;
   fishPity?: number;
+  scratchTickets?: number;
   skillLoadouts?: Array<SkillId[]>;
   gems?: number;
   cosmetics?: string[];
@@ -294,6 +295,7 @@ export class PlayerRepository {
       firstKillDate: player.firstKillDate,
       fishCaught: player.fishCaught,
       fishPity: player.fishPity,
+      scratchTickets: player.scratchTickets,
       skillLoadouts: player.skillLoadouts ? player.skillLoadouts.map((arr) => [...arr]) : undefined,
       gems: player.gems,
       cosmetics: player.cosmetics ? [...player.cosmetics] : undefined,

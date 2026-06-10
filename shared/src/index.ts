@@ -21,3 +21,4 @@ export * from "./gems.js";
 export * from "./bestiary.js";
 export * from "./rested.js";
 export * from "./fishing.js";
+export * from "./scratch.js";
