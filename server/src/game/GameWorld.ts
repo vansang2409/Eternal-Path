@@ -37,6 +37,9 @@ import {
   HAPPY_HOUR_DURATION_MS,
   HAPPY_HOUR_INTERVAL_MS,
   isHappyHourActive,
+  ELEMENT_STORM_DROP_MULT,
+  ELEMENT_STORM_DURATION_MS,
+  ELEMENT_STORM_INTERVAL_MS,
   ARENA_KILL_GOLD,
   ARENA_KILL_GEMS,
   SKILL_MAX_RANK,
@@ -666,6 +669,12 @@ export class GameWorld {
     setInterval(() => this.broadcastWorldTime(), 5000);
     // Sprint 167: auto-start the Happy Hour world event on a fixed cadence.
     setInterval(() => this.startHappyHour(), HAPPY_HOUR_INTERVAL_MS);
+    // Sprint 266: Element Storm fires on its own cadence, offset from Giờ
+    // Vàng so the two events interleave instead of stacking.
+    setTimeout(() => {
+      this.startElementStorm();
+      setInterval(() => this.startElementStorm(), ELEMENT_STORM_INTERVAL_MS);
+    }, ELEMENT_STORM_INTERVAL_MS / 2);
   }
 
   // Sprint 167: server-wide x2 gold-drop window, broadcast to everyone.
@@ -674,6 +683,14 @@ export class GameWorld {
     this.happyHourUntil = Date.now() + HAPPY_HOUR_DURATION_MS;
     this.io.emit("worldEvent", { kind: "happyHour", until: this.happyHourUntil, multiplier: HAPPY_HOUR_MULTIPLIER });
     this.io.emit("system", `🌟 GIỜ VÀNG bắt đầu! x${HAPPY_HOUR_MULTIPLIER} vàng rơi ra trong ${Math.round(HAPPY_HOUR_DURATION_MS / 60000)} phút!`);
+  }
+
+  // Sprint 266: Element Storm — doubled material-drop odds for 10 minutes.
+  private elementStormUntil = 0;
+  private startElementStorm(): void {
+    this.elementStormUntil = Date.now() + ELEMENT_STORM_DURATION_MS;
+    this.io.emit("worldEvent", { kind: "elementStorm", until: this.elementStormUntil, multiplier: ELEMENT_STORM_DROP_MULT });
+    this.io.emit("system", `🌩️ BÃO NGUYÊN TỐ nổi lên! Tỉ lệ rơi nguyên liệu x${ELEMENT_STORM_DROP_MULT} trong ${Math.round(ELEMENT_STORM_DURATION_MS / 60000)} phút!`);
   }
 
   // Sprint 169: credit an arena kill to the attacker — bumps their kill count,
@@ -1525,6 +1542,10 @@ export class GameWorld {
       });
       (socket as Socket).on("devHappyHour", () => {
         this.startHappyHour();
+      });
+      // Sprint 266: trigger an Element Storm on demand.
+      (socket as Socket).on("devElementStorm", () => {
+        this.startElementStorm();
       });
       (socket as Socket).on("devLootItem", (payload: { rarity?: Rarity; slot?: EquipmentSlot }) => {
         const player = this.players.get(socket.id);
@@ -4421,7 +4442,9 @@ export class GameWorld {
   private tryDropMaterial(player: PlayerState, monster: MonsterState): void {
     const materialId = materialDropForMonster(monster.type);
     if (!materialId) return;
-    const chance = monster.boss ? 1 : monster.elite ? 0.5 : 0.3;
+    let chance = monster.boss ? 1 : monster.elite ? 0.5 : 0.3;
+    // Sprint 266: Element Storm doubles the odds (capped at certainty).
+    if (Date.now() < this.elementStormUntil) chance = Math.min(1, chance * ELEMENT_STORM_DROP_MULT);
     if (Math.random() > chance) return;
     if (isBagFull(player)) {
       this.sockets.get(player.id)?.emit("system", BAG_FULL_MESSAGE);

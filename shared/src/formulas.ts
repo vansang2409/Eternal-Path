@@ -132,6 +132,11 @@ export const HAPPY_HOUR_INTERVAL_MS = 3 * 60 * 60 * 1000;
 export function isHappyHourActive(until: number | undefined, now: number = Date.now()): boolean {
   return typeof until === "number" && until > now;
 }
+
+// Sprint 266: Element Storm — periodic world event doubling material drops.
+export const ELEMENT_STORM_DROP_MULT = 2;
+export const ELEMENT_STORM_DURATION_MS = 10 * 60 * 1000;
+export const ELEMENT_STORM_INTERVAL_MS = 4 * 60 * 60 * 1000;
 // Level milestone reward chests (Sprint 165): one-time gold + gem rewards for
 // reaching key levels. Encourages pushing levels (and buying XP boosts).
 export interface LevelMilestone { level: number; gold: number; gems: number; }
