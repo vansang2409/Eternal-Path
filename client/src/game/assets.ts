@@ -8,6 +8,7 @@
 // "iso-tile-0" .. "iso-tile-11".
 
 import { TileId } from "@mmorpg/shared";
+import { bakeClassTexture } from "./characterArt";
 
 const TILE_PX = 32;
 const TILE_COUNT = 12;
@@ -28,74 +29,12 @@ export function createPixelArt(scene: Phaser.Scene): void {
     ".77..77."
   ], palette());
 
-  // ───── Class-specific 12×12 character sprites ─────
-  // Color keys: K = dark outline, S = skin, E = eye, A = armor/cloth main,
-  // B = armor highlight, P = pant/leg, M = weapon/accent, G = trim.
-  const warriorPal: Record<string, string> = {
-    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
-    A: "#6e7173", B: "#9aa0a3", P: "#3b3b3b",
-    M: "#c9a64a", G: "#b73a48"
-  };
-  createTexture(scene, "player-warrior", [
-    "....KKKK....",
-    "...KAAAAK...",
-    "..KAABBAAK..",
-    "..KASESEAK..",
-    "..KAASSSAK..",
-    "..KAAAAAAK..",
-    "..KGAAAAAGK.",
-    ".KAABBBBAAK.",
-    ".KAABBBBAAK.",
-    ".KMABBBBAMK.",
-    "..KPPPPPP K.",
-    "..KPPP.PPK..",
-    "..KPP...PK..",
-    "..KP....PK.."
-  ], warriorPal);
-
-  const magePal: Record<string, string> = {
-    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
-    H: "#6e4c9b", h: "#8a4fdd", A: "#3b2670",
-    B: "#5a3990", G: "#e9c349", M: "#c4b186"
-  };
-  createTexture(scene, "player-mage", [
-    "....HH......",
-    "...HHHH.....",
-    "..HHHhhH....",
-    ".HHHhhhhH...",
-    "..KKKKKK....",
-    "..KSESEK....",
-    "..KSSSSK....",
-    "..KAAAAK....",
-    ".KAABBAAK...",
-    ".KABBBBAK...",
-    ".KAABBAAGK..",
-    "..KAAAAGK...",
-    "..KAA.AA....",
-    "..KA...A...."
-  ], magePal);
-
-  const rangerPal: Record<string, string> = {
-    K: "#1a1a1a", S: "#f1d0a2", E: "#1a1a1a",
-    H: "#2f6b3f", A: "#4f9a4d", B: "#6dba5d",
-    P: "#5b3a1e", G: "#a78d5a", M: "#c9a64a"
-  };
-  createTexture(scene, "player-ranger", [
-    "...HHHHHH...",
-    "..HHHHHHHH..",
-    "..HKSESEKH..",
-    "..HKSSSSKH..",
-    "..HKKKKKKH..",
-    "...AAAAAA...",
-    "..AABBBBAA..",
-    "..AABBBBAA..",
-    "..AABBBBAA..",
-    "..AAAAAA M..",
-    "..AAA.AA.M..",
-    "..APP.PP....",
-    "..PP...PP...",
-    "..PP...PP..."
-  ], rangerPal);
+  // ───── Class-specific anime hero sprites (see characterArt.ts) ─────
+  // Sprint 304: high-resolution anime hero sprites, baked from vector painters
+  // in characterArt.ts (60x84, big eyes + cel-shaded armor/robe + class weapon).
+  bakeClassTexture(scene, "player-warrior", "warrior");
+  bakeClassTexture(scene, "player-mage", "mage");
+  bakeClassTexture(scene, "player-ranger", "ranger");
 
   createTexture(scene, "monster", [
     "..4444..",

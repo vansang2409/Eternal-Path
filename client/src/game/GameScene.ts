@@ -25,6 +25,7 @@ import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, Ski
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
 import { ISO_TILE_W, ISO_TILE_H, createPixelArt } from "./assets";
+import { CENTER_FRAC, FEET_FRAC } from "./characterArt";
 import { t, translateMonsterName } from "../i18n";
 import { soundManager } from "../sound";
 
@@ -32,6 +33,8 @@ const INTERPOLATION_DELAY_MS = 100;
 const MAX_SNAPSHOT_BUFFER = 8;
 const LOCAL_SNAP_DISTANCE = 64;
 const LOCAL_RECONCILE_ALPHA = 0.16;
+// Sprint 304: on-screen display scale for the 60x84 anime hero textures.
+const PLAYER_SPRITE_SCALE = 0.82;
 
 // Isometric projection. Server still works in 2D Cartesian world pixels;
 // the client renders projected iso for a 2.5D camera feel.
@@ -93,6 +96,7 @@ export class GameScene extends Phaser.Scene {
   private mountSprites = new Map<string, Phaser.GameObjects.Ellipse>();
   private powerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
   private playerAuras = new Map<string, Phaser.GameObjects.Ellipse>();
+  private playerShadows = new Map<string, Phaser.GameObjects.Ellipse>();
   private ambientMotes: Array<{ go: Phaser.GameObjects.Arc; vx: number; vy: number }> = [];
   private nightFireflies: Array<{ go: Phaser.GameObjects.Arc; t: number; speed: number; ampX: number; ampY: number; baseX: number; baseY: number }> = [];
   private weatherPetals: Array<{ go: Phaser.GameObjects.Rectangle; vy: number; sway: number; phase: number; spin: number; a: number }> = [];
@@ -2069,6 +2073,8 @@ export class GameScene extends Phaser.Scene {
         this.powerAuras.delete(id);
         this.playerAuras.get(id)?.destroy();
         this.playerAuras.delete(id);
+        this.playerShadows.get(id)?.destroy();
+        this.playerShadows.delete(id);
       }
     }
 
@@ -2274,13 +2280,17 @@ export class GameScene extends Phaser.Scene {
       : player.playerClass === "mage" ? "player-mage"
       : player.playerClass === "ranger" ? "player-ranger"
       : "player";
+    const isHero = textureKey !== "player";
     let sprite = this.players.get(player.id);
     if (!sprite) {
       const ip = worldToIso(position.x, position.y);
-      // Class sprites are 12×14 (vs 8×8 fallback); use a smaller scale so
-      // they render at roughly the same on-screen size.
-      const scale = textureKey === "player" ? 3 : 2;
-      sprite = this.add.sprite(ip.x, ip.y, textureKey).setScale(scale).setDepth(ip.y);
+      // Sprint 304: anime heroes are baked at 60x84 and feet-anchored, so making
+      // them bigger reaches UP from the tile instead of sinking into the ground.
+      sprite = this.add.sprite(ip.x, ip.y, textureKey).setDepth(ip.y);
+      if (isHero) sprite.setOrigin(CENTER_FRAC, FEET_FRAC).setScale(PLAYER_SPRITE_SCALE);
+      else sprite.setScale(3);
+      // Soft ground shadow grounds the bigger sprite and sells the idle bob.
+      this.playerShadows.set(player.id, this.add.ellipse(ip.x, ip.y + 3, 32, 11, 0x05070c, 0.3).setDepth(ip.y - 0.6));
       if (player.id !== this.selfId) {
         sprite.setInteractive({ useHandCursor: true });
         sprite.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
@@ -2297,7 +2307,7 @@ export class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 480, ease: "Cubic.Out", onComplete: () => ring.destroy() });
       }
       const ip2 = worldToIso(position.x, position.y);
-      const name = this.add.text(ip2.x, ip2.y - 34, this.displayName(player), {
+      const name = this.add.text(ip2.x, ip2.y - (isHero ? 58 : 34), this.displayName(player), {
         fontFamily: "monospace",
         fontSize: "12px",
         color: player.id === this.selfId ? "#a8d8ff" : "#f1f1f1",
@@ -2307,7 +2317,7 @@ export class GameScene extends Phaser.Scene {
       this.names.set(player.id, name);
       this.playerBars.set(player.id, this.add.graphics().setDepth(12));
       this.playerEquipment.set(player.id, this.add.graphics().setDepth(13));
-      if (player.id === this.selfId) this.cameras.main.startFollow(sprite, true, 0.12, 0.12);
+      if (player.id === this.selfId) this.cameras.main.startFollow(sprite, true, 0.12, 0.12).setFollowOffset(0, 30);
     }
     const facing = player.id === this.selfId ? this.predictedSelfFacing : player.facing;
     const ip3 = worldToIso(position.x, position.y);
@@ -2315,13 +2325,19 @@ export class GameScene extends Phaser.Scene {
     // mid-session). Skip if texture key is the same to avoid flicker.
     if (sprite.texture.key !== textureKey) {
       sprite.setTexture(textureKey);
-      sprite.setScale(textureKey === "player" ? 3 : 2);
+      if (isHero) sprite.setOrigin(CENTER_FRAC, FEET_FRAC).setScale(PLAYER_SPRITE_SCALE);
+      else sprite.setOrigin(0.5, 0.5).setScale(3);
     }
     // Subtle idle "breathing" bob when standing still (anime liveliness).
     const speed2 = player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y;
-    const bob = speed2 < 4 ? Math.sin(this.time.now / 360 + ip3.x * 0.05) * 1.4 : 0;
+    const bob = speed2 < 4 ? Math.sin(this.time.now / 360 + ip3.x * 0.05) * (isHero ? 1.9 : 1.4) : 0;
     sprite.setPosition(ip3.x, ip3.y + bob);
     sprite.setDepth(ip3.y);
+    const shadow = this.playerShadows.get(player.id);
+    if (shadow) {
+      const lift = 1 - Math.min(0.32, Math.abs(bob) / 6);
+      shadow.setPosition(ip3.x, ip3.y + 3).setDepth(ip3.y - 0.6).setScale(isHero ? 1 : 0.7, (isHero ? 1 : 0.7) * lift);
+    }
     sprite.setFlipX(facing === "left");
     // Apply cosmetic skin tint when the player has one active.
     if (player.activeCosmeticSkin) {
@@ -2331,12 +2347,13 @@ export class GameScene extends Phaser.Scene {
     } else {
       sprite.clearTint();
     }
+    this.updatePlayerGlow(player, sprite);
     if (player.id !== this.selfId) {
       sprite.disableInteractive();
       sprite.setInteractive({ useHandCursor: true });
     }
     const nameColor = player.id === this.selfId ? "#a8d8ff" : this.partyMemberIds.has(player.id) ? "#8be78b" : "#f1f1f1";
-    this.names.get(player.id)?.setText(this.displayName(player)).setColor(nameColor).setPosition(ip3.x, ip3.y - 42).setDepth(ip3.y + 2).setVisible(this.showNameplates || player.id === this.selfId);
+    this.names.get(player.id)?.setText(this.displayName(player)).setColor(nameColor).setPosition(ip3.x, ip3.y - (isHero ? 58 : 42)).setDepth(ip3.y + 2).setVisible(this.showNameplates || player.id === this.selfId);
     // Iso depth sort: bar + gear must follow sprite's depth, otherwise the
     // fixed (12,13) depth set at creation puts them under the sprite once
     // ip3.y exceeds those values (which it always does in a 200x150 world).
@@ -2437,47 +2454,40 @@ export class GameScene extends Phaser.Scene {
     return parts.join(" ");
   }
 
-  private drawPlayerEquipment(player: PlayerState, position: Vec2, facing: Direction): void {
-    const gear = this.playerEquipment.get(player.id);
-    if (!gear) return;
-    const { x, y } = position;
-    const equipped = player.inventory.equipped;
-    const facingLeft = facing === "left";
-    const weaponSide = facingLeft ? -1 : 1;
+  private drawPlayerEquipment(player: PlayerState, _position: Vec2, _facing: Direction): void {
+    // Sprint 304: the old crude rarity blocks are retired — equipped gear now
+    // reads through the hero art + a rarity glow (see updatePlayerGlow). Keep the
+    // graphics object cleared so nothing paints over the new anime sprite.
+    this.playerEquipment.get(player.id)?.clear();
+  }
 
-    gear.clear();
-
-    if (equipped.armor) {
-      gear.fillStyle(rarityColor(equipped.armor.rarity), 0.9);
-      gear.fillRoundedRect(x - 9, y - 7, 18, 14, 2);
-      gear.lineStyle(1, 0x111111, 0.75).strokeRoundedRect(x - 9, y - 7, 18, 14, 2);
+  // Highest rarity across the player's equipped slots (drives the rarity glow).
+  private bestEquippedRarity(player: PlayerState): "common" | "rare" | "epic" {
+    const rank: Record<"common" | "rare" | "epic", number> = { common: 0, rare: 1, epic: 2 };
+    let best: "common" | "rare" | "epic" = "common";
+    const eq = player.inventory.equipped;
+    for (const it of [eq.weapon, eq.armor, eq.helmet, eq.boots, eq.ring]) {
+      if (it && rank[it.rarity] > rank[best]) best = it.rarity;
     }
+    return best;
+  }
 
-    if (equipped.helmet) {
-      gear.fillStyle(rarityColor(equipped.helmet.rarity), 0.95);
-      gear.fillRect(x - 8, y - 18, 16, 5);
-      gear.lineStyle(1, 0x111111, 0.75).strokeRect(x - 8, y - 18, 16, 5);
+  // Sprint 304: soft outer glow — a constant anime rim-light on yourself, plus a
+  // rarity-tinted aura on anyone wearing rare+ gear. Shader cost stays bounded:
+  // common-geared bystanders carry no glow at all.
+  private updatePlayerGlow(player: PlayerState, sprite: Phaser.GameObjects.Sprite): void {
+    if (!sprite.postFX) return; // canvas renderer has no FX pipeline
+    const holder = sprite as unknown as { __glow?: Phaser.FX.Glow };
+    const best = this.bestEquippedRarity(player);
+    const want = player.id === this.selfId || best !== "common";
+    if (!want) {
+      if (holder.__glow) { sprite.postFX.remove(holder.__glow); holder.__glow = undefined; }
+      return;
     }
-
-    if (equipped.weapon) {
-      gear.lineStyle(3, rarityColor(equipped.weapon.rarity), 1);
-      gear.lineBetween(x + weaponSide * 9, y - 8, x + weaponSide * 22, y - 21);
-      gear.lineStyle(1, 0xf7f0d2, 0.9);
-      gear.lineBetween(x + weaponSide * 12, y - 10, x + weaponSide * 24, y - 22);
-    }
-
-    if (equipped.boots) {
-      gear.fillStyle(rarityColor(equipped.boots.rarity), 0.95);
-      gear.fillRect(x - 9, y + 13, 6, 4);
-      gear.fillRect(x + 3, y + 13, 6, 4);
-    }
-
-    if (equipped.ring) {
-      gear.lineStyle(2, rarityColor(equipped.ring.rarity), 1);
-      gear.strokeCircle(x + weaponSide * 17, y + 2, 4);
-      gear.fillStyle(0xf7d774, 0.9);
-      gear.fillCircle(x + weaponSide * 21, y - 2, 1.6);
-    }
+    const color = best === "epic" ? 0xd98cff : best === "rare" ? 0x69a7ff : 0x9bd6ff;
+    const strength = best === "epic" ? 5 : best === "rare" ? 4 : 2.2;
+    if (!holder.__glow) holder.__glow = sprite.postFX.addGlow(color, strength, 0, false, 0.1, 8);
+    else { holder.__glow.color = color; holder.__glow.outerStrength = strength; }
   }
 
   private renderMonster(monster: MonsterState, position: Vec2): void {
@@ -2605,7 +2615,7 @@ export class GameScene extends Phaser.Scene {
     if (!bar) return;
     const pct = Phaser.Math.Clamp(player.stats.hp / player.stats.maxHp, 0, 1);
     const width = player.id === this.selfId ? 46 : 38;
-    const y = position.y - 31;
+    const y = position.y - (player.playerClass ? 46 : 31);
     bar.clear();
     bar.fillStyle(0x151515, 0.9).fillRect(position.x - width / 2, y, width, 6);
     bar.fillStyle(player.id === this.selfId ? 0x50d36f : 0x69a7ff, 1).fillRect(position.x - width / 2 + 1, y + 1, (width - 2) * pct, 4);
