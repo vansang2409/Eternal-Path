@@ -20,6 +20,9 @@ Bạn đang tiếp quản một MMORPG trình duyệt đang phát triển dở. 
 
 ---
 
+### ★ Sprint 304 (client/art) ✅ — anime hi-res hero sprites
+Vẽ lại nhân vật 3 class ở `client/src/game/characterArt.ts` (vector Canvas2D, bake 60×84): mắt to anime, tóc highlight, giáp/áo choàng/cung cel-shaded + outline, vũ khí riêng. To hơn ~2.3× (feet-anchored: origin `CENTER_FRAC/FEET_FRAC`, scale `PLAYER_SPRITE_SCALE=0.82`). Hiệu ứng mới trong `GameScene.renderPlayer`: **bóng đổ** (`playerShadows`, nhún theo idle bob) + **viền sáng** (`updatePlayerGlow` qua `sprite.postFX.addGlow` — self luôn rim-light, người khác glow theo độ hiếm: rare→xanh, epic→tím; helper `bestEquippedRarity`). Overlay trang bị thô đã **bỏ** (`drawPlayerEquipment` chỉ `clear()`). Thanh máu/tên dời lên (offset theo `player.playerClass`). Camera `setFollowOffset(0,30)` bù origin xuống chân. Build PASS (tsc+vite, 7.5s), commit `ce6e92a`, pushed. Lưu ý: `pixelArt:true` → bake đúng on-screen size (đừng phóng scale to làm vỡ nét); rarity chỉ có common/rare/epic. Painter test bằng `@napi-rs/canvas` (preview PNG) trước khi ghép.
+
 Resume point after **Sprint 300** ✅ (MỤC TIÊU S300 HOÀN THÀNH 2026-06-10). Regression: **130+ smoke suite** PASS (`node run-smoke.mjs`, dùng `--half 1|2`).
 
 ### ★ Sprint 217–300 — tóm tắt theo nhóm (mỗi sprint có build PASS; server sprints kèm smoke test)
