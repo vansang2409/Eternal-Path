@@ -2,19 +2,20 @@
 // Phaser tilemap can address them by index. Tile index must match the
 // TileId enum from shared (Grass=0, Road=1, Forest=2, ... Deep=11).
 //
-// Sprint 15: we also generate an ISO version of each tile (diamond shaped
-// 64x32) for the isometric renderer. Same color/dither palette as the 2D
-// tile, but masked to a rhombus and rendered as 12 separate textures
-// "iso-tile-0" .. "iso-tile-11".
+// The isometric renderer uses a second 64x32 atlas with four deterministic
+// visual variants for each biome. Server TileId values remain unchanged.
 
 import { TileId } from "@mmorpg/shared";
 import { bakeClassTexture } from "./characterArt";
+import { bakeMonsterTextures } from "./monsterArt";
 
 const TILE_PX = 32;
 const TILE_COUNT = 12;
 const TILE_SHEET_WIDTH = TILE_PX * TILE_COUNT;
 export const ISO_TILE_W = 64;
 export const ISO_TILE_H = 32;
+export const ISO_TILE_VARIANTS = 4;
+const ISO_TILE_SHEET_WIDTH = ISO_TILE_W * TILE_COUNT * ISO_TILE_VARIANTS;
 
 export function createPixelArt(scene: Phaser.Scene): void {
   // Default player (kept as fallback for legacy code paths).
@@ -35,6 +36,7 @@ export function createPixelArt(scene: Phaser.Scene): void {
   bakeClassTexture(scene, "player-warrior", "warrior");
   bakeClassTexture(scene, "player-mage", "mage");
   bakeClassTexture(scene, "player-ranger", "ranger");
+  bakeMonsterTextures(scene);
 
   createTexture(scene, "monster", [
     "..4444..",
@@ -119,81 +121,194 @@ export function createPixelArt(scene: Phaser.Scene): void {
   createIsoTiles(scene);
 }
 
-// Iso tile: 64x32 diamond. We render the diamond shape filled with the
-// biome's primary color, then dither + add subtle pattern variation.
+// Iso tile atlas: mỗi biome có bốn biến thể deterministic để mặt đất không
+// lặp như giấy dán tường. Chỉ số server vẫn là TileId 0..11; client chuyển nó
+// sang frame atlas bằng `isoTileIndex` và không thay đổi collision/gameplay.
 function createIsoTiles(scene: Phaser.Scene): void {
-  // Top color (slightly brighter), side colors for tiles that visually
-  // "have height" (rock, water, dungeon wall, town stone).
   const palette: Record<number, { top: string; dither?: string; accent?: string; outline?: string }> = {
-    [TileId.Grass]: { top: "#4f9a4d", dither: "#3a7a3b", accent: "#6dba5d" },
-    [TileId.Road]: { top: "#9b865f", dither: "#7d6a47", accent: "#bba37b" },
-    [TileId.Forest]: { top: "#326b3d", dither: "#1f4a2a", accent: "#45843a" },
-    [TileId.Water]: { top: "#3577b5", dither: "#23538a", accent: "#7fd2e8", outline: "#1a3e60" },
-    [TileId.Sand]: { top: "#d9c378", dither: "#c2a857", accent: "#efe1a2" },
-    [TileId.Snow]: { top: "#e3ecf2", dither: "#c7d6e0", accent: "#ffffff" },
-    [TileId.Swamp]: { top: "#3f5a30", dither: "#2f4326", accent: "#5c7e3a" },
-    [TileId.Rock]: { top: "#7e7e82", dither: "#5d5d60", accent: "#a0a0a3", outline: "#3a3a3d" },
-    [TileId.DungeonFloor]: { top: "#3a3148", dither: "#28213a", accent: "#544870" },
-    [TileId.DungeonWall]: { top: "#241b35", dither: "#0e0820", accent: "#5b3f86", outline: "#100820" },
-    [TileId.TownStone]: { top: "#a18d6c", dither: "#85714f", accent: "#c4b186", outline: "#5b4a30" },
-    [TileId.Deep]: { top: "#3a376b", dither: "#2b2947", accent: "#5c4fa3", outline: "#17142b" }
+    [TileId.Grass]: { top: "#315f3c", dither: "#244a31", accent: "#5b8f52", outline: "#1d3b29" },
+    [TileId.Road]: { top: "#76694f", dither: "#5b4f3b", accent: "#a18c65", outline: "#443b2d" },
+    [TileId.Forest]: { top: "#213f2a", dither: "#172f20", accent: "#47764a", outline: "#112419" },
+    [TileId.Water]: { top: "#225c78", dither: "#17445d", accent: "#62a9bd", outline: "#102f43" },
+    [TileId.Sand]: { top: "#a88a55", dither: "#836a43", accent: "#d4b975", outline: "#665036" },
+    [TileId.Snow]: { top: "#cbd7dc", dither: "#aabcc5", accent: "#f5f8f7", outline: "#839aa6" },
+    [TileId.Swamp]: { top: "#33442a", dither: "#26351f", accent: "#637a46", outline: "#1d2918" },
+    [TileId.Rock]: { top: "#575d61", dither: "#41464a", accent: "#82888a", outline: "#303438" },
+    [TileId.DungeonFloor]: { top: "#292735", dither: "#1d1b27", accent: "#4b455c", outline: "#15131d" },
+    [TileId.DungeonWall]: { top: "#171621", dither: "#0e0d15", accent: "#413653", outline: "#09080e" },
+    [TileId.TownStone]: { top: "#706757", dither: "#554d42", accent: "#9b8e75", outline: "#40392f" },
+    [TileId.Deep]: { top: "#25243d", dither: "#181726", accent: "#504a78", outline: "#100f1c" }
   };
 
-  for (let id = 0; id < 12; id += 1) {
-    const p = palette[id];
-    const key = `iso-tile-${id}`;
-    const canvas = scene.textures.createCanvas(key, ISO_TILE_W, ISO_TILE_H);
-    if (!canvas) continue;
-    const ctx = canvas.getContext();
-    // Fill diamond pixel-by-pixel (no anti-alias). Diamond bounds:
-    // for row y (0..H-1), the row is centered, width grows then shrinks.
-    const half = ISO_TILE_H / 2;
-    for (let y = 0; y < ISO_TILE_H; y += 1) {
-      const dy = Math.abs(y - half + 0.5);
-      const rowHalfWidth = (1 - dy / half) * (ISO_TILE_W / 2);
-      const x0 = Math.floor(ISO_TILE_W / 2 - rowHalfWidth);
-      const x1 = Math.ceil(ISO_TILE_W / 2 + rowHalfWidth);
-      ctx.fillStyle = p.top;
-      ctx.fillRect(x0, y, x1 - x0, 1);
-    }
-    // Dither dots — deterministic pattern keyed by tile id so seam looks consistent.
-    const rng = seededRand(700 + id);
-    if (p.dither) {
-      ctx.fillStyle = p.dither;
-      for (let i = 0; i < 18; i += 1) {
-        const px = Math.floor(rng() * ISO_TILE_W);
-        const py = Math.floor(rng() * ISO_TILE_H);
-        if (isInsideIsoDiamond(px, py)) ctx.fillRect(px, py, 1, 1);
+  const canvas = scene.textures.createCanvas("iso-tiles", ISO_TILE_SHEET_WIDTH, ISO_TILE_H);
+  if (!canvas) return;
+  const ctx = canvas.getContext();
+
+  for (let id = 0; id < TILE_COUNT; id += 1) {
+    for (let variant = 0; variant < ISO_TILE_VARIANTS; variant += 1) {
+      const frame = id * ISO_TILE_VARIANTS + variant;
+      const ox = frame * ISO_TILE_W;
+      const p = palette[id];
+      const rng = seededRand(700 + id * 97 + variant * 1009);
+      paintIsoDiamond(ctx, ox, p.top);
+
+      ctx.save();
+      clipIsoDiamond(ctx, ox);
+      if (p.dither) {
+        ctx.fillStyle = p.dither;
+        for (let i = 0; i < 14 + variant * 2; i += 1) {
+          ctx.fillRect(ox + Math.floor(rng() * ISO_TILE_W), Math.floor(rng() * ISO_TILE_H), 1 + (i % 4 === 0 ? 1 : 0), 1);
+        }
       }
-    }
-    if (p.accent) {
-      ctx.fillStyle = p.accent;
-      for (let i = 0; i < 8; i += 1) {
-        const px = Math.floor(rng() * ISO_TILE_W);
-        const py = Math.floor(rng() * ISO_TILE_H);
-        if (isInsideIsoDiamond(px, py)) ctx.fillRect(px, py, 1, 1);
+      if (p.accent) {
+        ctx.fillStyle = p.accent;
+        for (let i = 0; i < 5 + variant; i += 1) {
+          ctx.fillRect(ox + Math.floor(rng() * ISO_TILE_W), Math.floor(rng() * ISO_TILE_H), 1, 1);
+        }
       }
-    }
-    // Optional outline along the diamond edge.
-    if (p.outline) {
-      ctx.strokeStyle = p.outline;
+      paintIsoDecal(ctx, ox, id as TileId, variant, rng, p);
+      ctx.restore();
+
+      ctx.strokeStyle = p.outline ?? p.dither ?? "#111820";
       ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(ISO_TILE_W / 2, 0.5);
-      ctx.lineTo(ISO_TILE_W - 0.5, ISO_TILE_H / 2);
-      ctx.lineTo(ISO_TILE_W / 2, ISO_TILE_H - 0.5);
-      ctx.lineTo(0.5, ISO_TILE_H / 2);
-      ctx.closePath();
+      traceIsoDiamond(ctx, ox);
       ctx.stroke();
     }
-    canvas.refresh();
+  }
+  canvas.refresh();
+}
+
+function paintIsoDiamond(ctx: CanvasRenderingContext2D, ox: number, color: string): void {
+  const half = ISO_TILE_H / 2;
+  ctx.fillStyle = color;
+  for (let y = 0; y < ISO_TILE_H; y += 1) {
+    const dy = Math.abs(y - half + 0.5);
+    const rowHalfWidth = (1 - dy / half) * (ISO_TILE_W / 2);
+    const x0 = Math.floor(ISO_TILE_W / 2 - rowHalfWidth);
+    const x1 = Math.ceil(ISO_TILE_W / 2 + rowHalfWidth);
+    ctx.fillRect(ox + x0, y, x1 - x0, 1);
   }
 }
 
-function isInsideIsoDiamond(x: number, y: number): boolean {
-  const cx = ISO_TILE_W / 2;
-  const cy = ISO_TILE_H / 2;
-  return Math.abs(x - cx) / cx + Math.abs(y - cy) / cy <= 1;
+function traceIsoDiamond(ctx: CanvasRenderingContext2D, ox: number): void {
+  ctx.beginPath();
+  ctx.moveTo(ox + ISO_TILE_W / 2, 0.5);
+  ctx.lineTo(ox + ISO_TILE_W - 0.5, ISO_TILE_H / 2);
+  ctx.lineTo(ox + ISO_TILE_W / 2, ISO_TILE_H - 0.5);
+  ctx.lineTo(ox + 0.5, ISO_TILE_H / 2);
+  ctx.closePath();
+}
+
+function clipIsoDiamond(ctx: CanvasRenderingContext2D, ox: number): void {
+  traceIsoDiamond(ctx, ox);
+  ctx.clip();
+}
+
+function paintIsoDecal(
+  ctx: CanvasRenderingContext2D,
+  ox: number,
+  tile: TileId,
+  variant: number,
+  rng: () => number,
+  colors: { top: string; dither?: string; accent?: string; outline?: string }
+): void {
+  const accent = colors.accent ?? "#ffffff";
+  const dark = colors.outline ?? colors.dither ?? "#111111";
+  ctx.lineWidth = 1;
+
+  if (tile === TileId.Grass || tile === TileId.Forest) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = tile === TileId.Forest ? 0.42 : 0.58;
+    for (let i = 0; i < 3 + variant; i += 1) {
+      const x = ox + 15 + Math.floor(rng() * 34);
+      const y = 10 + Math.floor(rng() * 13);
+      ctx.beginPath();
+      ctx.moveTo(x, y + 3);
+      ctx.lineTo(x - 1, y);
+      ctx.moveTo(x, y + 3);
+      ctx.lineTo(x + 2, y + 1);
+      ctx.stroke();
+    }
+  } else if (tile === TileId.Water) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.58;
+    for (let i = 0; i < 2 + (variant % 2); i += 1) {
+      const x = ox + 14 + Math.floor(rng() * 25);
+      const y = 10 + i * 6 + Math.floor(rng() * 2);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + 10 + Math.floor(rng() * 8), y);
+      ctx.stroke();
+    }
+  } else if (tile === TileId.Sand) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.34;
+    const y = 11 + variant * 3;
+    ctx.beginPath();
+    ctx.moveTo(ox + 19, y);
+    ctx.quadraticCurveTo(ox + 31, y + 3, ox + 45, y);
+    ctx.stroke();
+  } else if (tile === TileId.Swamp) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.48;
+    ctx.strokeRect(ox + 24 + variant * 3, 12 + (variant % 2) * 4, 3, 2);
+    ctx.fillStyle = accent;
+    ctx.fillRect(ox + 41 - variant * 2, 18, 2, 1);
+  } else if (tile === TileId.Road || tile === TileId.TownStone || tile === TileId.DungeonFloor) {
+    ctx.strokeStyle = dark;
+    ctx.globalAlpha = tile === TileId.TownStone ? 0.62 : 0.48;
+    const shift = variant * 4;
+    ctx.beginPath();
+    ctx.moveTo(ox + 8 + shift, 16);
+    ctx.lineTo(ox + 56, 16);
+    ctx.moveTo(ox + 24 + shift, 8);
+    ctx.lineTo(ox + 30 + shift, 16);
+    ctx.lineTo(ox + 25 + shift, 23);
+    ctx.stroke();
+  } else if (tile === TileId.Rock || tile === TileId.DungeonWall) {
+    ctx.strokeStyle = dark;
+    ctx.globalAlpha = 0.72;
+    const x = ox + 26 + variant * 3;
+    ctx.beginPath();
+    ctx.moveTo(x, 7);
+    ctx.lineTo(x + 5, 14);
+    ctx.lineTo(x + 1, 20);
+    ctx.lineTo(x + 7, 25);
+    ctx.stroke();
+  } else if (tile === TileId.Snow) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.72;
+    const x = ox + 25 + variant * 4;
+    const y = 12 + (variant % 2) * 5;
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y);
+    ctx.lineTo(x + 3, y);
+    ctx.moveTo(x, y - 3);
+    ctx.lineTo(x, y + 3);
+    ctx.stroke();
+  } else if (tile === TileId.Deep) {
+    ctx.strokeStyle = accent;
+    ctx.globalAlpha = 0.5;
+    const x = ox + 28 + variant * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, 10);
+    ctx.lineTo(x + 4, 16);
+    ctx.lineTo(x, 22);
+    ctx.lineTo(x - 4, 16);
+    ctx.closePath();
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+export function isoTileIndex(tile: number, x: number, y: number): number {
+  // Hash rẻ và deterministic: các client cùng nhìn một biến thể tại cùng ô.
+  const hash = Math.imul(x + 17, 73856093) ^ Math.imul(y + 29, 19349663) ^ Math.imul(tile + 7, 83492791);
+  return tile * ISO_TILE_VARIANTS + ((hash >>> 0) % ISO_TILE_VARIANTS);
+}
+
+export function buildIsoTileData(tiles: number[][]): number[][] {
+  return tiles.map((row, y) => row.map((tile, x) => isoTileIndex(tile, x, y)));
 }
 
 function createTexture(scene: Phaser.Scene, key: string, pixels: string[], colors: Record<string, string>): void {

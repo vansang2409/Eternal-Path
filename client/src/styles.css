@@ -2602,3 +2602,607 @@ h2 {
 @keyframes mailGlow { 0%,100% { box-shadow:0 0 10px 2px rgba(224,70,58,0.4); } 50% { box-shadow:0 0 18px 5px rgba(224,70,58,0.75); } }
 @keyframes mailBounce { 0% { transform:translateY(0); } 30% { transform:translateY(-10px) scale(1.12); } 60% { transform:translateY(0) scale(0.96); } 100% { transform:translateY(0) scale(1); } }
 #mailbox-fab.mail-bounce { animation: mailBounce 0.55s ease-out, mailGlow 1.8s ease-in-out 0.55s infinite !important; }
+
+/* --------------------------------------------------------------------------
+   S305 — Runic Field visual foundation
+   Giữ toàn bộ DOM/logic cũ, chỉ chuẩn hoá bề mặt dark-fantasy, hierarchy và
+   responsive collision để playfield vẫn là trọng tâm.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --abyss: #080b0a;
+  --coal: #121514;
+  --iron: #222522;
+  --iron-raised: #2b2e2a;
+  --parchment: #ece6d7;
+  --panel-edge: rgba(201, 166, 74, 0.48);
+  --panel-edge-soft: rgba(202, 194, 169, 0.2);
+  --panel-shadow: rgba(2, 7, 5, 0.72);
+  --focus: #ffe59a;
+  --hud-safe: 12px;
+}
+
+body {
+  color: var(--parchment);
+  background:
+    radial-gradient(circle at 46% 34%, rgba(39, 73, 54, 0.22), transparent 34%),
+    var(--abyss);
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+select,
+.item,
+.slot,
+.shop-item,
+.class-card {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+
+:where(button, input, select, [tabindex], .item, .slot, .shop-item, .class-card):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+:where(button, .item, .slot, .shop-item, .class-card):active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+}
+
+#bottom-left-hud > .panel,
+#bottom-side-hud > .panel,
+#action-bar,
+#hud-toolbar,
+#world-clock {
+  color: var(--parchment);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.035), transparent 26%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 5px),
+    rgba(15, 18, 16, 0.91);
+  border-color: var(--panel-edge-soft);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 226, 0.08),
+    inset 0 0 18px rgba(0, 0, 0, 0.34),
+    0 12px 30px var(--panel-shadow);
+  backdrop-filter: blur(5px) saturate(0.85);
+}
+
+#bottom-left-hud > .panel,
+#bottom-side-hud > .panel {
+  border-top-color: var(--panel-edge);
+}
+
+.panel h2,
+.player-panel .name,
+.target-heading h2 {
+  font-family: Literata, Georgia, serif;
+  letter-spacing: -0.015em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.82);
+}
+
+.bar,
+.boss-bar,
+.quest-progress {
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  box-shadow:
+    inset 1px 2px 4px rgba(0, 0, 0, 0.78),
+    0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.bar > span,
+.boss-bar > span,
+.quest-progress > span {
+  position: relative;
+  overflow: hidden;
+}
+
+.bar > span::after,
+.boss-bar > span::after,
+.quest-progress > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.32), transparent 48%, rgba(0, 0, 0, 0.2));
+  pointer-events: none;
+}
+
+#action-bar {
+  gap: 5px;
+  padding: 6px 7px;
+  border-color: var(--panel-edge);
+  border-radius: 5px;
+}
+
+.action-slot,
+#action-bar .skill-button {
+  width: 50px;
+  min-height: 48px;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(217, 190, 111, 0.09), transparent 48%),
+    linear-gradient(to bottom, #323632, #1c201d);
+  border-color: #4c504a;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -8px 16px rgba(0, 0, 0, 0.25);
+}
+
+.action-slot:hover,
+#action-bar .skill-button:hover:not(:disabled) {
+  border-color: var(--gold);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 0 12px rgba(233, 195, 73, 0.28);
+  transform: translateY(-2px);
+}
+
+#hud-toolbar {
+  display: grid;
+  grid-template-columns: repeat(5, 32px);
+  gap: 4px;
+  padding: 7px;
+  border-top-color: var(--panel-edge);
+}
+
+.toolbar-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  color: #aeb3ad;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.055), transparent 38%),
+    #20231f;
+  border-color: #3b403b;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 -5px 9px rgba(0, 0, 0, 0.28);
+}
+
+.toolbar-btn:hover,
+.toolbar-btn.active,
+.toolbar-btn[aria-expanded="true"] {
+  color: var(--gold-bright);
+  border-color: var(--gold-dark);
+  background-color: #29271d;
+  box-shadow:
+    inset 0 0 9px rgba(233, 195, 73, 0.17),
+    0 0 9px rgba(233, 195, 73, 0.16);
+}
+
+.toolbar-btn.active::after,
+.toolbar-btn[aria-expanded="true"]::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  background: var(--gold-bright);
+  box-shadow: 0 0 6px var(--gold);
+  transform: rotate(45deg);
+}
+
+#minimap {
+  border: 2px solid rgba(175, 141, 17, 0.7);
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(10, 12, 10, 0.92),
+    inset 0 0 0 1px rgba(255, 235, 170, 0.12),
+    0 12px 28px rgba(0, 0, 0, 0.6);
+  filter: saturate(0.9) contrast(1.06);
+}
+
+#world-clock {
+  padding: 5px 9px;
+  border-top-color: var(--panel-edge);
+}
+
+.game-modal,
+.modal-backdrop {
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(62, 73, 61, 0.18), transparent 42%),
+    rgba(3, 5, 4, 0.72);
+  backdrop-filter: blur(6px) saturate(0.72);
+}
+
+.game-modal-card,
+.modal-card {
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.035), transparent 28%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 6px),
+    #1b1e1b;
+  border-color: rgba(201, 166, 74, 0.58);
+  border-radius: 5px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 245, 213, 0.1),
+    inset 0 0 26px rgba(0, 0, 0, 0.38),
+    0 28px 80px rgba(0, 0, 0, 0.72);
+}
+
+.game-modal-card > header {
+  background:
+    linear-gradient(90deg, rgba(201, 166, 74, 0.08), transparent 45%),
+    rgba(8, 10, 9, 0.28);
+  border-bottom-color: rgba(201, 166, 74, 0.28);
+}
+
+.game-modal-card > header h2,
+.modal-card h1 {
+  color: #e7c85e;
+  text-wrap: balance;
+}
+
+.modal-close:hover {
+  background: rgba(201, 166, 74, 0.1);
+  transform: rotate(3deg);
+}
+
+#chat-form {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+#chat-channel-btn {
+  min-width: 38px;
+  padding: 0 8px;
+}
+
+#inventory {
+  grid-template-columns: repeat(5, minmax(42px, 48px));
+  max-width: 100%;
+}
+
+.slot,
+.item {
+  width: clamp(42px, 10vw, 48px);
+  height: clamp(42px, 10vw, 48px);
+}
+
+#login-overlay {
+  min-height: 100dvh;
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(73, 85, 58, 0.34), transparent 44%),
+    radial-gradient(ellipse at 18% 22%, rgba(47, 88, 74, 0.22), transparent 32%),
+    radial-gradient(ellipse at 82% 18%, rgba(139, 105, 45, 0.12), transparent 30%),
+    linear-gradient(to bottom, #070b0b 0%, #0c1513 48%, #090b09 100%);
+}
+
+#login-overlay::before,
+#login-overlay::after {
+  inset: -20%;
+  background:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 225, 136, 0.7) 100%, transparent 100%),
+    radial-gradient(1px 1px at 38% 72%, rgba(183, 213, 180, 0.6) 100%, transparent 100%),
+    radial-gradient(2px 2px at 64% 28%, rgba(255, 255, 239, 0.65) 100%, transparent 100%),
+    radial-gradient(1px 1px at 82% 64%, rgba(145, 194, 150, 0.55) 100%, transparent 100%),
+    repeating-linear-gradient(118deg, transparent 0 48px, rgba(255, 255, 255, 0.012) 49px 50px);
+  background-size: 720px 620px, 680px 560px, 760px 680px, 640px 580px, auto;
+  opacity: 0.42;
+  animation: runic-drift 70s linear infinite;
+}
+
+#login-overlay::after {
+  filter: blur(1px);
+  opacity: 0.22;
+  animation-direction: reverse;
+  animation-duration: 100s;
+}
+
+@keyframes runic-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-150px, -90px, 0); }
+}
+
+.login-box {
+  width: min(440px, calc(100vw - 28px));
+  margin-block: auto;
+  padding: 38px 36px 32px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 34%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 6px),
+    rgba(26, 30, 27, 0.96);
+  border-color: rgba(201, 166, 74, 0.62);
+}
+
+.login-box h1 {
+  margin-bottom: 10px;
+  color: #edcc5e;
+  font-size: clamp(32px, 7vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.login-sub {
+  color: #aebcaa;
+  font-family: Inter, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+}
+
+.login-box p {
+  display: block;
+  max-width: 38ch;
+  margin: 0 auto 18px;
+  color: #afb7af;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.login-class-preview {
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+
+.login-class {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 5px 7px;
+  color: #bfc5bd;
+  background: rgba(5, 8, 6, 0.32);
+  border: 1px solid rgba(202, 194, 169, 0.15);
+  border-radius: 3px;
+}
+
+.login-class-icon {
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  border: 1px solid rgba(255, 244, 207, 0.25);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 5px 12px rgba(0, 0, 0, 0.42);
+}
+
+.login-box label {
+  margin-bottom: 6px;
+  color: #c7cbc4;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.login-box input {
+  height: 48px;
+  margin-bottom: 15px;
+  padding: 0 14px;
+  color: var(--parchment);
+  font-size: 15px;
+  background: #0c100e;
+  border-color: #373d37;
+  box-shadow:
+    inset 2px 3px 8px rgba(0, 0, 0, 0.68),
+    0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.login-box input::placeholder {
+  color: #6f7871;
+}
+
+.login-box input:focus {
+  color: #fff8e7;
+  border-color: var(--gold-dark);
+  outline-color: var(--gold);
+}
+
+.login-box button {
+  min-height: 52px;
+  margin-top: 7px;
+  font-size: 18px;
+}
+
+.login-box button:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 5px 16px rgba(0, 0, 0, 0.48),
+    0 0 14px rgba(233, 195, 73, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 1180px) {
+  #bottom-left-hud {
+    width: 238px;
+  }
+
+  #bottom-side-hud {
+    left: 254px;
+    width: 228px;
+  }
+
+  #minimap {
+    width: 180px;
+    height: 135px;
+  }
+
+  #world-clock {
+    top: 154px;
+  }
+}
+
+@media (max-width: 860px) {
+  #bottom-left-hud {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    left: 8px;
+    display: flex;
+    width: min(430px, calc(100vw - 16px));
+    max-height: 152px;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  #bottom-left-hud > .panel {
+    flex: 0 0 min(230px, 72vw);
+    min-height: 0;
+    max-height: 144px;
+    overflow: hidden;
+    padding: 8px 10px;
+  }
+
+  #bottom-left-hud .chat-panel {
+    min-height: 0;
+  }
+
+  #bottom-left-hud #chat-messages {
+    min-height: 48px;
+  }
+
+  #bottom-side-hud {
+    top: 68px;
+    bottom: auto;
+    left: 8px;
+    width: min(220px, calc(100vw - 152px));
+    max-height: clamp(148px, 36dvh, 300px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+
+  #bottom-side-hud > .player-panel {
+    padding: 8px 10px;
+  }
+
+  #hud-toolbar {
+    top: 8px;
+    right: 150px;
+    bottom: auto;
+    left: 8px;
+    display: flex;
+    max-width: none;
+    padding: 5px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .toolbar-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  #minimap {
+    top: 8px;
+    right: 8px;
+    width: 132px;
+    height: 99px;
+  }
+
+  #world-clock {
+    top: 113px;
+    right: 8px;
+  }
+
+  #action-bar {
+    bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .game-modal,
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .game-modal-card,
+  .game-modal-card.wide,
+  .modal-card {
+    width: min(100%, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px);
+  }
+
+  .game-modal-card > header {
+    padding: 13px 15px;
+  }
+
+  .game-modal-card > header h2 {
+    font-size: 20px;
+  }
+
+  .game-modal-body {
+    padding: 16px;
+    font-size: 13px;
+  }
+
+  .login-box {
+    margin-block: 12px;
+    padding: 28px 22px 24px;
+  }
+}
+
+@media (max-width: 520px) {
+  #bottom-side-hud {
+    top: 60px;
+    width: calc(100vw - 128px);
+  }
+
+  #hud-toolbar {
+    right: 120px;
+  }
+
+  #minimap {
+    width: 108px;
+    height: 81px;
+  }
+
+  #world-clock {
+    top: 95px;
+    padding-inline: 7px;
+    font-size: 10px;
+  }
+
+  #action-bar {
+    gap: 2px;
+    padding: 4px;
+  }
+
+  #action-bar .skill-button,
+  .action-slot {
+    width: clamp(42px, 18vw, 48px);
+  }
+
+  .login-class-preview {
+    gap: 5px;
+  }
+
+  .login-class {
+    font-size: 9px;
+  }
+
+  #inventory-actions {
+    grid-template-columns: minmax(0, 1fr) repeat(3, auto);
+  }
+}
+
+@media (pointer: coarse) {
+  .toolbar-btn,
+  .modal-close,
+  .quest-tab,
+  .party-actions button,
+  #chat-form button,
+  #chat-channel-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

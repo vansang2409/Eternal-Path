@@ -24,8 +24,15 @@ import {
 import type { ClientInput, Direction, GroundItem, MonsterState, PlayerState, SkillId, Vec2, WorldMapPayload, WorldSnapshot } from "@mmorpg/shared";
 import { createSocket, type GameSocket } from "../net/socket";
 import { Hud } from "../ui/hud";
-import { ISO_TILE_W, ISO_TILE_H, createPixelArt } from "./assets";
+import { ISO_TILE_W, ISO_TILE_H, buildIsoTileData, createPixelArt } from "./assets";
 import { CENTER_FRAC, FEET_FRAC } from "./characterArt";
+import {
+  MONSTER_CENTER_FRAC,
+  MONSTER_FEET_FRAC,
+  monsterDisplayHeight,
+  monsterDisplayScale,
+  monsterTextureKey
+} from "./monsterArt";
 import { t, translateMonsterName } from "../i18n";
 import { soundManager } from "../sound";
 
@@ -52,6 +59,19 @@ function isoToWorld(sx: number, sy: number): { x: number; y: number } {
   const tx = (ax / (ISO_TILE_W / 2) + sy / (ISO_TILE_H / 2)) / 2;
   const ty = (sy / (ISO_TILE_H / 2) - ax / (ISO_TILE_W / 2)) / 2;
   return { x: tx * TILE_SIZE, y: ty * TILE_SIZE };
+}
+
+function isoWorldBounds(width: number, height: number): Phaser.Geom.Rectangle {
+  // worldToIso projects the four Cartesian world corners into a diamond.
+  // Include half a tile horizontally because the atlas frame extends beyond
+  // the projected center line at the far-left / far-right corners.
+  const minX = ISO_OFFSET_X - height * (ISO_TILE_W / 2);
+  return new Phaser.Geom.Rectangle(
+    minX,
+    0,
+    (width + height) * (ISO_TILE_W / 2),
+    (width + height) * (ISO_TILE_H / 2)
+  );
 }
 
 export class GameScene extends Phaser.Scene {
@@ -115,6 +135,7 @@ export class GameScene extends Phaser.Scene {
   private lowHpPulse = 0;
   private lastDustAt = 0;
   private monsters = new Map<string, Phaser.GameObjects.Sprite>();
+  private monsterShadows = new Map<string, Phaser.GameObjects.Ellipse>();
   private monsterBars = new Map<string, Phaser.GameObjects.Graphics>();
   private monsterLabels = new Map<string, Phaser.GameObjects.Text>();
   private groundItems = new Map<string, Phaser.GameObjects.Sprite>();
@@ -524,13 +545,18 @@ export class GameScene extends Phaser.Scene {
       try { localStorage.setItem("camZoom", z.toFixed(2)); } catch (_) { /* noop */ }
     });
 
-    this.cameras.main.setBounds(0, 0, WORLD_WIDTH * TILE_SIZE, WORLD_HEIGHT * TILE_SIZE);
+    this.setIsoCameraBounds(WORLD_WIDTH, WORLD_HEIGHT);
     this.input.mouse?.disableContextMenu();
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer, objects: Phaser.GameObjects.GameObject[]) => {
       if (!pointer.rightButtonDown() || objects.length > 0) return;
       // Pointer is in iso-screen world coords; reverse-project to game world.
       const w = isoToWorld(pointer.worldX, pointer.worldY);
-      this.moveTarget = new Phaser.Math.Vector2(w.x, w.y);
+      // Camera bounds are the rectangle around the map diamond, so their
+      // corners contain empty space. Ignore clicks outside the real map (and
+      // on blocked tiles) to keep prediction aligned with the server clamp.
+      if (!this.worldMap || !this.isClientTileWalkable(w)) return;
+      const target = clampToWorld(w);
+      this.moveTarget = new Phaser.Math.Vector2(target.x, target.y);
       this.drawMoveMarker();
     });
   }
@@ -949,25 +975,43 @@ export class GameScene extends Phaser.Scene {
     this.mapBuilt = true;
     this.worldMap = worldMap;
 
-    const map = this.make.tilemap({
-      data: worldMap.tiles,
-      tileWidth: TILE_SIZE,
-      tileHeight: TILE_SIZE
-    });
-    const tiles = map.addTilesetImage("tiles", "tiles", TILE_SIZE, TILE_SIZE);
-    map.createLayer(0, tiles!, 0, 0);
+    // Parse first, then set the orientation before constructing Tilemap.
+    // Tilemap caches its coordinate conversion functions in the constructor,
+    // so mutating `map.orientation` afterwards would leave culling orthogonal.
+    const parsedMap = Phaser.Tilemaps.Parsers.Parse2DArray(
+      "eternal-path-world",
+      buildIsoTileData(worldMap.tiles),
+      ISO_TILE_W,
+      ISO_TILE_H,
+      false
+    );
+    parsedMap.orientation = Phaser.Tilemaps.Orientation.ISOMETRIC;
+    const mapDataLayer = (parsedMap.layers as Phaser.Tilemaps.LayerData[])[0];
+    mapDataLayer.orientation = Phaser.Tilemaps.Orientation.ISOMETRIC;
+    for (const row of mapDataLayer.data) {
+      for (const tile of row) tile?.setSize(ISO_TILE_W, ISO_TILE_H, ISO_TILE_W, ISO_TILE_H);
+    }
+    // Rendering stays one culled TilemapLayer instead of creating 30k sprites.
+    const map = new Phaser.Tilemaps.Tilemap(this, parsedMap);
+    const tiles = map.addTilesetImage("iso-tiles", "iso-tiles", ISO_TILE_W, ISO_TILE_H, 0, 0, 0);
+    if (!tiles) throw new Error("Không thể tạo isometric tileset.");
+    const terrain = map.createLayer(0, tiles, ISO_OFFSET_X - ISO_TILE_W / 2, 0);
+    if (!terrain) throw new Error("Không thể tạo isometric terrain layer.");
+    terrain.setDepth(0).setCullPadding(3, 4);
 
     this.initMinimap(worldMap);
     this.createTownNpcs(worldMap);
     this.createArenaOverlay();
 
-    // Update camera bounds for the (possibly larger) world.
-    this.cameras.main.setBounds(0, 0, worldMap.width * TILE_SIZE, worldMap.height * TILE_SIZE);
+    // Update camera bounds for the projected (possibly larger) world.
+    this.setIsoCameraBounds(worldMap.width, worldMap.height);
 
-    // Town label rectangle backdrop.
+    // Town tiles already provide their own stone silhouette; only add a label
+    // at the projected landmark instead of painting a Cartesian rectangle over
+    // the new isometric terrain.
     const town = worldMap.landmarks.town;
-    this.add.rectangle(town.x * TILE_SIZE, (town.y + 1) * TILE_SIZE, 210, 120, 0x39424b, 0.55).setDepth(1);
-    this.addZoneLabel((town.x + 0.5) * TILE_SIZE, (town.y + 1.5) * TILE_SIZE, t("town"), 18, "#f3e7bf");
+    const townIso = worldToIso((town.x + 0.5) * TILE_SIZE, (town.y + 1.5) * TILE_SIZE);
+    this.addZoneLabel(townIso.x, townIso.y, t("town"), 18, "#f3e7bf");
 
     // Auto-place zone labels at the centroid of the largest cluster per biome.
     const clusters = this.findBiomeClusters(worldMap);
@@ -989,6 +1033,11 @@ export class GameScene extends Phaser.Scene {
       const iso = worldToIso((d.x + 0.5) * TILE_SIZE, (d.y - 0.5) * TILE_SIZE);
       this.addZoneLabel(iso.x, iso.y, "Hầm Bí Ẩn", 13, "#c79bff");
     }
+  }
+
+  private setIsoCameraBounds(width: number, height: number): void {
+    const bounds = isoWorldBounds(width, height);
+    this.cameras.main.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
   }
 
   private biomeLabel(biome: TileId): string | undefined {
@@ -1115,6 +1164,12 @@ export class GameScene extends Phaser.Scene {
     const pct = Math.max(0, Math.min(1, boss.hp / boss.maxHp));
     if (fill) fill.style.width = `${pct * 100}%`;
     if (label) label.textContent = `${Math.ceil(boss.hp)} / ${boss.maxHp}`;
+    const bar = fill?.parentElement;
+    bar?.setAttribute("role", "progressbar");
+    bar?.setAttribute("aria-label", boss.name);
+    bar?.setAttribute("aria-valuemin", "0");
+    bar?.setAttribute("aria-valuemax", String(boss.maxHp));
+    bar?.setAttribute("aria-valuenow", String(Math.max(0, Math.ceil(boss.hp))));
   }
 
   // ------- leaderboard -------
@@ -1576,19 +1631,28 @@ export class GameScene extends Phaser.Scene {
       ctx.fillStyle = "#000";
       ctx.fillRect(px, py, 1, 1);
     }
-    // Sprint 135: camera viewport box — outline the on-screen area on the
-    // minimap so the player knows which slice of the world they're looking at.
+    // Camera viewport on the minimap. The camera is axis-aligned in projected
+    // iso space, so its four corners become a diamond in Cartesian map space.
     const view = this.cameras.main.worldView;
     if (view.width > 0) {
+      const corners = [
+        isoToWorld(view.left, view.top),
+        isoToWorld(view.right, view.top),
+        isoToWorld(view.right, view.bottom),
+        isoToWorld(view.left, view.bottom)
+      ];
       ctx.save();
       ctx.strokeStyle = "rgba(255,255,255,0.55)";
       ctx.lineWidth = 1;
-      ctx.strokeRect(
-        view.x / TILE_SIZE,
-        view.y / TILE_SIZE,
-        view.width / TILE_SIZE,
-        view.height / TILE_SIZE
-      );
+      ctx.beginPath();
+      corners.forEach((corner, index) => {
+        const x = corner.x / TILE_SIZE;
+        const y = corner.y / TILE_SIZE;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
       ctx.restore();
     }
   }
@@ -2047,7 +2111,7 @@ export class GameScene extends Phaser.Scene {
       }
       const currentPosition = player.id === this.selfId
         ? this.predictedSelfPosition ?? player.position
-        : this.players.get(player.id) ?? player.position;
+        : player.position;
       this.renderPlayer(player, currentPosition);
     }
     for (const [id, sprite] of this.players) {
@@ -2111,17 +2175,22 @@ export class GameScene extends Phaser.Scene {
       this.monsterAggroPrev.set(monster.id, aggroOnMe);
       if (isAlive) this.aliveMonsters.add(monster.id);
       else this.aliveMonsters.delete(monster.id);
-      this.renderMonster(monster, this.monsters.get(monster.id) ?? monster.position);
+      this.renderMonster(monster, monster.position);
     }
     for (const [id, sprite] of this.monsters) {
       if (!seenMonsters.has(id)) {
         sprite.destroy();
         this.monsters.delete(id);
+        this.monsterShadows.get(id)?.destroy();
+        this.monsterShadows.delete(id);
         this.monsterBars.get(id)?.destroy();
         this.monsterBars.delete(id);
         this.monsterLabels.get(id)?.destroy();
         this.monsterLabels.delete(id);
         this.statusFxAt.delete(id);
+        this.aliveMonsters.delete(id);
+        this.monsterAggroPrev.delete(id);
+        this.monsterHpLag.delete(id);
       }
     }
 
@@ -2492,17 +2561,28 @@ export class GameScene extends Phaser.Scene {
 
   private renderMonster(monster: MonsterState, position: Vec2): void {
     const iso = worldToIso(position.x, position.y);
+    const definition = getMonsterDefinition(monster.type);
+    const textureKey = monsterTextureKey(monster.type);
+    const visualScale = monsterDisplayScale(definition.scale, monster.elite, monster.boss);
+    const visualHeight = monsterDisplayHeight(definition.scale, monster.elite, monster.boss);
     let sprite = this.monsters.get(monster.id);
     if (!sprite) {
-      sprite = this.add.sprite(iso.x, iso.y, "monster").setScale(3).setDepth(iso.y);
+      sprite = this.add.sprite(iso.x, iso.y, textureKey)
+        .setOrigin(MONSTER_CENTER_FRAC, MONSTER_FEET_FRAC)
+        .setScale(visualScale)
+        .setDepth(iso.y);
       sprite.setInteractive({ useHandCursor: true });
       sprite.on("pointerdown", () => {
-        if (!monster.respawnsAt) this.socket.emit("targetMonster", { monsterId: monster.id });
+        this.socket.emit("targetMonster", { monsterId: monster.id });
       });
       this.monsters.set(monster.id, sprite);
+      this.monsterShadows.set(
+        monster.id,
+        this.add.ellipse(iso.x, iso.y + 2, 32, 9, 0x030706, 0.34).setDepth(iso.y - 0.6)
+      );
       this.monsterBars.set(monster.id, this.add.graphics().setDepth(iso.y + 1));
-      this.monsterLabels.set(monster.id, this.add.text(iso.x, iso.y - 45, "", {
-        fontFamily: "monospace",
+      this.monsterLabels.set(monster.id, this.add.text(iso.x, iso.y - visualHeight - 10, "", {
+        fontFamily: "Inter, sans-serif",
         fontSize: "11px",
         color: "#f3e7bf",
         stroke: "#111",
@@ -2510,15 +2590,15 @@ export class GameScene extends Phaser.Scene {
       }).setOrigin(0.5).setDepth(iso.y + 2));
     }
 
-    sprite.setTexture(monster.respawnsAt ? "dead" : "monster");
-    sprite.setAlpha(monster.respawnsAt ? 0.35 : 1);
-    const definition = getMonsterDefinition(monster.type);
+    if (sprite.texture.key !== textureKey) sprite.setTexture(textureKey);
+    sprite.setOrigin(MONSTER_CENTER_FRAC, MONSTER_FEET_FRAC);
+    sprite.setAlpha(monster.respawnsAt ? 0.2 : 1);
     // Status effect tints override the base definition tint:
     // burn -> orange/red, bleed -> magenta, freeze -> cyan.
     const effects = monster.activeEffects ?? [];
     // Sprint 213: elites are tinted by their affix so the modifier reads at a glance.
     const affixTint = monster.elite && monster.affix ? getAffix(monster.affix)?.tint : undefined;
-    let tint = monster.boss ? 0xfff1a8 : affixTint ?? (monster.elite ? 0xffd36b : definition.tint);
+    let tint: number | undefined = monster.boss ? 0xfff1c2 : affixTint ?? (monster.elite ? 0xffd36b : undefined);
     if (effects.some((e) => e.kind === "burn")) tint = 0xff6a3c;
     else if (effects.some((e) => e.kind === "freeze")) tint = 0x9bd2ff;
     else if (effects.some((e) => e.kind === "bleed")) tint = 0xd94b88;
@@ -2526,22 +2606,44 @@ export class GameScene extends Phaser.Scene {
     // angry red so the final phase reads at a glance.
     else if ((monster.boss || monster.elite) && !monster.respawnsAt && monster.maxHp > 0 && monster.hp / monster.maxHp < 0.3) {
       const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 110);
-      tint = lerpColorHex(tint, 0xff2a22, 0.35 + 0.5 * pulse);
+      tint = lerpColorHex(tint ?? 0xffffff, 0xff2a22, 0.35 + 0.5 * pulse);
     }
-    sprite.setTint(tint);
+    if (monster.respawnsAt) tint = 0x59605d;
+    sprite.clearTint();
+    if (tint !== undefined) sprite.setTint(tint);
     // Lingering status particles (throttled per monster ~180ms).
     if (effects.length && !monster.respawnsAt) {
       const now = this.time.now;
       if (now - (this.statusFxAt.get(monster.id) ?? 0) > 180) {
         this.statusFxAt.set(monster.id, now);
-        this.emitStatusParticle(effects[0].kind, iso.x, iso.y);
+        this.emitStatusParticle(effects[0].kind, iso.x, iso.y - visualHeight * 0.44);
       }
     }
-    sprite.setScale(monster.boss ? definition.scale : monster.elite ? definition.scale * 1.18 : definition.scale);
+
+    // Floating families hover; ground families get a smaller idle breath. The
+    // phase is derived from id so a pack does not bob in perfect sync.
+    const floating = /bat|harpy|wraith|sprite|lich|reaper|watcher/i.test(monster.type);
+    const phase = monster.id.charCodeAt(monster.id.length - 1) || 0;
+    const moving = Math.abs(monster.velocity.x) + Math.abs(monster.velocity.y) > 0.5;
+    const bob = monster.respawnsAt
+      ? 2
+      : floating
+        ? -7 + Math.sin(this.time.now / 310 + phase) * 2.2
+        : moving ? 0 : Math.sin(this.time.now / 430 + phase) * 0.8;
+    sprite.setScale(visualScale, monster.respawnsAt ? visualScale * 0.22 : visualScale);
     sprite.disableInteractive();
     if (!monster.respawnsAt) sprite.setInteractive({ useHandCursor: true });
-    sprite.setPosition(iso.x, iso.y);
+    sprite.setPosition(iso.x, iso.y + bob);
     sprite.setDepth(iso.y);
+    const shadow = this.monsterShadows.get(monster.id);
+    if (shadow) {
+      const shadowWidth = Math.max(22, sprite.displayWidth * (monster.boss ? 0.68 : 0.58));
+      shadow
+        .setPosition(iso.x, iso.y + 2)
+        .setDepth(iso.y - 0.6)
+        .setDisplaySize(shadowWidth, Math.max(7, shadowWidth * 0.23))
+        .setAlpha(monster.respawnsAt ? 0.12 : floating ? 0.2 : monster.boss ? 0.42 : 0.32);
+    }
     // Face direction of movement (or last facing if stationary).
     if (monster.velocity.x !== 0) sprite.setFlipX(monster.velocity.x < 0);
     const affixPrefix = monster.affix ? `[${affixLabel(monster.affix)}] ` : "";
@@ -2559,7 +2661,7 @@ export class GameScene extends Phaser.Scene {
     this.monsterLabels.get(monster.id)
       ?.setText(`${t("levelShort")} ${monster.level} ${name}`)
       .setColor(monster.boss ? "#fff1a8" : threatColor)
-      .setPosition(iso.x, iso.y - (monster.boss ? 66 : monster.elite ? 52 : 45))
+      .setPosition(iso.x, iso.y - visualHeight - 10)
       .setDepth(iso.y + 2)
       .setVisible(this.showNameplates && !monster.respawnsAt);
     this.monsterBars.get(monster.id)?.setDepth(iso.y + 1);
@@ -2632,9 +2734,12 @@ export class GameScene extends Phaser.Scene {
     if (monster.respawnsAt) return;
     const pct = Phaser.Math.Clamp(monster.hp / monster.maxHp, 0, 1);
     const width = monster.boss ? 76 : monster.elite ? 58 : 48;
+    const definition = getMonsterDefinition(monster.type);
+    const visualHeight = monsterDisplayHeight(definition.scale, monster.elite, monster.boss);
+    const barY = position.y - Math.max(34, visualHeight - 8);
     const innerW = width - 2;
     const x0 = position.x - width / 2;
-    bar.fillStyle(0x151515, 0.9).fillRect(x0, position.y - 34, width, 6);
+    bar.fillStyle(0x151515, 0.9).fillRect(x0, barY, width, 6);
     // Sprint 127: damage-lag — a pale "ghost" chunk drains down to the real HP
     // a beat later, making each hit land with visible weight.
     let lag = this.monsterHpLag.get(monster.id);
@@ -2642,11 +2747,11 @@ export class GameScene extends Phaser.Scene {
     else lag = Math.max(pct, lag - 0.035);
     this.monsterHpLag.set(monster.id, lag);
     if (lag > pct) {
-      bar.fillStyle(0xfff1f1, 0.85).fillRect(x0 + 1 + innerW * pct, position.y - 33, innerW * (lag - pct), 4);
+      bar.fillStyle(0xfff1f1, 0.85).fillRect(x0 + 1 + innerW * pct, barY + 1, innerW * (lag - pct), 4);
     }
-    bar.fillStyle(monster.boss ? 0xffd36b : monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(x0 + 1, position.y - 33, innerW * pct, 4);
+    bar.fillStyle(monster.boss ? 0xffd36b : monster.elite ? 0xffb347 : 0xd94b4b, 1).fillRect(x0 + 1, barY + 1, innerW * pct, 4);
     if (this.selfPlayer && this.selfPlayer.targetId === monster.id) {
-      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 1, position.y - 35, width + 2, 8);
+      bar.lineStyle(1, 0xf8e66d, 1).strokeRect(position.x - width / 2 - 1, barY - 1, width + 2, 8);
     }
   }
 
@@ -2661,9 +2766,13 @@ export class GameScene extends Phaser.Scene {
     const snap = this.snapshotBuffer[this.snapshotBuffer.length - 1];
     const mon = targetId ? snap?.monsters.find((m) => m.id === targetId) : undefined;
     if (!sprite || !mon || mon.respawnsAt) return;
+    const definition = getMonsterDefinition(mon.type);
+    const visualHeight = monsterDisplayHeight(definition.scale, mon.elite, mon.boss);
     const cx = sprite.x;
-    const cy = sprite.y - 6;
-    const r = mon.boss ? 40 : mon.elite ? 30 : 24;
+    const cy = sprite.y - visualHeight * 0.45;
+    const r = mon.boss
+      ? Math.max(40, visualHeight * 0.55)
+      : mon.elite ? Math.max(30, visualHeight * 0.5) : Math.max(24, visualHeight * 0.44);
     const rot = time / 600;
     const pulse = 1 + Math.sin(time / 220) * 0.06;
     const rr = r * pulse;

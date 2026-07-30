@@ -36,7 +36,7 @@
             <label id="password-label" for="password-input">Mật khẩu</label>
             <input id="password-input" type="password" autocomplete="current-password" minlength="4" required placeholder="••••••" />
             <button id="login-button" type="submit">Vào game</button>
-            <div id="login-error"></div>
+            <div id="login-error" role="alert" aria-live="assertive"></div>
             <div class="login-stats" id="login-stats">Đang kết nối...</div>
           </form>
         </div>
@@ -77,13 +77,13 @@
       <div id="bottom-left-hud">
         <div class="panel log-panel">
           <h2 id="world-title">Thế giới</h2>
-          <div id="log"></div>
+          <div id="log" role="log" aria-live="polite" aria-label="Nhật ký thế giới"></div>
         </div>
         <div class="panel chat-panel">
           <h2 id="chat-title">Trò chuyện</h2>
-          <div id="chat-messages"></div>
-          <form id="chat-form">
-            <input id="chat-input" maxlength="160" autocomplete="off" placeholder="Nhập tin nhắn..." />
+          <div id="chat-messages" role="log" aria-live="polite" aria-label="Tin nhắn trò chuyện"></div>
+          <form id="chat-form" aria-label="Gửi tin nhắn">
+            <input id="chat-input" maxlength="160" autocomplete="off" aria-label="Tin nhắn" placeholder="Nhập tin nhắn..." />
             <button id="chat-send" type="submit">Gửi</button>
           </form>
         </div>
@@ -135,7 +135,7 @@
         </div>
       </div>
 
-      <div id="action-bar">
+      <div id="action-bar" role="toolbar" aria-label="Thanh kỹ năng chiến đấu">
         <button id="potion-slot" class="action-slot" type="button" title="Dùng bình máu (F)">
           <kbd>F</kbd>
           <strong id="potion-label">Bình</strong>
@@ -148,10 +148,10 @@
         </div>
       </div>
 
-      <canvas id="minimap" width="200" height="150" title="Bản đồ thu nhỏ"></canvas>
+      <canvas id="minimap" width="200" height="150" role="img" aria-label="Bản đồ thế giới thu nhỏ" title="Bản đồ thu nhỏ"></canvas>
       <div id="world-clock"><span id="world-clock-phase">—</span> <span id="world-clock-time">00:00</span></div>
 
-      <div id="hud-toolbar">
+      <div id="hud-toolbar" role="toolbar" aria-label="Menu hệ thống">
         <button class="toolbar-btn" type="button" data-modal="inventory-modal" title="Túi đồ" aria-label="Túi đồ"><i class="material-symbols-outlined">backpack</i></button>
         <button class="toolbar-btn" type="button" data-modal="equipment-modal" title="Trang bị" aria-label="Trang bị"><i class="material-symbols-outlined">shield</i></button>
         <button class="toolbar-btn" type="button" data-modal="skills-modal" title="Kỹ năng" aria-label="Kỹ năng"><i class="material-symbols-outlined">auto_awesome</i></button>

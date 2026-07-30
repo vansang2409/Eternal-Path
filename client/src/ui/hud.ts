@@ -2572,7 +2572,15 @@ export class Hud {
     document.querySelector("#world-title")!.textContent = t("world");
     document.querySelector("#chat-title")!.textContent = t("chat");
     document.querySelector("#chat-send")!.textContent = t("send");
-    (document.querySelector("#chat-input") as HTMLInputElement).placeholder = t("chatPlaceholder");
+    const chatInput = document.querySelector("#chat-input") as HTMLInputElement;
+    chatInput.placeholder = t("chatPlaceholder");
+    chatInput.setAttribute("aria-label", t("sendMessage"));
+    document.querySelector("#log")?.setAttribute("aria-label", t("worldLog"));
+    document.querySelector("#chat-messages")?.setAttribute("aria-label", t("chatMessages"));
+    document.querySelector("#chat-form")?.setAttribute("aria-label", t("sendMessage"));
+    document.querySelector("#action-bar")?.setAttribute("aria-label", t("combatSkills"));
+    document.querySelector("#minimap")?.setAttribute("aria-label", t("minimap"));
+    document.querySelector("#hud-toolbar")?.setAttribute("aria-label", t("systemMenu"));
     document.querySelector("#player-name")!.textContent = t("connecting");
     this.renderSoundToggle();
   }
@@ -2735,7 +2743,15 @@ function sectionTitle(label: string): HTMLElement {
 
 function setBar(fillSelector: string, labelSelector: string, value: number, max: number, label: string): void {
   const pct = Math.max(0, Math.min(1, value / max));
-  (document.querySelector(fillSelector) as HTMLElement).style.width = `${pct * 100}%`;
+  const fill = document.querySelector<HTMLElement>(fillSelector);
+  if (!fill) return;
+  fill.style.width = `${pct * 100}%`;
+  const bar = fill.parentElement;
+  bar?.setAttribute("role", "progressbar");
+  bar?.setAttribute("aria-label", label);
+  bar?.setAttribute("aria-valuemin", "0");
+  bar?.setAttribute("aria-valuemax", String(max));
+  bar?.setAttribute("aria-valuenow", String(Math.max(0, Math.floor(value))));
   document.querySelector(labelSelector)!.textContent = `${label} ${Math.floor(value)} / ${max}`;
 }
 
